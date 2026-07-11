@@ -1,54 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import type { CSSProperties, FormEvent } from "react";
+import type { FormEvent } from "react";
+import { Search } from "lucide-react";
 import type { Entry, EntryStatus } from "@astrocms/contracts";
 import { cms } from "../lib.ts";
 import { useSession } from "../auth.tsx";
-import { Button, Empty, ErrorBox, inputStyle, Loading, Page } from "../ui.tsx";
+import { PageContainer } from "@/components/page-container.tsx";
+import { Badge } from "@/components/ui/badge.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
+import { cn } from "@/lib/utils.ts";
 
-const tableStyle: CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  background: "#fff",
-  border: "1px solid #dcdcde",
-};
-const thStyle: CSSProperties = {
-  textAlign: "left",
-  borderBottom: "1px solid #dcdcde",
-  padding: "0.65rem",
-  fontWeight: 600,
-};
-const tdStyle: CSSProperties = {
-  borderBottom: "1px solid #f0f0f1",
-  padding: "0.65rem",
-  verticalAlign: "top",
-};
-const linkButtonStyle: CSSProperties = {
-  border: 0,
-  background: "transparent",
-  color: "#2271b1",
-  padding: 0,
-  cursor: "pointer",
-  font: "inherit",
-};
-
-const dateFormatter = new Intl.DateTimeFormat("es-ES", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-
+const dateFormatter = new Intl.DateTimeFormat("es-ES", { dateStyle: "medium", timeStyle: "short" });
 const previewOrigin = import.meta.env.VITE_PREVIEW_ORIGIN ?? "";
 
-// Acciones de fila estilo WordPress: ocultas hasta hover/foco (accesibles por teclado).
-const rowActionsCss = `
-.wp-row-actions { opacity: 0; transition: opacity 0.1s ease; font-size: 0.82rem; margin-top: 0.35rem; color: #646970; }
-tr:hover .wp-row-actions, tr:focus-within .wp-row-actions { opacity: 1; }
-.wp-row-actions a, .wp-row-actions button { color: #2271b1; }
-.wp-row-actions button { border: 0; background: transparent; padding: 0; cursor: pointer; font: inherit; }
-.wp-row-actions .danger { color: #b32d2e; }
-.wp-row-actions .sep { color: #c3c4c7; margin: 0 0.15rem; }
-`;
+function formatDate(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : dateFormatter.format(date);
+}
 
 export function PagesListPage() {
   const nav = useNavigate();
@@ -68,287 +41,173 @@ export function PagesListPage() {
 
   const pages = useQuery({
     queryKey: ["pages", { status, search }],
-    queryFn: () =>
-      cms.pages.list({
-        pageSize: 50,
-        ...(status ? { status } : {}),
-        ...(search ? { search } : {}),
-      }),
+    queryFn: () => cms.pages.list({ pageSize: 50, ...(status ? { status } : {}), ...(search ? { search } : {}) }),
     enabled: Boolean(session),
   });
-  const counts = useQuery({
-    queryKey: ["pages-counts"],
-    queryFn: () => cms.pages.counts(),
-    enabled: Boolean(session),
-  });
+  const counts = useQuery({ queryKey: ["pages-counts"], queryFn: () => cms.pages.counts(), enabled: Boolean(session) });
 
   const pageIds = useMemo(() => pages.data?.data.map((p) => p.id) ?? [], [pages.data]);
   const allVisibleSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
 
   const invalidateLists = () =>
-    Promise.all([
-      qc.invalidateQueries({ queryKey: ["pages"] }),
-      qc.invalidateQueries({ queryKey: ["pages-counts"] }),
-    ]);
+    Promise.all([qc.invalidateQueries({ queryKey: ["pages"] }), qc.invalidateQueries({ queryKey: ["pages-counts"] })]);
 
   const removeSelected = useMutation({
-    mutationFn: async (ids: string[]) => {
-      await Promise.all(ids.map((id) => cms.pages.remove(id)));
-    },
-    onSuccess: async () => {
-      setSelected(new Set());
-      setBulkAction("");
-      await invalidateLists();
-    },
+    mutationFn: async (ids: string[]) => { await Promise.all(ids.map((id) => cms.pages.remove(id))); },
+    onSuccess: async () => { setSelected(new Set()); setBulkAction(""); await invalidateLists(); },
   });
-
-  const removeOne = useMutation({
-    mutationFn: (id: string) => cms.pages.remove(id),
-    onSuccess: invalidateLists,
-  });
+  const removeOne = useMutation({ mutationFn: (id: string) => cms.pages.remove(id), onSuccess: invalidateLists });
   const duplicate = useMutation({
-    mutationFn: (page: Entry) =>
-      cms.pages.create({
-        contentTypeKey: page.contentTypeKey,
-        title: `${page.title} (copia)`,
-        editorType: page.editorType,
-        data: page.data,
-      }),
+    mutationFn: (page: Entry) => cms.pages.create({ contentTypeKey: page.contentTypeKey, title: `${page.title} (copia)`, editorType: page.editorType, data: page.data }),
     onSuccess: invalidateLists,
   });
   const bulkUpdate = useMutation({
     mutationFn: async ({ ids, target }: { ids: string[]; target: "published" | "draft" }) => {
       await Promise.all(ids.map((id) => (target === "published" ? cms.pages.publish(id) : cms.pages.unpublish(id))));
     },
-    onSuccess: async () => {
-      setSelected(new Set());
-      setBulkAction("");
-      setBulkEditing(false);
-      setBulkStatus("");
-      await invalidateLists();
-    },
+    onSuccess: async () => { setSelected(new Set()); setBulkAction(""); setBulkEditing(false); setBulkStatus(""); await invalidateLists(); },
   });
 
-  if (sessionLoading || !session) return <Page><Loading /></Page>;
+  if (sessionLoading || !session) return <PageContainer><p className="text-muted-foreground">Cargando…</p></PageContainer>;
 
-  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSearch(searchInput.trim());
-    setSelected(new Set());
-  };
-  const toggleAll = () => {
-    setSelected((current) => {
-      if (pageIds.length > 0 && pageIds.every((id) => current.has(id))) return new Set();
-      return new Set(pageIds);
-    });
-  };
-  const toggleOne = (id: string) => {
-    setSelected((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  const submitSearch = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setSearch(searchInput.trim()); setSelected(new Set()); };
+  const toggleAll = () => setSelected((cur) => (pageIds.length > 0 && pageIds.every((id) => cur.has(id)) ? new Set() : new Set(pageIds)));
+  const toggleOne = (id: string) => setSelected((cur) => { const next = new Set(cur); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const applyBulk = () => {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
-    if (bulkAction === "delete") {
-      if (!window.confirm(`¿Eliminar ${ids.length} página(s) seleccionada(s)?`)) return;
-      removeSelected.mutate(ids);
-    } else if (bulkAction === "edit") {
-      setBulkEditing(true); // revela el panel de edición masiva
-    }
+    if (bulkAction === "delete") { if (window.confirm(`¿Eliminar ${ids.length} página(s) seleccionada(s)?`)) removeSelected.mutate(ids); }
+    else if (bulkAction === "edit") setBulkEditing(true);
   };
   const applyBulkEdit = () => {
     const ids = Array.from(selected);
     if (ids.length === 0 || (bulkStatus !== "published" && bulkStatus !== "draft")) return;
     bulkUpdate.mutate({ ids, target: bulkStatus });
   };
-  const setFilter = (nextStatus: EntryStatus | undefined) => {
-    setStatus(nextStatus);
-    setSelected(new Set());
-  };
+  const setFilter = (nextStatus: EntryStatus | undefined) => { setStatus(nextStatus); setSelected(new Set()); };
+  const errors = [pages.error, counts.error, removeSelected.error, bulkUpdate.error, removeOne.error, duplicate.error].filter(Boolean) as Error[];
 
   return (
-    <Page wide>
-      <style>{rowActionsCss}</style>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <h1 style={{ margin: 0 }}>Páginas</h1>
-          <Button onClick={() => nav({ to: "/pages/new" })}>Añadir nueva</Button>
+    <PageContainer>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold">Páginas</h1>
+          <Button size="sm" onClick={() => nav({ to: "/pages/new" })}>Añadir nueva</Button>
         </div>
-        <form onSubmit={submitSearch} role="search" style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-          <label htmlFor="page-search" style={{ position: "absolute", left: "-10000px" }}>Buscar páginas</label>
-          <input
-            id="page-search"
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.currentTarget.value)}
-            placeholder="Buscar páginas"
-            style={{ ...inputStyle, width: 240 }}
-          />
-          <Button type="submit" ghost>Buscar</Button>
+        <form onSubmit={submitSearch} role="search" className="flex items-center gap-2">
+          <label htmlFor="page-search" className="sr-only">Buscar páginas</label>
+          <Input id="page-search" value={searchInput} onChange={(e) => setSearchInput(e.currentTarget.value)} placeholder="Buscar páginas" className="w-56" />
+          <Button type="submit" variant="outline" size="icon"><Search /></Button>
         </form>
       </div>
 
-      <nav aria-label="Filtros de estado" style={{ marginBottom: "1rem", fontSize: "0.9rem" }}>
+      <nav aria-label="Filtros de estado" className="mb-4 flex items-center gap-2 text-sm">
         <StatusFilter active={!status} label="Todas" count={counts.data?.all} onClick={() => setFilter(undefined)} />
-        <span> · </span>
+        <span className="text-muted-foreground">·</span>
         <StatusFilter active={status === "published"} label="Publicadas" count={counts.data?.published} onClick={() => setFilter("published")} />
-        <span> · </span>
+        <span className="text-muted-foreground">·</span>
         <StatusFilter active={status === "draft"} label="Borradores" count={counts.data?.draft} onClick={() => setFilter("draft")} />
       </nav>
 
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem", alignItems: "center" }}>
-        <label htmlFor="bulk-action" style={{ position: "absolute", left: "-10000px" }}>Acciones en lote</label>
-        <select
-          id="bulk-action"
-          value={bulkAction}
-          onChange={(event) => setBulkAction(event.currentTarget.value)}
-          style={{ ...inputStyle, width: 180 }}
-        >
-          <option value="">Acciones en lote</option>
-          <option value="edit">Editar</option>
-          <option value="delete">Eliminar</option>
-        </select>
-        <Button type="button" ghost onClick={applyBulk} disabled={!bulkAction || selected.size === 0 || removeSelected.isPending}>
+      <div className="mb-3 flex items-center gap-2">
+        <Select value={bulkAction} onValueChange={setBulkAction}>
+          <SelectTrigger className="w-48"><SelectValue placeholder="Acciones en lote" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="edit">Editar</SelectItem>
+            <SelectItem value="delete">Eliminar</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" onClick={applyBulk} disabled={!bulkAction || selected.size === 0 || removeSelected.isPending}>
           {removeSelected.isPending ? "Aplicando…" : "Aplicar"}
         </Button>
-        {selected.size > 0 && <span style={{ color: "#646970", fontSize: "0.85rem" }}>{selected.size} seleccionada(s)</span>}
+        {selected.size > 0 && <span className="text-sm text-muted-foreground">{selected.size} seleccionada(s)</span>}
       </div>
 
       {bulkEditing && selected.size > 0 && (
-        <div style={{ background: "#f0f6fc", border: "1px solid #c5d9ed", borderRadius: 6, padding: "0.75rem 1rem", marginBottom: "0.75rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
-            <strong style={{ fontSize: "0.9rem" }}>Edición masiva · {selected.size} página(s)</strong>
-            <label htmlFor="bulk-status" style={{ fontSize: "0.85rem" }}>Estado:</label>
-            <select id="bulk-status" value={bulkStatus} onChange={(e) => setBulkStatus(e.currentTarget.value as "" | "published" | "draft")} style={{ ...inputStyle, width: 190 }}>
-              <option value="">— Sin cambios —</option>
-              <option value="published">Publicar</option>
-              <option value="draft">Pasar a borrador</option>
-            </select>
-            <Button type="button" onClick={applyBulkEdit} disabled={!bulkStatus || bulkUpdate.isPending}>
-              {bulkUpdate.isPending ? "Actualizando…" : "Actualizar"}
-            </Button>
-            <Button ghost type="button" onClick={() => { setBulkEditing(false); setBulkStatus(""); }}>Cancelar</Button>
+        <div className="mb-3 rounded-md border border-primary/20 bg-primary/5 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <strong className="text-sm">Edición masiva · {selected.size} página(s)</strong>
+            <span className="text-sm">Estado:</span>
+            <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as "published" | "draft")}>
+              <SelectTrigger className="w-48"><SelectValue placeholder="— Sin cambios —" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="published">Publicar</SelectItem>
+                <SelectItem value="draft">Pasar a borrador</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button size="sm" onClick={applyBulkEdit} disabled={!bulkStatus || bulkUpdate.isPending}>{bulkUpdate.isPending ? "Actualizando…" : "Actualizar"}</Button>
+            <Button variant="ghost" size="sm" onClick={() => { setBulkEditing(false); setBulkStatus(""); }}>Cancelar</Button>
           </div>
-          <p style={{ margin: "0.5rem 0 0", color: "#646970", fontSize: "0.82rem" }}>
-            {pages.data?.data.filter((p) => selected.has(p.id)).map((p) => p.title).join(" · ")}
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground">{pages.data?.data.filter((p) => selected.has(p.id)).map((p) => p.title).join(" · ")}</p>
         </div>
       )}
 
-      {pages.isLoading && <Loading />}
-      {pages.isError && <ErrorBox error={pages.error} />}
-      {counts.isError && <ErrorBox error={counts.error} />}
-      {removeSelected.isError && <ErrorBox error={removeSelected.error} />}
-      {bulkUpdate.isError && <ErrorBox error={bulkUpdate.error} />}
-      {removeOne.isError && <ErrorBox error={removeOne.error} />}
-      {duplicate.isError && <ErrorBox error={duplicate.error} />}
+      {errors.map((e, i) => (
+        <p key={i} role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{e.message}</p>
+      ))}
+      {pages.isLoading && <p className="text-muted-foreground">Cargando…</p>}
       {pages.data && pages.data.data.length === 0 && (
-        <Empty>{search ? "No hay páginas que coincidan con la búsqueda." : "Aún no hay páginas. Crea la primera con Añadir nueva."}</Empty>
+        <p className="text-muted-foreground">{search ? "No hay páginas que coincidan con la búsqueda." : "Aún no hay páginas. Crea la primera con Añadir nueva."}</p>
       )}
 
       {pages.data && pages.data.data.length > 0 && (
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              <th scope="col" style={{ ...thStyle, width: 44 }}>
-                <input
-                  type="checkbox"
-                  aria-label="Seleccionar todas las páginas"
-                  checked={allVisibleSelected}
-                  onChange={toggleAll}
-                />
-              </th>
-              <th scope="col" style={thStyle}>Título</th>
-              <th scope="col" style={{ ...thStyle, width: 180 }}>Autor</th>
-              <th scope="col" style={{ ...thStyle, width: 220 }}>Fecha</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pages.data.data.map((page) => (
-              <tr key={page.id}>
-                <td style={tdStyle}>
-                  <input
-                    type="checkbox"
-                    aria-label={`Seleccionar ${page.title}`}
-                    checked={selected.has(page.id)}
-                    onChange={() => toggleOne(page.id)}
-                  />
-                </td>
-                <td style={tdStyle}>
-                  <Link to="/pages/$pageId" params={{ pageId: page.id }} style={{ color: "#2271b1", fontWeight: 600 }}>
-                    {page.title}
-                  </Link>
-                  <div style={{ color: "#646970", fontSize: "0.82rem", marginTop: "0.15rem" }}>{page.slug}</div>
-                  <div className="wp-row-actions">
-                    <Link to="/pages/$pageId" params={{ pageId: page.id }}>Editar</Link>
-                    {page.editorType === "builder" && (
-                      <>
-                        <span className="sep">|</span>
-                        <Link to="/pages/$pageId/builder" params={{ pageId: page.id }}>Editar visual</Link>
-                      </>
-                    )}
-                    <span className="sep">|</span>
-                    <button type="button" onClick={() => duplicate.mutate(page)} disabled={duplicate.isPending}>Duplicar</button>
-                    {page.status === "published" && previewOrigin && (
-                      <>
-                        <span className="sep">|</span>
-                        <a href={`${previewOrigin}${page.slug}`} target="_blank" rel="noreferrer">Ver</a>
-                      </>
-                    )}
-                    <span className="sep">|</span>
-                    <button
-                      type="button"
-                      className="danger"
-                      disabled={removeOne.isPending}
-                      onClick={() => {
-                        if (window.confirm(`¿Eliminar "${page.title}"?`)) removeOne.mutate(page.id);
-                      }}
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                </td>
-                <td style={tdStyle}>{page.authorName ?? "—"}</td>
-                <td style={tdStyle}>
-                  <div>{formatDate(page.updatedAt)}</div>
-                  <div style={{ color: "#646970", fontSize: "0.82rem" }}>{page.status}</div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="rounded-lg border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10"><Checkbox aria-label="Seleccionar todas las páginas" checked={allVisibleSelected} onCheckedChange={toggleAll} /></TableHead>
+                <TableHead>Título</TableHead>
+                <TableHead className="w-44">Autor</TableHead>
+                <TableHead className="w-52">Fecha</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pages.data.data.map((page) => (
+                <TableRow key={page.id} className="group">
+                  <TableCell className="align-top"><Checkbox aria-label={`Seleccionar ${page.title}`} checked={selected.has(page.id)} onCheckedChange={() => toggleOne(page.id)} /></TableCell>
+                  <TableCell className="align-top">
+                    <Link to="/pages/$pageId" params={{ pageId: page.id }} className="font-semibold text-primary hover:underline">{page.title}</Link>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{page.slug}</div>
+                    <div className="mt-1 flex items-center gap-1.5 text-xs opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                      <Link to="/pages/$pageId" params={{ pageId: page.id }} className="text-primary hover:underline">Editar</Link>
+                      {page.editorType === "builder" && (
+                        <>
+                          <span className="text-border">|</span>
+                          <Link to="/pages/$pageId/builder" params={{ pageId: page.id }} className="text-primary hover:underline">Editar visual</Link>
+                        </>
+                      )}
+                      <span className="text-border">|</span>
+                      <button type="button" className="text-primary hover:underline" onClick={() => duplicate.mutate(page)} disabled={duplicate.isPending}>Duplicar</button>
+                      {page.status === "published" && previewOrigin && (
+                        <>
+                          <span className="text-border">|</span>
+                          <a href={`${previewOrigin}${page.slug}`} target="_blank" rel="noreferrer" className="text-primary hover:underline">Ver</a>
+                        </>
+                      )}
+                      <span className="text-border">|</span>
+                      <button type="button" className="text-destructive hover:underline" disabled={removeOne.isPending}
+                        onClick={() => { if (window.confirm(`¿Eliminar "${page.title}"?`)) removeOne.mutate(page.id); }}>Eliminar</button>
+                    </div>
+                  </TableCell>
+                  <TableCell className="align-top text-sm">{page.authorName ?? "—"}</TableCell>
+                  <TableCell className="align-top">
+                    <div className="text-sm">{formatDate(page.updatedAt)}</div>
+                    <Badge variant={page.status === "published" ? "success" : "warning"} className="mt-1">{page.status === "published" ? "Publicada" : "Borrador"}</Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
-    </Page>
+    </PageContainer>
   );
 }
 
-function StatusFilter({
-  active,
-  label,
-  count,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  count: number | undefined;
-  onClick: () => void;
-}) {
+function StatusFilter({ active, label, count, onClick }: { active: boolean; label: string; count: number | undefined; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{ ...linkButtonStyle, fontWeight: active ? 700 : 400 }}
-    >
+    <button type="button" onClick={onClick} className={cn("text-primary hover:underline", active && "font-bold")}>
       {label} ({count ?? 0})
     </button>
   );
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return dateFormatter.format(date);
 }
