@@ -63,12 +63,16 @@ export function MenusPage() {
 
   return (
     <Page>
-      <h1>Menú primary</h1>
+      <h1>Menú principal</h1>
+      <p style={{ color: "#666", marginTop: "-0.5rem" }}>
+        Son los enlaces de la barra de navegación de tu sitio. Añade cada enlace a la lista y, cuando termines,
+        pulsa <strong>Guardar menú</strong>.
+      </p>
       {menu.isLoading && <Loading />}
       {(menu.isError || pages.isError || save.isError) && <ErrorBox error={menu.error ?? pages.error ?? save.error} />}
 
       <div style={{ display: "grid", gap: "0.8rem", marginBottom: "1.5rem" }}>
-        {items.length === 0 && !menu.isLoading && <Empty>El menú primary está vacío.</Empty>}
+        {items.length === 0 && !menu.isLoading && <Empty>Este menú aún no tiene enlaces. Añade el primero abajo.</Empty>}
         {items.map((item, index) => (
           <div key={`${item.id ?? item.label}-${index}`} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
             <strong style={{ flex: 1 }}>{item.label}</strong>
@@ -80,14 +84,14 @@ export function MenusPage() {
         ))}
       </div>
 
-      <h2 style={{ fontSize: "1.1rem" }}>Añadir item</h2>
-      <Field label="Label" htmlFor="menu-label">
-        <input id="menu-label" style={inputStyle} value={label} onChange={(event) => setLabel(event.target.value)} />
+      <h2 style={{ fontSize: "1.1rem" }}>Añadir un enlace</h2>
+      <Field label="Texto del enlace" htmlFor="menu-label">
+        <input id="menu-label" placeholder="Ej. Inicio, Contacto…" style={inputStyle} value={label} onChange={(event) => setLabel(event.target.value)} />
       </Field>
-      <Field label="Tipo de enlace" htmlFor="menu-mode">
+      <Field label="¿A dónde lleva?" htmlFor="menu-mode">
         <select id="menu-mode" style={inputStyle} value={mode} onChange={(event) => setMode(event.target.value === "url" ? "url" : "entry")}>
-          <option value="entry">Página</option>
-          <option value="url">URL</option>
+          <option value="entry">A una página de mi sitio</option>
+          <option value="url">A una dirección externa (URL)</option>
         </select>
       </Field>
       {mode === "entry" ? (
@@ -102,10 +106,11 @@ export function MenusPage() {
           <input id="menu-url" style={inputStyle} value={url} onChange={(event) => setUrl(event.target.value)} />
         </Field>
       )}
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        <Button type="button" onClick={addItem}>Añadir</Button>
+      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "0.5rem" }}>
+        <Button ghost type="button" onClick={addItem}>+ Añadir a la lista</Button>
+        <span style={{ color: "#999" }}>·</span>
         <Button type="button" disabled={save.isPending} onClick={() => save.mutate()}>
-          {save.isPending ? "Guardando..." : "Guardar menú"}
+          {save.isPending ? "Guardando…" : "Guardar menú"}
         </Button>
       </div>
     </Page>
