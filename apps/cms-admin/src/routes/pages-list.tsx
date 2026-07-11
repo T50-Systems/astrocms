@@ -59,6 +59,8 @@ export function PagesListPage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [bulkAction, setBulkAction] = useState("");
+  const [bulkEditing, setBulkEditing] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState<"" | "published" | "draft">("");
 
   useEffect(() => {
     if (!sessionLoading && !session) nav({ to: "/login" });
@@ -114,6 +116,18 @@ export function PagesListPage() {
       }),
     onSuccess: invalidateLists,
   });
+  const bulkUpdate = useMutation({
+    mutationFn: async ({ ids, target }: { ids: string[]; target: "published" | "draft" }) => {
+      await Promise.all(ids.map((id) => (target === "published" ? cms.pages.publish(id) : cms.pages.unpublish(id))));
+    },
+    onSuccess: async () => {
+      setSelected(new Set());
+      setBulkAction("");
+      setBulkEditing(false);
+      setBulkStatus("");
+      await invalidateLists();
+    },
+  });
 
   if (sessionLoading || !session) return <Page><Loading /></Page>;
 
@@ -138,9 +152,18 @@ export function PagesListPage() {
   };
   const applyBulk = () => {
     const ids = Array.from(selected);
-    if (bulkAction !== "delete" || ids.length === 0) return;
-    if (!window.confirm(`¿Eliminar ${ids.length} página(s) seleccionada(s)?`)) return;
-    removeSelected.mutate(ids);
+    if (ids.length === 0) return;
+    if (bulkAction === "delete") {
+      if (!window.confirm(`¿Eliminar ${ids.length} página(s) seleccionada(s)?`)) return;
+      removeSelected.mutate(ids);
+    } else if (bulkAction === "edit") {
+      setBulkEditing(true); // revela el panel de edición masiva
+    }
+  };
+  const applyBulkEdit = () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0 || (bulkStatus !== "published" && bulkStatus !== "draft")) return;
+    bulkUpdate.mutate({ ids, target: bulkStatus });
   };
   const setFilter = (nextStatus: EntryStatus | undefined) => {
     setStatus(nextStatus);
@@ -185,17 +208,41 @@ export function PagesListPage() {
           style={{ ...inputStyle, width: 180 }}
         >
           <option value="">Acciones en lote</option>
+          <option value="edit">Editar</option>
           <option value="delete">Eliminar</option>
         </select>
-        <Button type="button" ghost onClick={applyBulk} disabled={bulkAction !== "delete" || selected.size === 0 || removeSelected.isPending}>
+        <Button type="button" ghost onClick={applyBulk} disabled={!bulkAction || selected.size === 0 || removeSelected.isPending}>
           {removeSelected.isPending ? "Aplicando…" : "Aplicar"}
         </Button>
+        {selected.size > 0 && <span style={{ color: "#646970", fontSize: "0.85rem" }}>{selected.size} seleccionada(s)</span>}
       </div>
+
+      {bulkEditing && selected.size > 0 && (
+        <div style={{ background: "#f0f6fc", border: "1px solid #c5d9ed", borderRadius: 6, padding: "0.75rem 1rem", marginBottom: "0.75rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+            <strong style={{ fontSize: "0.9rem" }}>Edición masiva · {selected.size} página(s)</strong>
+            <label htmlFor="bulk-status" style={{ fontSize: "0.85rem" }}>Estado:</label>
+            <select id="bulk-status" value={bulkStatus} onChange={(e) => setBulkStatus(e.currentTarget.value as "" | "published" | "draft")} style={{ ...inputStyle, width: 190 }}>
+              <option value="">— Sin cambios —</option>
+              <option value="published">Publicar</option>
+              <option value="draft">Pasar a borrador</option>
+            </select>
+            <Button type="button" onClick={applyBulkEdit} disabled={!bulkStatus || bulkUpdate.isPending}>
+              {bulkUpdate.isPending ? "Actualizando…" : "Actualizar"}
+            </Button>
+            <Button ghost type="button" onClick={() => { setBulkEditing(false); setBulkStatus(""); }}>Cancelar</Button>
+          </div>
+          <p style={{ margin: "0.5rem 0 0", color: "#646970", fontSize: "0.82rem" }}>
+            {pages.data?.data.filter((p) => selected.has(p.id)).map((p) => p.title).join(" · ")}
+          </p>
+        </div>
+      )}
 
       {pages.isLoading && <Loading />}
       {pages.isError && <ErrorBox error={pages.error} />}
       {counts.isError && <ErrorBox error={counts.error} />}
       {removeSelected.isError && <ErrorBox error={removeSelected.error} />}
+      {bulkUpdate.isError && <ErrorBox error={bulkUpdate.error} />}
       {removeOne.isError && <ErrorBox error={removeOne.error} />}
       {duplicate.isError && <ErrorBox error={duplicate.error} />}
       {pages.data && pages.data.data.length === 0 && (
