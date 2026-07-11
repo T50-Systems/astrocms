@@ -1,8 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { MenuItemInput } from "@astrocms/contracts";
 import { cms } from "../lib.ts";
-import { Button, Empty, ErrorBox, Field, inputStyle, Loading, Page } from "../ui.tsx";
 import { useEffect, useState } from "react";
+import { PageContainer } from "@/components/page-container.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Label } from "@/components/ui/label.tsx";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
 
 function normalize(items: MenuItemInput[]): MenuItemInput[] {
   return items.map((item) => ({
@@ -62,57 +66,80 @@ export function MenusPage() {
   };
 
   return (
-    <Page>
-      <h1>Menú principal</h1>
-      <p style={{ color: "#666", marginTop: "-0.5rem" }}>
-        Son los enlaces de la barra de navegación de tu sitio. Añade cada enlace a la lista y, cuando termines,
-        pulsa <strong>Guardar menú</strong>.
-      </p>
-      {menu.isLoading && <Loading />}
-      {(menu.isError || pages.isError || save.isError) && <ErrorBox error={menu.error ?? pages.error ?? save.error} />}
+    <PageContainer className="max-w-3xl">
+      <div className="mb-5 space-y-1">
+        <h1 className="text-2xl font-semibold">Menú principal</h1>
+        <p className="text-muted-foreground">
+          Son los enlaces de la barra de navegación de tu sitio. Añade cada enlace a la lista y, cuando termines,
+          pulsa <strong>Guardar menú</strong>.
+        </p>
+      </div>
+      {menu.isLoading && <p className="text-muted-foreground">Cargando…</p>}
+      {(menu.isError || pages.isError || save.isError) && (
+        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {(menu.error ?? pages.error ?? save.error)?.message}
+        </p>
+      )}
 
-      <div style={{ display: "grid", gap: "0.8rem", marginBottom: "1.5rem" }}>
-        {items.length === 0 && !menu.isLoading && <Empty>Este menú aún no tiene enlaces. Añade el primero abajo.</Empty>}
+      <div className="mb-6 grid gap-3">
+        {items.length === 0 && !menu.isLoading && (
+          <p className="text-muted-foreground">Este menú aún no tiene enlaces. Añade el primero abajo.</p>
+        )}
         {items.map((item, index) => (
-          <div key={`${item.id ?? item.label}-${index}`} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <strong style={{ flex: 1 }}>{item.label}</strong>
-            <span style={{ color: "#666", fontSize: "0.85rem" }}>{item.linkType === "entry" ? item.entryId : item.url}</span>
-            <Button ghost type="button" onClick={() => setItems((current) => move(current, index, -1))}>Subir</Button>
-            <Button ghost type="button" onClick={() => setItems((current) => move(current, index, 1))}>Bajar</Button>
-            <Button ghost type="button" onClick={() => setItems((current) => current.filter((_, i) => i !== index))}>Quitar</Button>
+          <div key={`${item.id ?? item.label}-${index}`} className="flex items-center gap-2 rounded-md border bg-card px-3 py-2">
+            <strong className="flex-1">{item.label}</strong>
+            <span className="text-sm text-muted-foreground">{item.linkType === "entry" ? item.entryId : item.url}</span>
+            <Button variant="outline" size="sm" type="button" onClick={() => setItems((current) => move(current, index, -1))}>Subir</Button>
+            <Button variant="outline" size="sm" type="button" onClick={() => setItems((current) => move(current, index, 1))}>Bajar</Button>
+            <Button variant="outline" size="sm" type="button" onClick={() => setItems((current) => current.filter((_, i) => i !== index))}>Quitar</Button>
           </div>
         ))}
       </div>
 
-      <h2 style={{ fontSize: "1.1rem" }}>Añadir un enlace</h2>
-      <Field label="Texto del enlace" htmlFor="menu-label">
-        <input id="menu-label" placeholder="Ej. Inicio, Contacto…" style={inputStyle} value={label} onChange={(event) => setLabel(event.target.value)} />
-      </Field>
-      <Field label="¿A dónde lleva?" htmlFor="menu-mode">
-        <select id="menu-mode" style={inputStyle} value={mode} onChange={(event) => setMode(event.target.value === "url" ? "url" : "entry")}>
-          <option value="entry">A una página de mi sitio</option>
-          <option value="url">A una dirección externa (URL)</option>
-        </select>
-      </Field>
-      {mode === "entry" ? (
-        <Field label="Página" htmlFor="menu-entry">
-          <select id="menu-entry" style={inputStyle} value={entryId} onChange={(event) => setEntryId(event.target.value)}>
-            <option value="">Selecciona una página</option>
-            {pages.data?.data.map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}
-          </select>
-        </Field>
-      ) : (
-        <Field label="URL" htmlFor="menu-url">
-          <input id="menu-url" style={inputStyle} value={url} onChange={(event) => setUrl(event.target.value)} />
-        </Field>
-      )}
-      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "0.5rem" }}>
-        <Button ghost type="button" onClick={addItem}>+ Añadir a la lista</Button>
-        <span style={{ color: "#999" }}>·</span>
-        <Button type="button" disabled={save.isPending} onClick={() => save.mutate()}>
-          {save.isPending ? "Guardando…" : "Guardar menú"}
-        </Button>
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">Añadir un enlace</h2>
+        <div className="space-y-1.5">
+          <Label htmlFor="menu-label">Texto del enlace</Label>
+          <Input id="menu-label" placeholder="Ej. Inicio, Contacto…" value={label} onChange={(event) => setLabel(event.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="menu-mode">¿A dónde lleva?</Label>
+          <Select value={mode} onValueChange={(value) => setMode(value === "url" ? "url" : "entry")}>
+            <SelectTrigger id="menu-mode">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="entry">A una página de mi sitio</SelectItem>
+              <SelectItem value="url">A una dirección externa (URL)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {mode === "entry" ? (
+          <div className="space-y-1.5">
+            <Label htmlFor="menu-entry">Página</Label>
+            <Select value={entryId} onValueChange={setEntryId}>
+              <SelectTrigger id="menu-entry">
+                <SelectValue placeholder="Selecciona una página" />
+              </SelectTrigger>
+              <SelectContent>
+                {pages.data?.data.map((page) => <SelectItem key={page.id} value={page.id}>{page.title}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <Label htmlFor="menu-url">URL</Label>
+            <Input id="menu-url" value={url} onChange={(event) => setUrl(event.target.value)} />
+          </div>
+        )}
+        <div className="flex items-center gap-2 pt-1">
+          <Button variant="outline" type="button" onClick={addItem}>+ Añadir a la lista</Button>
+          <span className="text-muted-foreground">·</span>
+          <Button type="button" disabled={save.isPending} onClick={() => save.mutate()}>
+            {save.isPending ? "Guardando…" : "Guardar menú"}
+          </Button>
+        </div>
       </div>
-    </Page>
+    </PageContainer>
   );
 }
