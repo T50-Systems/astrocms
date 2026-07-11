@@ -115,6 +115,9 @@ importers:
       '@astrocms/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@astrocms/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
       '@astrocms/storage':
         specifier: workspace:*
         version: link:../../packages/storage
