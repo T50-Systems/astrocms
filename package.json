@@ -16,6 +16,7 @@
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
     "e2e": "playwright test --config e2e/playwright.config.ts",
+    "e2e:builder": "playwright test --config e2e/playwright.builder.config.ts",
     "db:migrate": "turbo run db:migrate",
     "db:seed": "turbo run db:seed",
     "boundaries": "depcruise --config .dependency-cruiser.cjs packages apps",

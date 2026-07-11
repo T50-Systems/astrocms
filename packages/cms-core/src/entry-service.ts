@@ -14,15 +14,22 @@ import { conflict, notFound } from "./errors.js";
 import { assertTransition } from "./entry-transitions.js";
 import { toEntry } from "./mappers.js";
 import { slugify, type Clock } from "./ports.js";
+import type { AuditRecordInput } from "./audit-service.js";
 
 type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0] | Database;
 type PublishCallback = (siteId: string, data: unknown) => Promise<void>;
+type AuditRecorder = (input: AuditRecordInput) => Promise<void>;
 
 function isUniqueViolation(err: unknown): boolean {
   return typeof err === "object" && err !== null && (err as { code?: string }).code === "23505";
 }
 
-export function createEntryService(db: Database, clock: Clock, onPublished?: PublishCallback) {
+export function createEntryService(
+  db: Database,
+  clock: Clock,
+  onPublished?: PublishCallback,
+  recordAudit?: AuditRecorder,
+) {
   async function contentTypeByKey(siteId: string, key: string) {
     const row = (
       await db
@@ -92,6 +99,14 @@ export function createEntryService(db: Database, clock: Clock, onPublished?: Pub
     )[0]!;
     await tx.update(builderDocuments).set({ currentVersionId: version.id }).where(eq(builderDocuments.id, doc.id));
     return doc.id;
+  }
+
+  async function recordAuditSafe(input: AuditRecordInput): Promise<void> {
+    try {
+      await recordAudit?.(input);
+    } catch {
+      // La auditoría no debe romper operaciones de contenido.
+    }
   }
 
   return {
@@ -223,33 +238,70 @@ export function createEntryService(db: Database, clock: Clock, onPublished?: Pub
       }
     },
 
-    async publish(id: string): Promise<Entry> {
-      const entry = (await db.select().from(entries).where(eq(entries.id, id)).limit(1))[0];
+    async publish(args: { id: string; userId?: string }): Promise<Entry> {
+      const entry = (await db.select().from(entries).where(eq(entries.id, args.id)).limit(1))[0];
       if (!entry) throw notFound("entry no existe");
       assertTransition(entry.status, "published");
       if (!entry.currentVersionId) throw conflict("sin versión que publicar");
+      const before = await loadContract(entry.id);
       await db
         .update(entries)
         .set({ status: "published", publishedVersionId: entry.currentVersionId, updatedAt: clock.now() })
-        .where(eq(entries.id, id));
-      const published = await this.get(id);
+        .where(eq(entries.id, args.id));
+      const published = await this.get(args.id);
       try {
         await onPublished?.(entry.siteId, published);
       } catch {
         // Los webhooks no deben romper la publicación.
       }
+      await recordAuditSafe({
+        siteId: entry.siteId,
+        ...(args.userId ? { actorUserId: args.userId } : {}),
+        action: "entry.published",
+        entityType: "entry",
+        entityId: entry.id,
+        before,
+        after: published,
+      });
       return published;
     },
 
-    async unpublish(id: string): Promise<Entry> {
-      const entry = (await db.select().from(entries).where(eq(entries.id, id)).limit(1))[0];
+    async unpublish(args: { id: string; userId?: string }): Promise<Entry> {
+      const entry = (await db.select().from(entries).where(eq(entries.id, args.id)).limit(1))[0];
       if (!entry) throw notFound("entry no existe");
       assertTransition(entry.status, "draft");
+      const before = await loadContract(entry.id);
       await db
         .update(entries)
         .set({ status: "draft", publishedVersionId: null, updatedAt: clock.now() })
-        .where(eq(entries.id, id));
-      return this.get(id);
+        .where(eq(entries.id, args.id));
+      const after = await this.get(args.id);
+      await recordAuditSafe({
+        siteId: entry.siteId,
+        ...(args.userId ? { actorUserId: args.userId } : {}),
+        action: "entry.unpublished",
+        entityType: "entry",
+        entityId: entry.id,
+        before,
+        after,
+      });
+      return after;
+    },
+
+    async remove(args: { id: string; userId?: string }): Promise<void> {
+      const entry = (await db.select().from(entries).where(eq(entries.id, args.id)).limit(1))[0];
+      if (!entry) throw notFound("entry no existe");
+      const before = await loadContract(entry.id);
+      await db.delete(entries).where(eq(entries.id, args.id));
+      await recordAuditSafe({
+        siteId: entry.siteId,
+        ...(args.userId ? { actorUserId: args.userId } : {}),
+        action: "entry.deleted",
+        entityType: "entry",
+        entityId: entry.id,
+        before,
+        after: null,
+      });
     },
 
     async revisions(id: string): Promise<EntryRevision[]> {

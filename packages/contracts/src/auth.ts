@@ -42,6 +42,15 @@ export const sessionSchema = z.object({
 });
 export type Session = z.infer<typeof sessionSchema>;
 
+export const userSessionSchema = z.object({
+  id: idSchema,
+  ip: z.string().nullable(),
+  userAgent: z.string().nullable(),
+  createdAt: isoDateTimeSchema,
+  expiresAt: isoDateTimeSchema,
+});
+export type UserSession = z.infer<typeof userSessionSchema>;
+
 export const loginRequestSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),

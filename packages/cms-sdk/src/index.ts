@@ -3,10 +3,12 @@ import type {
   BlockManifest,
   BuilderNode,
   BuilderRevision,
+  AuditLogEntry,
   CreateEntryRequest,
   Entry,
   EntryRevision,
   EntryStatus,
+  ListAuditQuery,
   LoginRequest,
   LoginResponse,
   Menu,
@@ -17,6 +19,7 @@ import type {
   SettingsGroup,
   UpdateEntryRequest,
   UpsertMenuRequest,
+  UserSession,
   CreateWebhookRequest,
   Webhook,
 } from "@astrocms/contracts";
@@ -31,6 +34,7 @@ export interface EntryResource {
   update(id: string, req: UpdateEntryRequest): Promise<Entry>;
   publish(id: string): Promise<Entry>;
   unpublish(id: string): Promise<Entry>;
+  remove(id: string): Promise<void>;
   revisions(id: string): Promise<EntryRevision[]>;
   restore(id: string, versionNo: number): Promise<Entry>;
 }
@@ -74,11 +78,23 @@ export interface PreviewResource {
   getBuilderDocument(id: string, token: string): Promise<BuilderDocument>;
 }
 
+export interface AuditResource {
+  list(q?: Partial<ListAuditQuery>): Promise<Paginated<AuditLogEntry>>;
+}
+
 export interface CmsClient {
   auth: {
     login(req: LoginRequest): Promise<LoginResponse>;
     logout(): Promise<void>;
+    logoutAll(): Promise<void>;
     me(): Promise<Session>;
+  };
+  me: {
+    get(): Promise<Session>;
+    sessions: {
+      list(): Promise<UserSession[]>;
+      revoke(id: string): Promise<void>;
+    };
   };
   pages: EntryResource;
   media: MediaResource;
@@ -87,6 +103,7 @@ export interface CmsClient {
   webhooks: WebhookResource;
   builder: BuilderResource;
   preview: PreviewResource;
+  audit: AuditResource;
   public: {
     getPageBySlug(slug: string): Promise<Entry | null>;
     getBuilderDocument(id: string): Promise<BuilderDocument | null>;
@@ -104,7 +121,15 @@ export function createCmsClient(opts: CmsClientOptions): CmsClient {
     auth: {
       login: (req) => request<LoginResponse>("POST", "/auth/login", { body: req }),
       logout: () => request<void>("POST", "/auth/logout"),
+      logoutAll: () => request<void>("POST", "/auth/logout-all"),
       me: () => request<Session>("GET", "/me"),
+    },
+    me: {
+      get: () => request<Session>("GET", "/me"),
+      sessions: {
+        list: () => request<UserSession[]>("GET", "/me/sessions"),
+        revoke: (id) => request<void>("DELETE", `/me/sessions/${id}`),
+      },
     },
     pages: {
       list: (q) =>
@@ -116,6 +141,7 @@ export function createCmsClient(opts: CmsClientOptions): CmsClient {
       update: (id, req) => request<Entry>("PATCH", `${base}/${id}`, { body: req }),
       publish: (id) => request<Entry>("POST", `${base}/${id}/publish`),
       unpublish: (id) => request<Entry>("POST", `${base}/${id}/unpublish`),
+      remove: (id) => request<void>("DELETE", `${base}/${id}`),
       revisions: (id) => request<EntryRevision[]>("GET", `${base}/${id}/revisions`),
       restore: (id, versionNo) => request<Entry>("POST", `${base}/${id}/restore/${versionNo}`),
     },
@@ -168,6 +194,17 @@ export function createCmsClient(opts: CmsClientOptions): CmsClient {
       createToken: (documentId) => request<{ token: string }>("POST", "/preview/token", { body: { documentId } }),
       getBuilderDocument: (id, token) =>
         request<BuilderDocument>("GET", `/preview/builder/documents/${id}`, { query: { token } }),
+    },
+    audit: {
+      list: (q) =>
+        request<Paginated<AuditLogEntry>>("GET", "/audit", {
+          query: {
+            page: q?.page,
+            pageSize: q?.pageSize,
+            entityType: q?.entityType,
+            entityId: q?.entityId,
+          },
+        }),
     },
     public: {
       async getPageBySlug(slug) {

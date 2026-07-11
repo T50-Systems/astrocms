@@ -7,6 +7,7 @@ const ADMIN_PORT = 4300;
 /** E2E del flujo CMS: login → crear página → publicar → visible en la API pública. */
 export default defineConfig({
   testDir: "./tests",
+  testMatch: /cms-flow\.spec\.ts/,
   timeout: 60_000,
   fullyParallel: false,
   workers: 1,

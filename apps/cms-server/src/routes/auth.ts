@@ -1,9 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE } from "@astrocms/cms-auth";
 import { loginRequestSchema } from "@astrocms/contracts";
+import { z } from "zod";
 import { clearAuthCookies, setAuthCookies } from "../cookies.js";
 import { makeGuards } from "../guards.js";
 import { parse, sendError } from "../http.js";
+
+const idParam = z.object({ id: z.string().min(1) });
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   const { requireAuth } = makeGuards(app);
@@ -34,7 +37,27 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(204).send();
   });
 
+  app.post("/auth/logout-all", { preHandler: requireAuth }, async (req, reply) => {
+    await app.core.auth.revokeAllSessions(req.session!.user.id);
+    clearAuthCookies(reply, app.env);
+    return reply.code(204).send();
+  });
+
   app.get("/me", { preHandler: requireAuth }, async (req, reply) => {
     return reply.send(req.session);
+  });
+
+  app.get("/me/sessions", { preHandler: requireAuth }, async (req, reply) => {
+    return reply.send(await app.core.auth.listSessions(req.session!.user.id));
+  });
+
+  app.delete("/me/sessions/:id", { preHandler: requireAuth }, async (req, reply) => {
+    try {
+      const { id } = parse(idParam, req.params);
+      await app.core.auth.revokeSession(req.session!.user.id, id);
+      return reply.code(204).send();
+    } catch (err) {
+      return sendError(reply, err);
+    }
   });
 }

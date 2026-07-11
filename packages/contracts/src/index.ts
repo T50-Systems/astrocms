@@ -1,5 +1,6 @@
 export * from "./common.js";
 export * from "./auth.js";
+export * from "./audit.js";
 export * from "./entry.js";
 export * from "./media.js";
 export * from "./menus.js";

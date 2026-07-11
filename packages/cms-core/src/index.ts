@@ -1,6 +1,7 @@
 import { sites } from "@astrocms/cms-database";
 import type { Database } from "@astrocms/cms-database";
 import { createAuthService } from "./auth-service.js";
+import { createAuditService } from "./audit-service.js";
 import { createBuilderService } from "./builder-service.js";
 import { createEntryService } from "./entry-service.js";
 import { createMediaService } from "./media-service.js";
@@ -15,6 +16,7 @@ export * from "./errors.js";
 export * from "./ports.js";
 export * from "./entry-transitions.js";
 export type { AuthService, LoginResult } from "./auth-service.js";
+export type { AuditService } from "./audit-service.js";
 export type { EntryService } from "./entry-service.js";
 export type { BuilderService } from "./builder-service.js";
 export type { MediaService } from "./media-service.js";
@@ -25,11 +27,13 @@ export type { WebhookService } from "./webhook-service.js";
 /** Composition del núcleo. El borde (cms-server) inyecta `db` y opcionalmente `clock`. */
 export function createCmsCore(opts: { db: Database; storage?: StorageDriver; clock?: Clock }) {
   const clock = opts.clock ?? systemClock;
+  const audit = createAuditService(opts.db, clock);
   const webhooks = createWebhookService(opts.db, clock);
   const dispatchPublished = (siteId: string, data: unknown) => webhooks.dispatch("entry.published", siteId, data);
   return {
-    auth: createAuthService(opts.db, clock),
-    entries: createEntryService(opts.db, clock, dispatchPublished),
+    auth: createAuthService(opts.db, clock, (input) => audit.record(input)),
+    audit,
+    entries: createEntryService(opts.db, clock, dispatchPublished, (input) => audit.record(input)),
     builder: createBuilderService(opts.db, clock, dispatchPublished),
     menus: createMenuService(opts.db, clock),
     settings: createSettingsService(opts.db, clock),

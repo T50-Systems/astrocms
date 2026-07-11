@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import {
   issueSessionToken,
   hashToken,
@@ -6,11 +6,14 @@ import {
   sessionExpiry,
   verifyPassword,
 } from "@astrocms/cms-auth";
-import type { Session, User } from "@astrocms/contracts";
+import type { Session, User, UserSession } from "@astrocms/contracts";
 import { roles, sessions, userRoles, users } from "@astrocms/cms-database";
 import type { Database } from "@astrocms/cms-database";
 import { unauthorized } from "./errors.js";
 import type { Clock } from "./ports.js";
+import type { AuditRecordInput } from "./audit-service.js";
+
+type AuditRecorder = (input: AuditRecordInput) => Promise<void>;
 
 async function roleSlugsFor(db: Database, userId: string): Promise<string[]> {
   const rows = await db
@@ -41,7 +44,7 @@ export interface LoginResult {
   expiresAt: string;
 }
 
-export function createAuthService(db: Database, clock: Clock) {
+export function createAuthService(db: Database, clock: Clock, recordAudit?: AuditRecorder) {
   return {
     async login(input: {
       email: string;
@@ -68,6 +71,18 @@ export function createAuthService(db: Database, clock: Clock) {
         userAgent: input.userAgent ?? null,
       });
       const roleSlugs = await roleSlugsFor(db, row.id);
+      try {
+        await recordAudit?.({
+          siteId: row.siteId,
+          actorUserId: row.id,
+          action: "auth.login",
+          entityType: "user",
+          entityId: row.id,
+          ...(input.ip ? { ip: input.ip } : {}),
+        });
+      } catch {
+        // La auditoría no debe romper el login.
+      }
       return { user: toUser(row, roleSlugs), token, expiresAt: expiresAt.toISOString() };
     },
 
@@ -104,6 +119,42 @@ export function createAuthService(db: Database, clock: Clock) {
         .update(sessions)
         .set({ revokedAt: clock.now() })
         .where(eq(sessions.tokenHash, tokenHash));
+    },
+
+    async listSessions(userId: string): Promise<UserSession[]> {
+      const now = clock.now();
+      const rows = await db
+        .select({
+          id: sessions.id,
+          ip: sessions.ip,
+          userAgent: sessions.userAgent,
+          createdAt: sessions.createdAt,
+          expiresAt: sessions.expiresAt,
+        })
+        .from(sessions)
+        .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt), gt(sessions.expiresAt, now)))
+        .orderBy(desc(sessions.createdAt));
+      return rows.map((row) => ({
+        id: row.id,
+        ip: row.ip,
+        userAgent: row.userAgent,
+        createdAt: row.createdAt.toISOString(),
+        expiresAt: row.expiresAt.toISOString(),
+      }));
+    },
+
+    async revokeSession(userId: string, sessionId: string): Promise<void> {
+      await db
+        .update(sessions)
+        .set({ revokedAt: clock.now() })
+        .where(and(eq(sessions.userId, userId), eq(sessions.id, sessionId)));
+    },
+
+    async revokeAllSessions(userId: string): Promise<void> {
+      await db
+        .update(sessions)
+        .set({ revokedAt: clock.now() })
+        .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
     },
   };
 }

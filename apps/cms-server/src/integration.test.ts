@@ -37,10 +37,21 @@ describe.skipIf(!DB)("API v1 — flujo vertical (integración)", () => {
     ...extra,
     headers: { cookie: cookies, "x-csrf-token": csrf, ...(extra?.headers ?? {}) },
   });
-  const jar = (res: LightMyRequestResponse) => {
+  const authWith = (cookieHeader: string, csrfToken: string, extra?: InjectOptions): InjectOptions => ({
+    ...extra,
+    headers: { cookie: cookieHeader, "x-csrf-token": csrfToken, ...(extra?.headers ?? {}) },
+  });
+  const cookieHeader = (res: LightMyRequestResponse) => {
     const set = res.cookies as Array<{ name: string; value: string }>;
-    cookies = set.map((c) => `${c.name}=${c.value}`).join("; ");
-    csrf = set.find((c) => c.name === "astrocms_csrf")?.value ?? "";
+    return set.map((c) => `${c.name}=${c.value}`).join("; ");
+  };
+  const csrfFrom = (res: LightMyRequestResponse) => {
+    const set = res.cookies as Array<{ name: string; value: string }>;
+    return set.find((c) => c.name === "astrocms_csrf")?.value ?? "";
+  };
+  const jar = (res: LightMyRequestResponse) => {
+    cookies = cookieHeader(res);
+    csrf = csrfFrom(res);
   };
 
   it("rechaza login con contraseña incorrecta (401)", async () => {
@@ -65,6 +76,15 @@ describe.skipIf(!DB)("API v1 — flujo vertical (integración)", () => {
     const me = await app.inject({ method: "GET", url: "/api/v1/me", ...auth() });
     expect(me.statusCode).toBe(200);
     expect(me.json().user.email).toBe("admin@astrocms.local");
+  });
+
+  it("login crea una sesión listable sin exponer token", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/me/sessions", ...auth() });
+    expect(res.statusCode).toBe(200);
+    const sessions = res.json() as Array<{ id: string; tokenHash?: string }>;
+    expect(sessions.length).toBeGreaterThanOrEqual(1);
+    expect(sessions[0]?.id).toBeTruthy();
+    expect(sessions[0]?.tokenHash).toBeUndefined();
   });
 
   it("rechaza mutación sin CSRF (403)", async () => {
@@ -102,6 +122,17 @@ describe.skipIf(!DB)("API v1 — flujo vertical (integración)", () => {
     expect(pub.json().title).toBe("Inicio Test");
   });
 
+  it("lista auditoría de publicación para la página", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/audit?entityType=entry&entityId=${pageId}`,
+      ...auth(),
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { data: Array<{ action: string; entityId: string }> };
+    expect(body.data.some((row) => row.action === "entry.published" && row.entityId === pageId)).toBe(true);
+  });
+
   it("edita creando nueva versión y lista revisiones", async () => {
     const res = await app.inject({
       method: "PATCH",
@@ -121,5 +152,71 @@ describe.skipIf(!DB)("API v1 — flujo vertical (integración)", () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().title).toBe("Inicio Test"); // contenido de v1
     expect(res.json().currentVersionNo).toBe(3);
+  });
+
+  it("revoca una segunda sesión y su cookie deja de autenticar", async () => {
+    const before = await app.inject({ method: "GET", url: "/api/v1/me/sessions", ...auth() });
+    expect(before.statusCode).toBe(200);
+    const beforeIds = new Set((before.json() as Array<{ id: string }>).map((row) => row.id));
+
+    const login2 = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: "admin@astrocms.local", password: "Admin!2345" },
+    });
+    expect(login2.statusCode).toBe(200);
+    const secondCookies = cookieHeader(login2);
+    const secondCsrf = csrfFrom(login2);
+
+    const after = await app.inject({ method: "GET", url: "/api/v1/me/sessions", ...auth() });
+    expect(after.statusCode).toBe(200);
+    const second = (after.json() as Array<{ id: string }>).find((row) => !beforeIds.has(row.id));
+    expect(second?.id).toBeTruthy();
+
+    const revoked = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/me/sessions/${second!.id}`,
+      ...auth(),
+    });
+    expect(revoked.statusCode).toBe(204);
+
+    const me = await app.inject({
+      method: "GET",
+      url: "/api/v1/me",
+      ...authWith(secondCookies, secondCsrf),
+    });
+    expect(me.statusCode).toBe(401);
+  });
+
+  it("logout-all revoca todas las sesiones del usuario", async () => {
+    const loginA = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: "admin@astrocms.local", password: "Admin!2345" },
+    });
+    expect(loginA.statusCode).toBe(200);
+    const cookiesA = cookieHeader(loginA);
+    const csrfA = csrfFrom(loginA);
+
+    const loginB = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: "admin@astrocms.local", password: "Admin!2345" },
+    });
+    expect(loginB.statusCode).toBe(200);
+    const cookiesB = cookieHeader(loginB);
+    const csrfB = csrfFrom(loginB);
+
+    const logoutAll = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/logout-all",
+      ...authWith(cookiesA, csrfA),
+    });
+    expect(logoutAll.statusCode).toBe(204);
+
+    const meA = await app.inject({ method: "GET", url: "/api/v1/me", ...authWith(cookiesA, csrfA) });
+    expect(meA.statusCode).toBe(401);
+    const meB = await app.inject({ method: "GET", url: "/api/v1/me", ...authWith(cookiesB, csrfB) });
+    expect(meB.statusCode).toBe(401);
   });
 });

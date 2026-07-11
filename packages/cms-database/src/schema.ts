@@ -105,6 +105,28 @@ export const sessions = pgTable("sessions", {
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
 });
 
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    siteId: uuid("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    action: text("action").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id").notNull(),
+    before: jsonb("before"),
+    after: jsonb("after"),
+    ip: text("ip"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    siteCreatedAt: index("audit_log_site_created_at_idx").on(t.siteId, t.createdAt),
+    entity: index("audit_log_entity_idx").on(t.entityType, t.entityId),
+  }),
+);
+
 export const contentTypes = pgTable(
   "content_types",
   {
@@ -361,6 +383,11 @@ export const webhookDeliveriesRelations = relations(webhookDeliveries, ({ one })
   webhook: one(webhooks, { fields: [webhookDeliveries.webhookId], references: [webhooks.id] }),
 }));
 
+export const auditLogRelations = relations(auditLog, ({ one }) => ({
+  site: one(sites, { fields: [auditLog.siteId], references: [sites.id] }),
+  actor: one(users, { fields: [auditLog.actorUserId], references: [users.id] }),
+}));
+
 export const schema = {
   sites,
   users,
@@ -369,6 +396,7 @@ export const schema = {
   rolePermissions,
   userRoles,
   sessions,
+  auditLog,
   contentTypes,
   entries,
   entryVersions,
@@ -389,4 +417,5 @@ export const schema = {
   menuItemsRelations,
   webhooksRelations,
   webhookDeliveriesRelations,
+  auditLogRelations,
 };
