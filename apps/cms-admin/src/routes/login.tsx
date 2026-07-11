@@ -2,13 +2,22 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { Rocket, Zap } from "lucide-react";
 import { loginRequestSchema, type LoginRequest } from "@astrocms/contracts";
 import { useDevLogin, useLogin, useSession } from "../auth.tsx";
-import { Button, ErrorBox, Field, inputStyle, Page } from "../ui.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Label } from "@/components/ui/label.tsx";
 
 // Bypass de desarrollo: sólo en builds de dev de Vite. VITE_DEV_AUTOLOGIN=true → entra solo.
 const DEV = import.meta.env.DEV;
 const AUTO = import.meta.env.VITE_DEV_AUTOLOGIN === "true";
+
+function ErrorText({ error }: { error: unknown }) {
+  const msg = error instanceof Error ? error.message : "Error inesperado";
+  return <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{msg}</p>;
+}
 
 export function LoginPage() {
   const nav = useNavigate();
@@ -24,7 +33,6 @@ export function LoginPage() {
     if (session) nav({ to: "/" });
   }, [session, nav]);
 
-  // Auto-login en desarrollo si está activado (bypass total).
   useEffect(() => {
     if (DEV && AUTO && !session && devLogin.isIdle) {
       devLogin.mutate(undefined, { onSuccess: () => nav({ to: "/" }) });
@@ -37,37 +45,43 @@ export function LoginPage() {
   });
 
   return (
-    <Page>
-      <h1>Iniciar sesión</h1>
-      {login.isError && <ErrorBox error={login.error} />}
-      <form onSubmit={onSubmit} noValidate>
-        <Field label="Email" htmlFor="email" error={formState.errors.email?.message}>
-          <input id="email" type="email" autoComplete="username" style={inputStyle} {...register("email")} />
-        </Field>
-        <Field label="Contraseña" htmlFor="password" error={formState.errors.password?.message}>
-          <input id="password" type="password" autoComplete="current-password" style={inputStyle} {...register("password")} />
-        </Field>
-        <Button type="submit" disabled={login.isPending}>
-          {login.isPending ? "Entrando…" : "Entrar"}
-        </Button>
-      </form>
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="items-center gap-2 text-center">
+          <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <Zap className="size-5" />
+          </div>
+          <CardTitle className="text-xl">Iniciar sesión</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {login.isError && <ErrorText error={login.error} />}
+          <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" autoComplete="username" aria-invalid={Boolean(formState.errors.email)} {...register("email")} />
+              {formState.errors.email?.message && <p className="text-xs text-destructive">{formState.errors.email.message}</p>}
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="password">Contraseña</Label>
+              <Input id="password" type="password" autoComplete="current-password" aria-invalid={Boolean(formState.errors.password)} {...register("password")} />
+              {formState.errors.password?.message && <p className="text-xs text-destructive">{formState.errors.password.message}</p>}
+            </div>
+            <Button type="submit" disabled={login.isPending}>{login.isPending ? "Entrando…" : "Entrar"}</Button>
+          </form>
 
-      {DEV && (
-        <div style={{ marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px dashed #ccc" }}>
-          {devLogin.isError && <ErrorBox error={devLogin.error} />}
-          <Button
-            ghost
-            type="button"
-            disabled={devLogin.isPending}
-            onClick={() => devLogin.mutate(undefined, { onSuccess: () => nav({ to: "/" }) })}
-          >
-            {devLogin.isPending ? "Entrando…" : "🚀 Entrar como desarrollador (sin contraseña)"}
-          </Button>
-          <p style={{ color: "#999", fontSize: "0.8rem", marginTop: "0.4rem" }}>
-            Sólo desarrollo. Requiere DEV_AUTOLOGIN en el servidor. Nunca en producción.
-          </p>
-        </div>
-      )}
-    </Page>
+          {DEV && (
+            <div className="mt-2 flex flex-col gap-2 border-t border-dashed pt-4">
+              {devLogin.isError && <ErrorText error={devLogin.error} />}
+              <Button variant="outline" type="button" disabled={devLogin.isPending}
+                onClick={() => devLogin.mutate(undefined, { onSuccess: () => nav({ to: "/" }) })}>
+                <Rocket className="size-4" />
+                {devLogin.isPending ? "Entrando…" : "Entrar como desarrollador"}
+              </Button>
+              <p className="text-xs text-muted-foreground">Sólo desarrollo. Requiere DEV_AUTOLOGIN en el servidor. Nunca en producción.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
