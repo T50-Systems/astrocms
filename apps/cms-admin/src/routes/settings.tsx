@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import type { CSSProperties, ReactNode } from "react";
 import { z } from "zod";
@@ -40,6 +41,15 @@ const TIMEZONES = [
 
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
+const toggleBtn = (active: boolean): CSSProperties => ({
+  border: "1px solid #c3c4c7",
+  background: active ? "#2271b1" : "#fff",
+  color: active ? "#fff" : "#1a1a1a",
+  cursor: "pointer",
+  padding: "0.35rem 0.7rem",
+  fontSize: "0.85rem",
+});
+
 const sectionCard: CSSProperties = { background: "#fff", border: "1px solid #dcdcde", borderRadius: 8, padding: "1.1rem 1.25rem", marginBottom: "1rem" };
 
 function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
@@ -57,7 +67,7 @@ export function SettingsPage() {
   const settings = useQuery({ queryKey: ["settings", "site"], queryFn: () => cms.settings.get("site") });
   const v = settings.data?.values ?? {};
 
-  const { register, handleSubmit, formState } = useForm<FormValues>({
+  const { register, handleSubmit, formState, getValues, reset } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     values: {
       title: str(v.title),
@@ -73,6 +83,27 @@ export function SettingsPage() {
     },
   });
 
+  const [mode, setMode] = useState<"form" | "json">("form");
+  const [jsonText, setJsonText] = useState("");
+  const [jsonError, setJsonError] = useState("");
+
+  const showJson = () => {
+    setJsonText(JSON.stringify(getValues(), null, 2));
+    setJsonError("");
+    setMode("json");
+  };
+  const editJson = (text: string) => {
+    setJsonText(text);
+    try {
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      // Fusiona con los valores actuales para no perder claves ausentes.
+      reset({ ...getValues(), ...parsed }, { keepDefaultValues: true });
+      setJsonError("");
+    } catch {
+      setJsonError("JSON no válido — corrige el formato para guardar los cambios.");
+    }
+  };
+
   const save = useMutation({
     mutationFn: (values: FormValues) => cms.settings.set("site", values),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["settings", "site"] }),
@@ -86,13 +117,19 @@ export function SettingsPage() {
         <h1 style={{ margin: 0 }}>Ajustes</h1>
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
           {save.isSuccess && !save.isPending && <span style={{ color: "#0a6b2e", fontSize: "0.85rem" }}>Guardado ✓</span>}
-          <Button type="submit" form="settings-form" disabled={save.isPending}>{save.isPending ? "Guardando…" : "Guardar cambios"}</Button>
+          <div style={{ display: "flex" }} role="group" aria-label="Modo de edición">
+            <button type="button" onClick={() => setMode("form")} aria-pressed={mode === "form"} style={{ ...toggleBtn(mode === "form"), borderRadius: "6px 0 0 6px" }}>Formulario</button>
+            <button type="button" onClick={showJson} aria-pressed={mode === "json"} style={{ ...toggleBtn(mode === "json"), borderRadius: "0 6px 6px 0", borderLeft: 0 }}>JSON</button>
+          </div>
+          <Button type="submit" form="settings-form" disabled={save.isPending || Boolean(jsonError)}>{save.isPending ? "Guardando…" : "Guardar cambios"}</Button>
         </div>
       </div>
 
       {(settings.isError || save.isError) && <ErrorBox error={settings.error ?? save.error} />}
 
       <form id="settings-form" onSubmit={handleSubmit((values) => save.mutate(values))} noValidate style={{ maxWidth: "46rem" }}>
+        {mode === "form" ? (
+        <>
         <Section title="General del sitio" description="Nombre y datos básicos que identifican tu sitio.">
           <Field label="Título del sitio" htmlFor="site-title" error={formState.errors.title?.message}>
             <input id="site-title" style={inputStyle} {...register("title")} />
@@ -137,6 +174,16 @@ export function SettingsPage() {
             <input id="brand-color" type="color" style={{ ...inputStyle, width: 64, height: 40, padding: 2 }} {...register("brandColor")} />
           </Field>
         </Section>
+        </>
+        ) : (
+          <div>
+            <label htmlFor="settings-json" style={{ position: "absolute", left: "-9999px" }}>Ajustes en formato JSON</label>
+            <textarea id="settings-json" spellCheck={false} rows={22} value={jsonText} onChange={(e) => editJson(e.target.value)}
+              aria-invalid={Boolean(jsonError)}
+              style={{ width: "100%", padding: "0.9rem 1rem", borderRadius: 8, border: `1px solid ${jsonError ? "#d63638" : "#dcdcde"}`, background: "#1d2327", color: "#e6e6e6", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "0.85rem", lineHeight: 1.5, boxSizing: "border-box", resize: "vertical" }} />
+            {jsonError && <div role="alert" style={{ color: "#d63638", fontSize: "0.82rem", marginTop: "0.4rem" }}>{jsonError}</div>}
+          </div>
+        )}
       </form>
     </Page>
   );
