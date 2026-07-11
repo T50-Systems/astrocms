@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { MenuItemInput } from "@astrocms/contracts";
 import { cms } from "../lib.ts";
 import { useEffect, useState } from "react";
+import { MenuItemTree } from "@/components/menus/menu-item-tree.tsx";
+import { indent, moveSibling, outdent, removeAt, updateAt } from "@/components/menus/tree.ts";
 import { PageContainer } from "@/components/page-container.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -18,16 +20,6 @@ function normalize(items: MenuItemInput[]): MenuItemInput[] {
     ...(item.target ? { target: item.target } : {}),
     children: normalize(item.children ?? []),
   }));
-}
-
-function move(items: MenuItemInput[], index: number, delta: number): MenuItemInput[] {
-  const next = [...items];
-  const target = index + delta;
-  const item = next[index];
-  if (!item || target < 0 || target >= next.length) return items;
-  next.splice(index, 1);
-  next.splice(target, 0, item);
-  return next;
 }
 
 export function MenusPage() {
@@ -81,19 +73,23 @@ export function MenusPage() {
         </p>
       )}
 
-      <div className="mb-6 grid gap-3">
+      <div className="mb-6">
         {items.length === 0 && !menu.isLoading && (
           <p className="text-muted-foreground">Este menú aún no tiene enlaces. Añade el primero abajo.</p>
         )}
-        {items.map((item, index) => (
-          <div key={`${item.id ?? item.label}-${index}`} className="flex items-center gap-2 rounded-md border bg-card px-3 py-2">
-            <strong className="flex-1">{item.label}</strong>
-            <span className="text-sm text-muted-foreground">{item.linkType === "entry" ? item.entryId : item.url}</span>
-            <Button variant="outline" size="sm" type="button" onClick={() => setItems((current) => move(current, index, -1))}>Subir</Button>
-            <Button variant="outline" size="sm" type="button" onClick={() => setItems((current) => move(current, index, 1))}>Bajar</Button>
-            <Button variant="outline" size="sm" type="button" onClick={() => setItems((current) => current.filter((_, i) => i !== index))}>Quitar</Button>
-          </div>
-        ))}
+        <MenuItemTree
+          items={items}
+          onMove={(path, delta) => setItems((current) => moveSibling(current, path, delta))}
+          onIndent={(path) => setItems((current) => indent(current, path))}
+          onOutdent={(path) => setItems((current) => outdent(current, path))}
+          onRemove={(path) => setItems((current) => removeAt(current, path))}
+          onPatch={(path, patch) => setItems((current) => updateAt(current, path, patch))}
+        />
+        {items.length > 0 && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Usa → para convertir un enlace en sub-enlace del anterior (submenú) y ← para sacarlo un nivel.
+          </p>
+        )}
       </div>
 
       <div className="space-y-4">
