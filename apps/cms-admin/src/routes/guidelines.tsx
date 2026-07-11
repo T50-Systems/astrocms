@@ -1,8 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import type { CSSProperties } from "react";
 import { cms } from "../lib.ts";
-import { Button, ErrorBox, Loading, Page } from "../ui.tsx";
+import { JsonTextarea } from "@/components/json-textarea.tsx";
+import { ModeToggle } from "@/components/mode-toggle.tsx";
+import { PageContainer } from "@/components/page-container.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { Label } from "@/components/ui/label.tsx";
+import { Textarea } from "@/components/ui/textarea.tsx";
+import { cn } from "@/lib/utils.ts";
 
 const GROUP = "ai-guidelines";
 
@@ -23,11 +29,6 @@ const FIELDS: Array<{ key: keyof Guidelines; title: string; help: string; placeh
   { key: "additional", title: "Adicional", help: "Cualquier otra directriz que la IA deba respetar.", placeholder: "Ej. No mencionar precios; incluir siempre aviso legal en el pie…" },
 ];
 
-const sectionCard: CSSProperties = { background: "#fff", border: "1px solid #dcdcde", borderRadius: 8, padding: "1.1rem 1.25rem", marginBottom: "1rem" };
-const labelStyle: CSSProperties = { display: "block", fontWeight: 600, marginBottom: "0.15rem", fontSize: "0.95rem" };
-const helpStyle: CSSProperties = { margin: "0 0 0.5rem", color: "#646970", fontSize: "0.82rem" };
-const textareaStyle: CSSProperties = { width: "100%", padding: "0.6rem 0.7rem", borderRadius: 6, border: "1px solid #ccc", fontSize: "0.9rem", fontFamily: "inherit", lineHeight: 1.5, boxSizing: "border-box", resize: "vertical" };
-
 const str = (o: Record<string, unknown>, k: string): string => (typeof o[k] === "string" ? (o[k] as string) : "");
 const toGuidelines = (o: Record<string, unknown>): Guidelines => ({
   site: str(o, "site"),
@@ -35,15 +36,6 @@ const toGuidelines = (o: Record<string, unknown>): Guidelines => ({
   images: str(o, "images"),
   blocks: str(o, "blocks"),
   additional: str(o, "additional"),
-});
-
-const toggleBtn = (active: boolean): CSSProperties => ({
-  border: "1px solid #c3c4c7",
-  background: active ? "#2271b1" : "#fff",
-  color: active ? "#fff" : "#1a1a1a",
-  cursor: "pointer",
-  padding: "0.35rem 0.7rem",
-  fontSize: "0.85rem",
 });
 
 export function GuidelinesPage() {
@@ -114,52 +106,66 @@ export function GuidelinesPage() {
     }
   };
 
-  if (settings.isLoading) return <Page><Loading /></Page>;
+  if (settings.isLoading) return <PageContainer><p role="status" className="text-muted-foreground">Cargando…</p></PageContainer>;
+
+  const generalError = settings.error ?? save.error;
 
   return (
-    <Page wide>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", marginBottom: "0.25rem" }}>
-        <h1 style={{ margin: 0 }}>Guías de IA</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-          {notice && <span style={{ color: notice.startsWith("Guardado") ? "#0a6b2e" : "#646970", fontSize: "0.85rem" }}>{notice}</span>}
-          <div style={{ display: "flex" }} role="group" aria-label="Modo de edición">
-            <button type="button" onClick={() => setMode("form")} aria-pressed={mode === "form"} style={{ ...toggleBtn(mode === "form"), borderRadius: "6px 0 0 6px" }}>Formulario</button>
-            <button type="button" onClick={showJson} aria-pressed={mode === "json"} style={{ ...toggleBtn(mode === "json"), borderRadius: "0 6px 6px 0", borderLeft: 0 }}>JSON</button>
-          </div>
-          <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: "none" }}
+    <PageContainer>
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Guías de IA</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          {notice && (
+            <span role="status" className={cn("text-sm", notice.startsWith("Guardado") ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+              {notice}
+            </span>
+          )}
+          <ModeToggle
+            value={mode}
+            options={[{ value: "form", label: "Formulario" }, { value: "json", label: "JSON" }]}
+            onChange={(v) => (v === "json" ? showJson() : setMode("form"))}
+            ariaLabel="Modo de edición"
+          />
+          <input ref={fileRef} type="file" accept="application/json,.json" className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) importJson(f); e.target.value = ""; }} />
-          <Button ghost type="button" onClick={() => fileRef.current?.click()}>Importar JSON</Button>
-          <Button ghost type="button" onClick={exportJson}>Exportar JSON</Button>
-          <Button type="button" onClick={() => save.mutate(form)} disabled={save.isPending || Boolean(jsonError)}>{save.isPending ? "Guardando…" : "Guardar cambios"}</Button>
+          <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>Importar JSON</Button>
+          <Button type="button" variant="outline" onClick={exportJson}>Exportar JSON</Button>
+          <Button type="button" onClick={() => save.mutate(form)} disabled={save.isPending || Boolean(jsonError)}>
+            {save.isPending ? "Guardando…" : "Guardar cambios"}
+          </Button>
         </div>
       </div>
-      <p style={{ color: "#666", marginTop: 0, maxWidth: "46rem" }}>
+      <p className="mb-5 max-w-2xl text-muted-foreground">
         Directrices que guían a la IA al generar contenido e imágenes para tu sitio. Se guardan y quedan disponibles
         para las herramientas de IA (SDK / servidor MCP).
       </p>
 
-      {(settings.isError || save.isError) && <ErrorBox error={settings.error ?? save.error} />}
+      {(settings.isError || save.isError) && generalError && (
+        <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{generalError.message}</p>
+      )}
 
       {mode === "form" ? (
-        <div style={{ maxWidth: "46rem" }}>
+        <div className="flex max-w-2xl flex-col gap-3">
           {FIELDS.map((field) => (
-            <section key={field.key} style={sectionCard}>
-              <label style={labelStyle} htmlFor={`gl-${field.key}`}>{field.title}</label>
-              <p style={helpStyle}>{field.help}</p>
-              <textarea id={`gl-${field.key}`} rows={4} style={textareaStyle} placeholder={field.placeholder}
-                value={form[field.key]} onChange={(e) => update(field.key, e.target.value)} />
-            </section>
+            <Card key={field.key}>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  <Label htmlFor={`gl-${field.key}`}>{field.title}</Label>
+                </CardTitle>
+                <CardDescription>{field.help}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Textarea id={`gl-${field.key}`} rows={4} placeholder={field.placeholder}
+                  value={form[field.key]} onChange={(e) => update(field.key, e.target.value)} />
+              </CardContent>
+            </Card>
           ))}
         </div>
       ) : (
-        <div style={{ maxWidth: "46rem" }}>
-          <label htmlFor="gl-json" style={{ position: "absolute", left: "-9999px" }}>Guías en formato JSON</label>
-          <textarea id="gl-json" spellCheck={false} rows={22} value={jsonText} onChange={(e) => editJson(e.target.value)}
-            aria-invalid={Boolean(jsonError)}
-            style={{ width: "100%", padding: "0.9rem 1rem", borderRadius: 8, border: `1px solid ${jsonError ? "#d63638" : "#dcdcde"}`, background: "#1d2327", color: "#e6e6e6", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "0.85rem", lineHeight: 1.5, boxSizing: "border-box", resize: "vertical" }} />
-          {jsonError && <div role="alert" style={{ color: "#d63638", fontSize: "0.82rem", marginTop: "0.4rem" }}>{jsonError}</div>}
+        <div className="max-w-2xl">
+          <JsonTextarea id="gl-json" label="Guías en formato JSON" value={jsonText} onChange={editJson} error={jsonError} />
         </div>
       )}
-    </Page>
+    </PageContainer>
   );
 }
