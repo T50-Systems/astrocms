@@ -14,6 +14,7 @@ import { EditPage } from "./routes/page-edit.tsx";
 import { BuilderPage } from "./routes/page-builder.tsx";
 import { MenusPage } from "./routes/menus.tsx";
 import { SettingsPage } from "./routes/settings.tsx";
+import { TaxonomiesPage } from "./routes/taxonomies.tsx";
 
 function Root() {
   const { data: session } = useSession();
@@ -26,6 +27,7 @@ function Root() {
           <nav style={{ display: "flex", gap: "0.8rem", alignItems: "center" }}>
             <Link to="/" style={{ fontWeight: 700 }}>AstroCMS</Link>
             <Link to="/menus">Menús</Link>
+            <Link to="/taxonomies">Taxonomías</Link>
             <Link to="/settings">Ajustes</Link>
           </nav>
           <span style={{ fontSize: "0.85rem" }}>
@@ -48,9 +50,10 @@ const newRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pages/ne
 const editRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pages/$pageId", component: EditPage });
 const builderRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pages/$pageId/builder", component: BuilderPage });
 const menusRoute = createRoute({ getParentRoute: () => rootRoute, path: "/menus", component: MenusPage });
+const taxonomiesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/taxonomies", component: TaxonomiesPage });
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/settings", component: SettingsPage });
 
-const routeTree = rootRoute.addChildren([indexRoute, loginRoute, newRoute, editRoute, builderRoute, menusRoute, settingsRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, loginRoute, newRoute, editRoute, builderRoute, menusRoute, taxonomiesRoute, settingsRoute]);
 
 export const router = createRouter({ routeTree });
 

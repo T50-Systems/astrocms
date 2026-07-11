@@ -36,6 +36,13 @@
       "when": 1783741053596,
       "tag": "0004_wise_human_robot",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783747894047,
+      "tag": "0005_wealthy_karnak",
+      "breakpoints": true
     }
   ]
 }

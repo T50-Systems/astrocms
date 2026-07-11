@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildManifest, defineBlock, blockZod, DEFAULT_TOKENS } from "./block.js";
+import { demoBuilderManifest } from "./demo.js";
 import { media, richText, select, text } from "./fields.js";
 
 const hero = defineBlock({
@@ -39,5 +40,26 @@ describe("schemas / defineBlock", () => {
     const manifest = buildManifest([hero], DEFAULT_TOKENS);
     const alignment = manifest.blocks[0]!.fields.find((f) => f.key === "alignment")!;
     expect(alignment.config.options).toEqual(["left", "center", "right"]);
+  });
+
+  it("el manifiesto demo incluye el catalogo ampliado", () => {
+    const types = demoBuilderManifest.blocks.map((block) => block.type);
+    expect(types).toEqual(
+      expect.arrayContaining([
+        "core/image",
+        "core/quote",
+        "core/list",
+        "core/divider",
+        "core/columns",
+        "site/service-grid",
+        "site/testimonials",
+        "site/cta",
+        "site/faq",
+      ]),
+    );
+
+    const columns = demoBuilderManifest.blocks.find((block) => block.type === "core/columns")!;
+    expect(columns.capabilities.acceptsChildren).toBe(true);
+    expect(columns.constraints.allowedChildren).toContain("site/cta");
   });
 });

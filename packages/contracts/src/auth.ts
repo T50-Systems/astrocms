@@ -15,6 +15,7 @@ export const KnownPermissions = [
   "media.write",
   "media.delete",
   "menus.write",
+  "taxonomy.write",
   "settings.write",
   "users.manage",
   "webhooks.manage",

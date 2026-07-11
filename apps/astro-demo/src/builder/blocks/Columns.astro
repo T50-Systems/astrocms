@@ -1,0 +1,18 @@
+---
+interface Props {
+  count?: "2" | "3" | "4";
+}
+const { count = "2" } = Astro.props;
+const attrs = Object.fromEntries(Object.entries(Astro.props).filter(([key]) => key !== "count"));
+const columnCount = ["2", "3", "4"].includes(String(count)) ? String(count) : "2";
+---
+<div class="columns" style={`--columns:${columnCount}`} {...attrs}>
+  <slot />
+</div>
+
+<style>
+  .columns { display: grid; grid-template-columns: repeat(var(--columns), minmax(0, 1fr)); gap: 1rem; margin: 1rem 0; }
+  @media (max-width: 720px) {
+    .columns { grid-template-columns: 1fr; }
+  }
+</style>

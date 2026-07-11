@@ -17,7 +17,11 @@ import type {
   Paginated,
   Session,
   SettingsGroup,
+  Taxonomy,
+  TaxonomyDetail,
+  TermRef,
   UpdateEntryRequest,
+  UpsertTermRequest,
   UpsertMenuRequest,
   UserSession,
   CreateWebhookRequest,
@@ -73,6 +77,14 @@ export interface WebhookResource {
   remove(id: string): Promise<void>;
 }
 
+export interface TaxonomyResource {
+  list(): Promise<Taxonomy[]>;
+  get(key: string): Promise<TaxonomyDetail>;
+  upsertTerm(key: string, term: UpsertTermRequest): Promise<TermRef>;
+  entryTerms(entryId: string): Promise<TermRef[]>;
+  setEntryTerms(entryId: string, termIds: string[]): Promise<TermRef[]>;
+}
+
 export interface PreviewResource {
   createToken(documentId: string): Promise<{ token: string }>;
   getBuilderDocument(id: string, token: string): Promise<BuilderDocument>;
@@ -101,6 +113,7 @@ export interface CmsClient {
   menus: MenuResource;
   settings: SettingsResource;
   webhooks: WebhookResource;
+  taxonomies: TaxonomyResource;
   builder: BuilderResource;
   preview: PreviewResource;
   audit: AuditResource;
@@ -109,6 +122,7 @@ export interface CmsClient {
     getBuilderDocument(id: string): Promise<BuilderDocument | null>;
     getMenu(location: string): Promise<Menu>;
     getSettings(group: string): Promise<SettingsGroup>;
+    getTaxonomy(key: string): Promise<TaxonomyDetail>;
   };
 }
 
@@ -181,6 +195,15 @@ export function createCmsClient(opts: CmsClientOptions): CmsClient {
       create: (req) => request<Webhook>("POST", "/webhooks", { body: req }),
       remove: (id) => request<void>("DELETE", `/webhooks/${id}`),
     },
+    taxonomies: {
+      list: () => request<Taxonomy[]>("GET", "/taxonomies"),
+      get: (key) => request<TaxonomyDetail>("GET", `/taxonomies/${encodeURIComponent(key)}`),
+      upsertTerm: (key, term) =>
+        request<TermRef>("POST", `/taxonomies/${encodeURIComponent(key)}/terms`, { body: term }),
+      entryTerms: (entryId) => request<TermRef[]>("GET", `/entries/${entryId}/terms`),
+      setEntryTerms: (entryId, termIds) =>
+        request<TermRef[]>("PUT", `/entries/${entryId}/terms`, { body: { termIds } }),
+    },
     builder: {
       manifest: () => request<BlockManifest>("GET", "/builder/manifest"),
       create: (root, entryId) => request<BuilderDocument>("POST", "/builder/documents", { body: { root, entryId } }),
@@ -225,6 +248,7 @@ export function createCmsClient(opts: CmsClientOptions): CmsClient {
       },
       getMenu: (location) => request<Menu>("GET", `/public/menus/${encodeURIComponent(location)}`),
       getSettings: (group) => request<SettingsGroup>("GET", `/public/settings/${encodeURIComponent(group)}`),
+      getTaxonomy: (key) => request<TaxonomyDetail>("GET", `/public/taxonomies/${encodeURIComponent(key)}`),
     },
   };
 }

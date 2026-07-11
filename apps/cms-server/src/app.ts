@@ -18,6 +18,7 @@ import { pageRoutes } from "./routes/pages.js";
 import { previewRoutes } from "./routes/preview.js";
 import { publicRoutes } from "./routes/public.js";
 import { settingsRoutes } from "./routes/settings.js";
+import { taxonomyRoutes } from "./routes/taxonomies.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 import "./types.js";
 
@@ -61,6 +62,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
       await pageRoutes(api);
       await mediaRoutes(api);
       await menuRoutes(api);
+      await taxonomyRoutes(api);
       await settingsRoutes(api);
       await webhookRoutes(api);
       await builderRoutes(api);

@@ -1,0 +1,18 @@
+---
+interface Props {
+  text?: string;
+  author?: string;
+}
+const { text = "", author = "" } = Astro.props;
+const attrs = Object.fromEntries(Object.entries(Astro.props).filter(([key]) => !["text", "author"].includes(key)));
+---
+<blockquote class="quote" {...attrs}>
+  {text && <p>{text}</p>}
+  {author && <cite>{author}</cite>}
+</blockquote>
+
+<style>
+  .quote { margin: 1.5rem 0; padding-left: 1rem; border-left: 3px solid #111; color: #222; }
+  .quote p { margin: 0 0 0.5rem; font-size: 1.1rem; line-height: 1.5; }
+  .quote cite { display: block; opacity: 0.7; font-style: normal; }
+</style>

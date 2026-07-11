@@ -4,6 +4,7 @@ export * from "./audit.js";
 export * from "./entry.js";
 export * from "./media.js";
 export * from "./menus.js";
+export * from "./taxonomy.js";
 export * from "./settings.js";
 export * from "./webhooks.js";
 export * from "./builder.js";

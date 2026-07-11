@@ -1,0 +1,34 @@
+---
+interface Props {
+  title?: string;
+  items?: string;
+}
+const { title = "", items = "" } = Astro.props;
+const attrs = Object.fromEntries(Object.entries(Astro.props).filter(([key]) => !["title", "items"].includes(key)));
+function splitPair(line: string): { title: string; description: string } {
+  const index = line.indexOf("|");
+  if (index === -1) return { title: line.trim(), description: "" };
+  return { title: line.slice(0, index).trim(), description: line.slice(index + 1).trim() };
+}
+const services = items.split("\n").map((line) => splitPair(line)).filter((item) => item.title || item.description);
+---
+<section class="service-grid" {...attrs}>
+  {title && <h2>{title}</h2>}
+  <div class="service-grid__items">
+    {services.map((service) => (
+      <article class="service-grid__item">
+        {service.title && <h3>{service.title}</h3>}
+        {service.description && <p>{service.description}</p>}
+      </article>
+    ))}
+  </div>
+</section>
+
+<style>
+  .service-grid { margin: 2rem 0; }
+  .service-grid h2 { margin: 0 0 1rem; }
+  .service-grid__items { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem; }
+  .service-grid__item { padding: 1rem; border: 1px solid #ddd; border-radius: 6px; }
+  .service-grid__item h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+  .service-grid__item p { margin: 0; opacity: 0.75; line-height: 1.5; }
+</style>

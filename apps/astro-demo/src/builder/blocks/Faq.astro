@@ -1,0 +1,28 @@
+---
+interface Props {
+  items?: string;
+}
+const { items = "" } = Astro.props;
+const attrs = Object.fromEntries(Object.entries(Astro.props).filter(([key]) => key !== "items"));
+function splitPair(line: string): { question: string; answer: string } {
+  const index = line.indexOf("|");
+  if (index === -1) return { question: line.trim(), answer: "" };
+  return { question: line.slice(0, index).trim(), answer: line.slice(index + 1).trim() };
+}
+const faqs = items.split("\n").map((line) => splitPair(line)).filter((item) => item.question || item.answer);
+---
+<section class="faq" {...attrs}>
+  {faqs.map((item) => (
+    <details>
+      <summary>{item.question}</summary>
+      {item.answer && <p>{item.answer}</p>}
+    </details>
+  ))}
+</section>
+
+<style>
+  .faq { margin: 2rem 0; }
+  .faq details { padding: 0.75rem 0; border-bottom: 1px solid #ddd; }
+  .faq summary { cursor: pointer; font-weight: 600; }
+  .faq p { margin: 0.5rem 0 0; line-height: 1.5; opacity: 0.75; }
+</style>

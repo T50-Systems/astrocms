@@ -7,6 +7,7 @@ import { createEntryService } from "./entry-service.js";
 import { createMediaService } from "./media-service.js";
 import { createMenuService } from "./menu-service.js";
 import { createSettingsService } from "./settings-service.js";
+import { createTaxonomyService } from "./taxonomy-service.js";
 import { createWebhookService } from "./webhook-service.js";
 import { systemClock, type Clock } from "./ports.js";
 import { notFound } from "./errors.js";
@@ -22,6 +23,7 @@ export type { BuilderService } from "./builder-service.js";
 export type { MediaService } from "./media-service.js";
 export type { MenuService } from "./menu-service.js";
 export type { SettingsService } from "./settings-service.js";
+export type { TaxonomyService } from "./taxonomy-service.js";
 export type { WebhookService } from "./webhook-service.js";
 
 /** Composition del núcleo. El borde (cms-server) inyecta `db` y opcionalmente `clock`. */
@@ -37,6 +39,7 @@ export function createCmsCore(opts: { db: Database; storage?: StorageDriver; clo
     builder: createBuilderService(opts.db, clock, dispatchPublished),
     menus: createMenuService(opts.db, clock),
     settings: createSettingsService(opts.db, clock),
+    taxonomies: createTaxonomyService(opts.db),
     webhooks,
     ...(opts.storage ? { media: createMediaService(opts.db, opts.storage, clock) } : {}),
     async resolvePrimarySiteId(): Promise<string> {

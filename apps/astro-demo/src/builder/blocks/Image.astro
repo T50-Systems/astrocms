@@ -1,0 +1,17 @@
+---
+interface Props {
+  src?: string;
+  alt?: string;
+}
+const { src = "", alt = "" } = Astro.props;
+const attrs = Object.fromEntries(Object.entries(Astro.props).filter(([key]) => !["src", "alt"].includes(key)));
+---
+<figure class="image-block" {...attrs}>
+  {src ? <img src={src} alt={alt} loading="lazy" /> : <div class="image-block__empty" aria-label={alt} />}
+</figure>
+
+<style>
+  .image-block { margin: 1rem 0; }
+  .image-block img { display: block; width: 100%; height: auto; border-radius: 6px; }
+  .image-block__empty { min-height: 12rem; border: 1px dashed #aaa; border-radius: 6px; background: #f6f6f6; }
+</style>
