@@ -14,7 +14,9 @@ import type {
   LoginResponse,
   Menu,
   MediaAsset,
+  MediaFolder,
   MediaQuery,
+  UpdateMediaRequest,
   Paginated,
   Session,
   SettingsGroup,
@@ -58,8 +60,10 @@ export interface BuilderResource {
 
 export interface MediaResource {
   list(q?: MediaQuery): Promise<Paginated<MediaAsset>>;
+  folders(): Promise<MediaFolder[]>;
   get(id: string): Promise<MediaAsset>;
-  upload(file: File | Blob, meta?: { alt?: string }): Promise<MediaAsset>;
+  upload(file: File | Blob, meta?: { alt?: string; folder?: string }): Promise<MediaAsset>;
+  update(id: string, patch: UpdateMediaRequest): Promise<MediaAsset>;
   remove(id: string): Promise<void>;
 }
 
@@ -177,14 +181,17 @@ export function createCmsClient(opts: CmsClientOptions): CmsClient {
             pageSize: q?.pageSize,
           },
         }),
+      folders: () => request<MediaFolder[]>("GET", "/media/folders"),
       get: (id) => request<MediaAsset>("GET", `/media/${id}`),
       upload: (file, meta) => {
         const form = new FormData();
         const filename = typeof File !== "undefined" && file instanceof File ? file.name : "upload";
         form.append("file", file, filename);
         if (meta?.alt) form.append("alt", meta.alt);
+        if (meta?.folder) form.append("folder", meta.folder);
         return request<MediaAsset>("POST", "/media", { body: form });
       },
+      update: (id, patch) => request<MediaAsset>("PATCH", `/media/${id}`, { body: patch }),
       remove: (id) => request<void>("DELETE", `/media/${id}`),
     },
     menus: {

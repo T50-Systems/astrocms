@@ -119,6 +119,42 @@ describe.skipIf(!DB)("API v1 — media library (integración)", () => {
     expect(gone.statusCode).toBe(404);
   });
 
+  it("sube a carpeta, la lista en /folders, mueve entre carpetas y filtra", async () => {
+    const folder = `Carpeta-${randomUUID().slice(0, 6)}`;
+    const boundary = `astrocms-${randomUUID()}`;
+    const filePart =
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="f.png"\r\nContent-Type: image/png\r\n\r\n`;
+    const folderPart = `\r\n--${boundary}\r\nContent-Disposition: form-data; name="folder"\r\n\r\n${folder}`;
+    const payload = Buffer.concat([Buffer.from(filePart), PNG_1X1, Buffer.from(folderPart), Buffer.from(`\r\n--${boundary}--\r\n`)]);
+
+    const upload = await app.inject({
+      method: "POST",
+      url: "/api/v1/media",
+      ...auth({ payload, headers: { "content-type": `multipart/form-data; boundary=${boundary}` } }),
+    });
+    expect(upload.statusCode).toBe(201);
+    const asset = upload.json();
+    expect(asset.folder).toBe(folder);
+
+    const folders = await app.inject({ method: "GET", url: "/api/v1/media/folders", ...auth() });
+    expect(folders.statusCode).toBe(200);
+    expect((folders.json() as Array<{ name: string; count: number }>).some((f) => f.name === folder && f.count >= 1)).toBe(true);
+
+    const filtered = await app.inject({ method: "GET", url: `/api/v1/media?folder=${encodeURIComponent(folder)}`, ...auth() });
+    expect(filtered.json().data.every((item: { folder?: string }) => item.folder === folder)).toBe(true);
+
+    // mover fuera de la carpeta (folder: null)
+    const moved = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/media/${asset.id}`,
+      ...auth({ payload: { folder: null } }),
+    });
+    expect(moved.statusCode).toBe(200);
+    expect(moved.json().folder).toBeUndefined();
+
+    await app.inject({ method: "DELETE", url: `/api/v1/media/${asset.id}`, ...auth() });
+  });
+
   it("rechaza extensión PNG con bytes que no son imagen", async () => {
     const body = multipartFile("file", "fake.png", "image/png", Buffer.from("not an image"));
     const res = await app.inject({
