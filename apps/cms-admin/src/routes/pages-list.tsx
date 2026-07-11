@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
-import type { EntryStatus } from "@astrocms/contracts";
+import type { Entry, EntryStatus } from "@astrocms/contracts";
 import { cms } from "../lib.ts";
 import { useSession } from "../auth.tsx";
 import { Button, Empty, ErrorBox, inputStyle, Loading, Page } from "../ui.tsx";
@@ -38,6 +38,18 @@ const dateFormatter = new Intl.DateTimeFormat("es-ES", {
   timeStyle: "short",
 });
 
+const previewOrigin = import.meta.env.VITE_PREVIEW_ORIGIN ?? "";
+
+// Acciones de fila estilo WordPress: ocultas hasta hover/foco (accesibles por teclado).
+const rowActionsCss = `
+.wp-row-actions { opacity: 0; transition: opacity 0.1s ease; font-size: 0.82rem; margin-top: 0.35rem; color: #646970; }
+tr:hover .wp-row-actions, tr:focus-within .wp-row-actions { opacity: 1; }
+.wp-row-actions a, .wp-row-actions button { color: #2271b1; }
+.wp-row-actions button { border: 0; background: transparent; padding: 0; cursor: pointer; font: inherit; }
+.wp-row-actions .danger { color: #b32d2e; }
+.wp-row-actions .sep { color: #c3c4c7; margin: 0 0.15rem; }
+`;
+
 export function PagesListPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
@@ -71,6 +83,12 @@ export function PagesListPage() {
   const pageIds = useMemo(() => pages.data?.data.map((p) => p.id) ?? [], [pages.data]);
   const allVisibleSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
 
+  const invalidateLists = () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: ["pages"] }),
+      qc.invalidateQueries({ queryKey: ["pages-counts"] }),
+    ]);
+
   const removeSelected = useMutation({
     mutationFn: async (ids: string[]) => {
       await Promise.all(ids.map((id) => cms.pages.remove(id)));
@@ -78,11 +96,23 @@ export function PagesListPage() {
     onSuccess: async () => {
       setSelected(new Set());
       setBulkAction("");
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ["pages"] }),
-        qc.invalidateQueries({ queryKey: ["pages-counts"] }),
-      ]);
+      await invalidateLists();
     },
+  });
+
+  const removeOne = useMutation({
+    mutationFn: (id: string) => cms.pages.remove(id),
+    onSuccess: invalidateLists,
+  });
+  const duplicate = useMutation({
+    mutationFn: (page: Entry) =>
+      cms.pages.create({
+        contentTypeKey: page.contentTypeKey,
+        title: `${page.title} (copia)`,
+        editorType: page.editorType,
+        data: page.data,
+      }),
+    onSuccess: invalidateLists,
   });
 
   if (sessionLoading || !session) return <Page><Loading /></Page>;
@@ -119,6 +149,7 @@ export function PagesListPage() {
 
   return (
     <Page wide>
+      <style>{rowActionsCss}</style>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <h1 style={{ margin: 0 }}>Páginas</h1>
@@ -165,6 +196,8 @@ export function PagesListPage() {
       {pages.isError && <ErrorBox error={pages.error} />}
       {counts.isError && <ErrorBox error={counts.error} />}
       {removeSelected.isError && <ErrorBox error={removeSelected.error} />}
+      {removeOne.isError && <ErrorBox error={removeOne.error} />}
+      {duplicate.isError && <ErrorBox error={duplicate.error} />}
       {pages.data && pages.data.data.length === 0 && (
         <Empty>{search ? "No hay páginas que coincidan con la búsqueda." : "Aún no hay páginas. Crea la primera con Añadir nueva."}</Empty>
       )}
@@ -202,13 +235,33 @@ export function PagesListPage() {
                     {page.title}
                   </Link>
                   <div style={{ color: "#646970", fontSize: "0.82rem", marginTop: "0.15rem" }}>{page.slug}</div>
-                  <div style={{ display: "flex", gap: "0.45rem", fontSize: "0.82rem", marginTop: "0.35rem" }}>
-                    <Link to="/pages/$pageId" params={{ pageId: page.id }} style={{ color: "#2271b1" }}>Editar</Link>
+                  <div className="wp-row-actions">
+                    <Link to="/pages/$pageId" params={{ pageId: page.id }}>Editar</Link>
                     {page.editorType === "builder" && (
-                      <Link to="/pages/$pageId/builder" params={{ pageId: page.id }} style={{ color: "#2271b1" }}>
-                        Editar visual
-                      </Link>
+                      <>
+                        <span className="sep">|</span>
+                        <Link to="/pages/$pageId/builder" params={{ pageId: page.id }}>Editar visual</Link>
+                      </>
                     )}
+                    <span className="sep">|</span>
+                    <button type="button" onClick={() => duplicate.mutate(page)} disabled={duplicate.isPending}>Duplicar</button>
+                    {page.status === "published" && previewOrigin && (
+                      <>
+                        <span className="sep">|</span>
+                        <a href={`${previewOrigin}${page.slug}`} target="_blank" rel="noreferrer">Ver</a>
+                      </>
+                    )}
+                    <span className="sep">|</span>
+                    <button
+                      type="button"
+                      className="danger"
+                      disabled={removeOne.isPending}
+                      onClick={() => {
+                        if (window.confirm(`¿Eliminar "${page.title}"?`)) removeOne.mutate(page.id);
+                      }}
+                    >
+                      Eliminar
+                    </button>
                   </div>
                 </td>
                 <td style={tdStyle}>{page.authorName ?? "—"}</td>
