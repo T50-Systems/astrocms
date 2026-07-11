@@ -1,10 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import type { CSSProperties } from "react";
 import type { Term } from "@astrocms/contracts";
 import { cms } from "../lib.ts";
-import { Button, Empty, ErrorBox, Field, inputStyle, Loading, Page } from "../ui.tsx";
-import { Modal } from "../modal.tsx";
+import { PageContainer } from "@/components/page-container.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Label } from "@/components/ui/label.tsx";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
+import { Textarea } from "@/components/ui/textarea.tsx";
 
 type TermRow = Term & { depth: number };
 
@@ -36,18 +42,7 @@ const BULK_PLACEHOLDER = `[
   { "name": "Guías" }
 ]`;
 
-// Acciones de fila reveladas al pasar el ratón / enfocar (accesibles por teclado).
-const rowActionsCss = `
-.term-actions { opacity: 0; transition: opacity 0.1s ease; font-size: 0.82rem; margin-top: 0.3rem; }
-tr:hover .term-actions, tr:focus-within .term-actions { opacity: 1; }
-.term-actions button { border: 0; background: transparent; padding: 0; cursor: pointer; font: inherit; color: #2271b1; }
-.term-actions .danger { color: #b32d2e; }
-.term-actions .sep { color: #c3c4c7; margin: 0 0.3rem; }
-`;
-
-const th: CSSProperties = { textAlign: "left", borderBottom: "1px solid #dcdcde", padding: "0.55rem", fontWeight: 600 };
-const td: CSSProperties = { borderBottom: "1px solid #eee", padding: "0.55rem", verticalAlign: "top" };
-const editInput: CSSProperties = { ...inputStyle, padding: "0.35rem 0.5rem", fontSize: "0.9rem" };
+const NO_PARENT = "__none__";
 
 export interface TermsManagerProps {
   taxonomyKey: string;
@@ -192,164 +187,178 @@ export function TermsManager({ taxonomyKey, title, subtitle, singular, plural, h
 
   const busy = addOne.isPending || addBulk.isPending;
 
+  const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Error inesperado");
+
   return (
-    <Page wide>
-      <style>{rowActionsCss}</style>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1>{title}</h1>
+    <PageContainer>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold">{title}</h1>
         <Button type="button" onClick={openModal}>+ Añadir {singular}</Button>
       </div>
-      <p style={{ color: "#666", marginTop: "-0.5rem" }}>{subtitle}</p>
+      <p className="mt-1 text-muted-foreground">{subtitle}</p>
 
-      {query.isLoading && <Loading />}
-      {query.isError && <ErrorBox error={query.error} />}
-      {(removeTerms.isError || saveEdits.isError) && <ErrorBox error={removeTerms.error ?? saveEdits.error} />}
-      {query.data?.terms.length === 0 && <Empty>Aún no hay {plural}. Crea la primera con “+ Añadir {singular}”.</Empty>}
+      {query.isLoading && <p className="mt-4 text-muted-foreground">Cargando…</p>}
+      {query.isError && <p role="alert" className="mt-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(query.error)}</p>}
+      {(removeTerms.isError || saveEdits.isError) && (
+        <p role="alert" className="mt-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(removeTerms.error ?? saveEdits.error)}</p>
+      )}
+      {query.data?.terms.length === 0 && <p className="mt-4 text-muted-foreground">Aún no hay {plural}. Crea la primera con “+ Añadir {singular}”.</p>}
 
       {rows.length > 0 && (
         <>
           {/* Barra de acciones en lote (estilo WordPress) */}
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", margin: "0.75rem 0" }}>
-            <label htmlFor={`bulk-${taxonomyKey}`} style={{ position: "absolute", left: "-9999px" }}>Acciones en lote</label>
-            <select id={`bulk-${taxonomyKey}`} value={bulkAction} onChange={(e) => setBulkAction(e.target.value)} style={{ ...inputStyle, width: 200 }}>
-              <option value="">Acciones en lote</option>
-              <option value="edit">Editar</option>
-              <option value="delete">Eliminar</option>
-            </select>
-            <Button ghost type="button" onClick={applyBulk} disabled={!bulkAction || selected.size === 0 || removeTerms.isPending}>
+          <div className="my-3 flex items-center gap-2">
+            <Select value={bulkAction} onValueChange={setBulkAction}>
+              <SelectTrigger id={`bulk-${taxonomyKey}`} className="w-48" aria-label="Acciones en lote">
+                <SelectValue placeholder="Acciones en lote" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="edit">Editar</SelectItem>
+                <SelectItem value="delete">Eliminar</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" type="button" onClick={applyBulk} disabled={!bulkAction || selected.size === 0 || removeTerms.isPending}>
               {removeTerms.isPending ? "Aplicando…" : "Aplicar"}
             </Button>
-            {selected.size > 0 && <span style={{ color: "#646970", fontSize: "0.85rem" }}>{selected.size} seleccionada(s)</span>}
+            {selected.size > 0 && <span className="text-sm text-muted-foreground">{selected.size} seleccionada(s)</span>}
           </div>
 
           {/* Barra de guardado cuando hay filas en edición */}
           {editingIds.length > 0 && (
-            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", background: "#f0f6fc", border: "1px solid #c5d9ed", borderRadius: 6, padding: "0.5rem 0.75rem", marginBottom: "0.75rem" }}>
-              <strong style={{ fontSize: "0.9rem" }}>Editando {editingIds.length} {editingIds.length === 1 ? singular : plural}</strong>
-              <Button type="button" onClick={() => saveEdits.mutate()} disabled={saveEdits.isPending}>{saveEdits.isPending ? "Guardando…" : "Guardar cambios"}</Button>
-              <Button ghost type="button" onClick={() => setEditing({})} disabled={saveEdits.isPending}>Cancelar</Button>
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/20 bg-primary/5 p-3">
+              <strong className="text-sm">Editando {editingIds.length} {editingIds.length === 1 ? singular : plural}</strong>
+              <Button size="sm" type="button" onClick={() => saveEdits.mutate()} disabled={saveEdits.isPending}>{saveEdits.isPending ? "Guardando…" : "Guardar cambios"}</Button>
+              <Button variant="ghost" size="sm" type="button" onClick={() => setEditing({})} disabled={saveEdits.isPending}>Cancelar</Button>
             </div>
           )}
 
-          <table style={{ width: "100%", borderCollapse: "collapse", background: "#fff" }}>
-            <thead>
-              <tr>
-                <th scope="col" style={{ ...th, width: 40 }}>
-                  <input type="checkbox" aria-label="Seleccionar todas" checked={allSelected} onChange={toggleAll} />
-                </th>
-                <th scope="col" style={th}>Nombre</th>
-                <th scope="col" style={th}>Descripción</th>
-                <th scope="col" style={th}>ID en URL</th>
-                <th scope="col" style={{ ...th, width: 90 }}>Cantidad</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((term) => {
-                const edit = editing[term.id];
-                return (
-                  <tr key={term.id}>
-                    <td style={td}>
-                      <input type="checkbox" aria-label={`Seleccionar ${term.name}`} checked={selected.has(term.id)} onChange={() => toggleOne(term.id)} />
-                    </td>
-                    <td style={{ ...td, fontWeight: 600 }}>
-                      {edit ? (
-                        <input aria-label={`Nombre de ${term.name}`} style={editInput} value={edit.name} onChange={(e) => updateEdit(term.id, "name", e.target.value)} />
-                      ) : (
-                        <>
-                          {"— ".repeat(term.depth)}
-                          {term.name}
-                          <div className="term-actions">
-                            <button type="button" onClick={() => startEdit([term.id])}>Edición rápida</button>
-                            <span className="sep">|</span>
-                            <button type="button" className="danger" onClick={() => { if (window.confirm(`¿Eliminar "${term.name}"?`)) removeTerms.mutate([term.id]); }}>Eliminar</button>
-                          </div>
-                        </>
-                      )}
-                    </td>
-                    <td style={{ ...td, color: "#555" }}>
-                      {edit ? (
-                        <input aria-label={`Descripción de ${term.name}`} style={editInput} value={edit.description} onChange={(e) => updateEdit(term.id, "description", e.target.value)} />
-                      ) : (
-                        term.description ?? ""
-                      )}
-                    </td>
-                    <td style={{ ...td, color: "#555" }}>{term.slug}</td>
-                    <td style={td}>{term.count}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox aria-label="Seleccionar todas" checked={allSelected} onCheckedChange={() => toggleAll()} />
+                  </TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  <TableHead>ID en URL</TableHead>
+                  <TableHead className="w-24">Cantidad</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((term) => {
+                  const edit = editing[term.id];
+                  return (
+                    <TableRow key={term.id} className="group">
+                      <TableCell className="align-top">
+                        <Checkbox aria-label={`Seleccionar ${term.name}`} checked={selected.has(term.id)} onCheckedChange={() => toggleOne(term.id)} />
+                      </TableCell>
+                      <TableCell className="align-top font-semibold">
+                        {edit ? (
+                          <Input className="h-8 text-sm" aria-label={`Nombre de ${term.name}`} value={edit.name} onChange={(e) => updateEdit(term.id, "name", e.target.value)} />
+                        ) : (
+                          <>
+                            {"— ".repeat(term.depth)}
+                            {term.name}
+                            <div className="mt-1 flex items-center gap-1.5 text-xs font-normal opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                              <button type="button" className="text-primary hover:underline" onClick={() => startEdit([term.id])}>Edición rápida</button>
+                              <span className="text-border">|</span>
+                              <button type="button" className="text-destructive hover:underline" onClick={() => { if (window.confirm(`¿Eliminar "${term.name}"?`)) removeTerms.mutate([term.id]); }}>Eliminar</button>
+                            </div>
+                          </>
+                        )}
+                      </TableCell>
+                      <TableCell className="align-top text-muted-foreground">
+                        {edit ? (
+                          <Input className="h-8 text-sm" aria-label={`Descripción de ${term.name}`} value={edit.description} onChange={(e) => updateEdit(term.id, "description", e.target.value)} />
+                        ) : (
+                          term.description ?? ""
+                        )}
+                      </TableCell>
+                      <TableCell className="align-top text-muted-foreground">{term.slug}</TableCell>
+                      <TableCell className="align-top">{term.count}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </>
       )}
 
-      <Modal
-        open={open}
-        title={`Añadir ${singular}`}
-        onClose={() => setOpen(false)}
-        footer={
-          mode === "one" ? (
-            <>
-              <Button ghost type="button" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button ghost type="button" disabled={busy || !name.trim()} onClick={() => addOne.mutate({ closeAfter: false })}>
-                Añadir y otra
-              </Button>
-              <Button type="button" disabled={busy || !name.trim()} onClick={() => addOne.mutate({ closeAfter: true })}>
-                {addOne.isPending ? "Guardando…" : "Añadir"}
-              </Button>
-            </>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Añadir {singular}</DialogTitle>
+            <DialogDescription>Crea una {singular} nueva, o varias a la vez pegando un JSON.</DialogDescription>
+          </DialogHeader>
+
+          <div role="group" aria-label="Modo de alta" className="flex gap-1.5">
+            <Button variant={mode === "one" ? "default" : "outline"} size="sm" type="button" aria-pressed={mode === "one"} onClick={() => setMode("one")}>Una</Button>
+            <Button variant={mode === "bulk" ? "default" : "outline"} size="sm" type="button" aria-pressed={mode === "bulk"} onClick={() => setMode("bulk")}>Varias (JSON)</Button>
+          </div>
+
+          {(addOne.isError || addBulk.isError) && (
+            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(addOne.error ?? addBulk.error)}</p>
+          )}
+
+          {mode === "one" ? (
+            <div className="flex flex-col gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="term-name">Nombre</Label>
+                <Input id="term-name" placeholder="Ej. Noticias" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="term-desc">Descripción</Label>
+                <Textarea id="term-desc" rows={3} placeholder={`Describe cómo se usa esta ${singular}.`} value={description} onChange={(e) => setDescription(e.target.value)} />
+              </div>
+              {hierarchical && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="term-parent">{`${title.slice(0, -1)} superior (opcional)`}</Label>
+                  <Select value={parentId || NO_PARENT} onValueChange={(v) => setParentId(v === NO_PARENT ? "" : v)}>
+                    <SelectTrigger id="term-parent"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_PARENT}>Ninguna</SelectItem>
+                      {rows.map((term) => (
+                        <SelectItem key={term.id} value={term.id}>
+                          {"— ".repeat(term.depth)}
+                          {term.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
           ) : (
-            <>
-              <Button ghost type="button" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button type="button" disabled={busy || !bulkText.trim()} onClick={() => addBulk.mutate()}>
-                {addBulk.isPending ? "Añadiendo…" : "Añadir todas"}
-              </Button>
-            </>
-          )
-        }
-      >
-        <div role="tablist" style={{ display: "flex", gap: "0.4rem", marginBottom: "1rem" }}>
-          <Button ghost={mode !== "one"} type="button" onClick={() => setMode("one")}>Una</Button>
-          <Button ghost={mode !== "bulk"} type="button" onClick={() => setMode("bulk")}>Varias (JSON)</Button>
-        </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="term-bulk">{`Pega un array JSON de ${plural}`}</Label>
+              <Textarea id="term-bulk" rows={9} placeholder={BULK_PLACEHOLDER} className="font-mono text-sm" value={bulkText} onChange={(e) => setBulkText(e.target.value)} />
+            </div>
+          )}
 
-        {(addOne.isError || addBulk.isError) && <ErrorBox error={addOne.error ?? addBulk.error} />}
-
-        {mode === "one" ? (
-          <>
-            <Field label="Nombre" htmlFor="term-name">
-              <input id="term-name" placeholder="Ej. Noticias" style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} />
-            </Field>
-            <Field label="Descripción" htmlFor="term-desc">
-              <textarea id="term-desc" rows={3} placeholder={`Describe cómo se usa esta ${singular}.`} style={inputStyle} value={description} onChange={(e) => setDescription(e.target.value)} />
-            </Field>
-            {hierarchical && (
-              <Field label={`${title.slice(0, -1)} superior (opcional)`} htmlFor="term-parent">
-                <select id="term-parent" style={inputStyle} value={parentId} onChange={(e) => setParentId(e.target.value)}>
-                  <option value="">Ninguna</option>
-                  {rows.map((term) => (
-                    <option key={term.id} value={term.id}>
-                      {"— ".repeat(term.depth)}
-                      {term.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+          <DialogFooter>
+            {mode === "one" ? (
+              <>
+                <Button variant="ghost" type="button" onClick={() => setOpen(false)}>Cancelar</Button>
+                <Button variant="outline" type="button" disabled={busy || !name.trim()} onClick={() => addOne.mutate({ closeAfter: false })}>
+                  Añadir y otra
+                </Button>
+                <Button type="button" disabled={busy || !name.trim()} onClick={() => addOne.mutate({ closeAfter: true })}>
+                  {addOne.isPending ? "Guardando…" : "Añadir"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" type="button" onClick={() => setOpen(false)}>Cancelar</Button>
+                <Button type="button" disabled={busy || !bulkText.trim()} onClick={() => addBulk.mutate()}>
+                  {addBulk.isPending ? "Añadiendo…" : "Añadir todas"}
+                </Button>
+              </>
             )}
-          </>
-        ) : (
-          <Field label={`Pega un array JSON de ${plural}`} htmlFor="term-bulk">
-            <textarea
-              id="term-bulk"
-              rows={9}
-              placeholder={BULK_PLACEHOLDER}
-              style={{ ...inputStyle, fontFamily: "ui-monospace, monospace", fontSize: "0.85rem" }}
-              value={bulkText}
-              onChange={(e) => setBulkText(e.target.value)}
-            />
-          </Field>
-        )}
-      </Modal>
-    </Page>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </PageContainer>
   );
 }
