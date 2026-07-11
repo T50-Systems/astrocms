@@ -10,6 +10,7 @@ const NAV: Array<{ to: string; label: string; icon: string }> = [
   { to: "/tags", label: "Etiquetas", icon: "🔖" },
   { to: "/menus", label: "Menús", icon: "☰" },
   { to: "/settings", label: "Ajustes", icon: "⚙️" },
+  { to: "/guidelines", label: "Guías de IA", icon: "🤖" },
 ];
 
 const topbar: CSSProperties = {

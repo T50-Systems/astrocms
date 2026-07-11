@@ -17,6 +17,7 @@ import { BuilderPage } from "./routes/page-builder.tsx";
 import { MediaPage } from "./routes/media.tsx";
 import { MenusPage } from "./routes/menus.tsx";
 import { SettingsPage } from "./routes/settings.tsx";
+import { GuidelinesPage } from "./routes/guidelines.tsx";
 import { TagsPage } from "./routes/tags.tsx";
 import { TaxonomiesPage } from "./routes/taxonomies.tsx";
 
@@ -58,8 +59,9 @@ const menusRoute = createRoute({ getParentRoute: () => rootRoute, path: "/menus"
 const taxonomiesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/taxonomies", component: TaxonomiesPage });
 const tagsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/tags", component: TagsPage });
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/settings", component: SettingsPage });
+const guidelinesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/guidelines", component: GuidelinesPage });
 
-const routeTree = rootRoute.addChildren([indexRoute, loginRoute, newRoute, editRoute, builderRoute, mediaRoute, menusRoute, taxonomiesRoute, tagsRoute, settingsRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, loginRoute, newRoute, editRoute, builderRoute, mediaRoute, menusRoute, taxonomiesRoute, tagsRoute, settingsRoute, guidelinesRoute]);
 
 export const router = createRouter({ routeTree });
 
