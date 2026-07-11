@@ -25,6 +25,8 @@ const LOCATIONS = [
   { value: "primary", label: "Menú principal" },
   { value: "footer", label: "Pie de página" },
 ] as const;
+
+const previewOrigin = import.meta.env.VITE_PREVIEW_ORIGIN ?? "";
 type Location = (typeof LOCATIONS)[number]["value"];
 
 const locationLabel = (value: Location): string => LOCATIONS.find((l) => l.value === value)?.label ?? value;
@@ -88,16 +90,22 @@ export function MenusPage() {
     mutationFn: () => cms.menus.upsert(location, { name: menuName.trim() || locationLabel(location), items: normalize(items) }),
     onSuccess: (saved) => {
       setItems(toEditable(saved.items));
+      setPreviewVersion((v) => v + 1); // recarga la vista previa
       qc.invalidateQueries({ queryKey: ["menu", location] });
     },
   });
 
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Recarga del iframe de vista previa: cache-buster en el src (cross-origin,
+  // contentWindow.reload() lanzaría SecurityError entre :5173 y :4321).
+  const [previewVersion, setPreviewVersion] = useState(0);
+  const [showPreview, setShowPreview] = useState(true);
   const removeMenu = useMutation({
     mutationFn: () => cms.menus.remove(location),
     onSuccess: () => {
       setItems([]);
       setConfirmDelete(false);
+      setPreviewVersion((v) => v + 1);
       qc.invalidateQueries({ queryKey: ["menu", location] });
     },
   });
@@ -111,14 +119,23 @@ export function MenusPage() {
   };
 
   return (
-    <PageContainer className="max-w-4xl">
-      <div className="mb-5 space-y-1">
-        <h1 className="text-2xl font-semibold">Menús</h1>
-        <p className="text-muted-foreground">
-          Son los enlaces de navegación de tu sitio. Elige una ubicación, organiza los enlaces y pulsa{" "}
-          <strong>Guardar menú</strong>.
-        </p>
+    <PageContainer>
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">Menús</h1>
+          <p className="text-muted-foreground">
+            Son los enlaces de navegación de tu sitio. Elige una ubicación, organiza los enlaces y pulsa{" "}
+            <strong>Guardar menú</strong>.
+          </p>
+        </div>
+        {previewOrigin && (
+          <Button variant="ghost" size="sm" type="button" aria-pressed={showPreview} onClick={() => setShowPreview((s) => !s)}>
+            {showPreview ? "Ocultar vista previa" : "Mostrar vista previa"}
+          </Button>
+        )}
       </div>
+      <div className={showPreview && previewOrigin ? "grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,540px)]" : ""}>
+      <div>
 
       <div className="mb-5 flex flex-wrap items-end gap-3">
         <div className="space-y-1.5">
@@ -204,6 +221,21 @@ export function MenusPage() {
         <Button type="button" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setConfirmDelete(true)}>
           Eliminar menú
         </Button>
+      </div>
+      </div>
+
+      {showPreview && previewOrigin && (
+        <Card className="p-2">
+          <iframe
+            title="Vista previa del sitio"
+            src={`${previewOrigin}/?v=${previewVersion}`}
+            className="h-[70vh] w-full rounded-md border bg-white"
+          />
+          <p className="px-2 pb-1 pt-2 text-xs text-muted-foreground">
+            Vista previa en vivo ({previewOrigin}). Se recarga al guardar.
+          </p>
+        </Card>
+      )}
       </div>
 
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
