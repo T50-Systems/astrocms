@@ -8,7 +8,7 @@ export function TaxonomiesPage() {
       subtitle="Clasifica tus páginas y entradas en grupos."
       singular="categoría"
       plural="categorías"
-      hierarchical
+      hierarchical={false}
     />
   );
 }

@@ -8,6 +8,7 @@ import type {
   Entry,
   EntryRevision,
   EntryStatus,
+  EntryStatusCounts,
   ListAuditQuery,
   LoginRequest,
   LoginResponse,
@@ -33,7 +34,8 @@ import { createHttp, type CmsClientOptions } from "./http.js";
 export { CmsClientError, type CmsClientOptions } from "./http.js";
 
 export interface EntryResource {
-  list(q?: { status?: EntryStatus; page?: number; pageSize?: number }): Promise<Paginated<Entry>>;
+  list(q?: { status?: EntryStatus; search?: string; page?: number; pageSize?: number }): Promise<Paginated<Entry>>;
+  counts(): Promise<EntryStatusCounts>;
   get(id: string): Promise<Entry>;
   create(req: CreateEntryRequest): Promise<Entry>;
   update(id: string, req: UpdateEntryRequest): Promise<Entry>;
@@ -152,8 +154,9 @@ export function createCmsClient(opts: CmsClientOptions): CmsClient {
     pages: {
       list: (q) =>
         request<Paginated<Entry>>("GET", base, {
-          query: { status: q?.status, page: q?.page, pageSize: q?.pageSize },
+          query: { status: q?.status, search: q?.search, page: q?.page, pageSize: q?.pageSize },
         }),
+      counts: () => request<EntryStatusCounts>("GET", `${base}/counts`),
       get: (id) => request<Entry>("GET", `${base}/${id}`),
       create: (req) => request<Entry>("POST", base, { body: req }),
       update: (id, req) => request<Entry>("PATCH", `${base}/${id}`, { body: req }),

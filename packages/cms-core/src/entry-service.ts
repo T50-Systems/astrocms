@@ -1,14 +1,16 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, sql } from "drizzle-orm";
 import type {
   CreateEntryRequest,
   Entry,
   EntryRevision,
+  EntryStatus,
+  EntryStatusCounts,
   ListEntriesQuery,
   Paginated,
   UpdateEntryRequest,
 } from "@astrocms/contracts";
 import type { BuilderNode } from "@astrocms/contracts";
-import { builderDocuments, builderDocumentVersions, contentTypes, entries, entryVersions } from "@astrocms/cms-database";
+import { builderDocuments, builderDocumentVersions, contentTypes, entries, entryVersions, users } from "@astrocms/cms-database";
 import type { Database } from "@astrocms/cms-database";
 import { conflict, notFound } from "./errors.js";
 import { assertTransition } from "./entry-transitions.js";
@@ -53,13 +55,21 @@ export function createEntryService(
   }
 
   async function loadContract(entryId: string): Promise<Entry> {
-    const entry = (await db.select().from(entries).where(eq(entries.id, entryId)).limit(1))[0];
+    const row = (
+      await db
+        .select({ entry: entries, authorName: users.name })
+        .from(entries)
+        .innerJoin(users, eq(entries.authorId, users.id))
+        .where(eq(entries.id, entryId))
+        .limit(1)
+    )[0];
+    const entry = row?.entry;
     if (!entry) throw notFound("entry no existe");
     const current = await versionById(entry.currentVersionId);
     if (!current) throw notFound("versión actual no existe");
     const published = await versionById(entry.publishedVersionId);
     return toEntry({
-      entry,
+      entry: { ...entry, authorName: row.authorName },
       version: current,
       contentTypeKey: await keyById(entry.contentTypeId),
       ...(published ? { publishedVersionNo: published.versionNo } : {}),
@@ -192,19 +202,46 @@ export function createEntryService(
       const ct = await contentTypeByKey(args.siteId, args.contentTypeKey);
       const filters = [eq(entries.siteId, args.siteId), eq(entries.contentTypeId, ct.id)];
       if (args.query.status) filters.push(eq(entries.status, args.query.status));
+      const search = args.query.search?.trim();
+      if (search) filters.push(ilike(entryVersions.title, `%${search}%`));
       const where = and(...filters);
       const total = (
-        await db.select({ n: sql<number>`count(*)::int` }).from(entries).where(where)
+        await db
+          .select({ n: sql<number>`count(*)::int` })
+          .from(entries)
+          .innerJoin(entryVersions, eq(entries.currentVersionId, entryVersions.id))
+          .where(where)
       )[0]!.n;
       const rows = await db
         .select({ id: entries.id })
         .from(entries)
+        .innerJoin(entryVersions, eq(entries.currentVersionId, entryVersions.id))
         .where(where)
         .orderBy(desc(entries.updatedAt))
         .limit(args.query.pageSize)
         .offset((args.query.page - 1) * args.query.pageSize);
       const data = await Promise.all(rows.map((r) => loadContract(r.id)));
       return { data, page: args.query.page, pageSize: args.query.pageSize, total };
+    },
+
+    async statusCounts(args: {
+      siteId: string;
+      contentTypeKey: string;
+    }): Promise<EntryStatusCounts> {
+      const ct = await contentTypeByKey(args.siteId, args.contentTypeKey);
+      const rows = await db
+        .select({ status: entries.status, n: sql<number>`count(*)::int` })
+        .from(entries)
+        .where(and(eq(entries.siteId, args.siteId), eq(entries.contentTypeId, ct.id)))
+        .groupBy(entries.status);
+      const counts: Record<EntryStatus, number> = { draft: 0, published: 0, archived: 0 };
+      for (const row of rows) counts[row.status] = row.n;
+      return {
+        all: counts.draft + counts.published + counts.archived,
+        draft: counts.draft,
+        published: counts.published,
+        archived: counts.archived,
+      };
     },
 
     async update(args: {

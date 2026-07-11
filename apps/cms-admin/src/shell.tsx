@@ -29,7 +29,12 @@ const sidebar: CSSProperties = {
   minWidth: 180,
   background: "#23282d",
   color: "#c3c4c7",
-  minHeight: "calc(100vh - 40px)",
+  // Fija al hacer scroll: pegada bajo la barra superior (40px), sólo el contenido se desplaza.
+  position: "sticky",
+  top: 40,
+  alignSelf: "flex-start",
+  height: "calc(100vh - 40px)",
+  overflowY: "auto",
   paddingTop: 8,
   fontSize: 14,
 };

@@ -160,6 +160,68 @@ describe.skipIf(!DB)("API v1 — flujo vertical (integración)", () => {
     expect(res.json().currentVersionNo).toBe(3);
   });
 
+  it("lista páginas con authorName y busca por título de la versión actual", async () => {
+    const token = randomUUID().slice(0, 8);
+    const oldTitle = `Título anterior ${token}`;
+    const currentTitle = `Título actual ${token}`;
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/v1/pages",
+      ...auth({ payload: { title: oldTitle, slug: `/buscar-${token}`, editorType: "rich-text" } }),
+    });
+    expect(created.statusCode).toBe(201);
+    const createdId = (created.json() as { id: string }).id;
+
+    const updated = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/pages/${createdId}`,
+      ...auth({ payload: { title: currentTitle } }),
+    });
+    expect(updated.statusCode).toBe(200);
+
+    const match = await app.inject({
+      method: "GET",
+      url: `/api/v1/pages?search=${encodeURIComponent(currentTitle)}`,
+      ...auth(),
+    });
+    expect(match.statusCode).toBe(200);
+    const matchBody = match.json() as { data: Array<{ id: string; title: string; authorName?: string }> };
+    expect(matchBody.data.some((row) => row.id === createdId && row.title === currentTitle)).toBe(true);
+    expect(matchBody.data.find((row) => row.id === createdId)?.authorName).toEqual(expect.any(String));
+
+    const previous = await app.inject({
+      method: "GET",
+      url: `/api/v1/pages?search=${encodeURIComponent(oldTitle)}`,
+      ...auth(),
+    });
+    expect(previous.statusCode).toBe(200);
+    const previousBody = previous.json() as { data: Array<{ id: string }> };
+    expect(previousBody.data.some((row) => row.id === createdId)).toBe(false);
+  });
+
+  it("devuelve contadores por estado consistentes con los listados", async () => {
+    const [counts, all, draft, published, archived] = await Promise.all([
+      app.inject({ method: "GET", url: "/api/v1/pages/counts", ...auth() }),
+      app.inject({ method: "GET", url: "/api/v1/pages?pageSize=1", ...auth() }),
+      app.inject({ method: "GET", url: "/api/v1/pages?status=draft&pageSize=1", ...auth() }),
+      app.inject({ method: "GET", url: "/api/v1/pages?status=published&pageSize=1", ...auth() }),
+      app.inject({ method: "GET", url: "/api/v1/pages?status=archived&pageSize=1", ...auth() }),
+    ]);
+    expect(counts.statusCode).toBe(200);
+    expect(all.statusCode).toBe(200);
+    expect(draft.statusCode).toBe(200);
+    expect(published.statusCode).toBe(200);
+    expect(archived.statusCode).toBe(200);
+
+    const body = counts.json() as { all: number; draft: number; published: number; archived: number };
+    expect(body).toEqual({
+      all: (all.json() as { total: number }).total,
+      draft: (draft.json() as { total: number }).total,
+      published: (published.json() as { total: number }).total,
+      archived: (archived.json() as { total: number }).total,
+    });
+  });
+
   it("revoca una segunda sesión y su cookie deja de autenticar", async () => {
     const before = await app.inject({ method: "GET", url: "/api/v1/me/sessions", ...auth() });
     expect(before.statusCode).toBe(200);

@@ -34,10 +34,19 @@ export const entrySchema = z.object({
   currentVersionNo: z.number().int().positive(),
   publishedVersionNo: z.number().int().positive().optional(),
   authorId: idSchema,
+  authorName: z.string().optional(),
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,
 });
 export type Entry = z.infer<typeof entrySchema>;
+
+export const entryStatusCountsSchema = z.object({
+  all: z.number().int().nonnegative(),
+  draft: z.number().int().nonnegative(),
+  published: z.number().int().nonnegative(),
+  archived: z.number().int().nonnegative(),
+});
+export type EntryStatusCounts = z.infer<typeof entryStatusCountsSchema>;
 
 export const createEntryRequestSchema = z.object({
   contentTypeKey: z.string().default("page"),
@@ -71,6 +80,7 @@ export type EntryRevision = z.infer<typeof entryRevisionSchema>;
 
 export const listEntriesQuerySchema = z.object({
   status: entryStatusSchema.optional(),
+  search: z.string().optional(),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 });

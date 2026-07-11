@@ -30,6 +30,14 @@ export async function pageRoutes(app: FastifyInstance): Promise<void> {
     }
   });
 
+  app.get("/pages/counts", read, async (_req, reply) => {
+    try {
+      return reply.send(await app.core.entries.statusCounts({ siteId: app.siteId, contentTypeKey: CT }));
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
   app.post("/pages", write, async (req, reply) => {
     try {
       const input = parse(createEntryRequestSchema, { ...(req.body as object), contentTypeKey: CT });
