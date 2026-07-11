@@ -9,6 +9,14 @@ import { indent, moveSibling, outdent, removeAt, updateAt } from "@/components/m
 import { PageContainer } from "@/components/page-container.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
@@ -80,6 +88,16 @@ export function MenusPage() {
     mutationFn: () => cms.menus.upsert(location, { name: menuName.trim() || locationLabel(location), items: normalize(items) }),
     onSuccess: (saved) => {
       setItems(toEditable(saved.items));
+      qc.invalidateQueries({ queryKey: ["menu", location] });
+    },
+  });
+
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const removeMenu = useMutation({
+    mutationFn: () => cms.menus.remove(location),
+    onSuccess: () => {
+      setItems([]);
+      setConfirmDelete(false);
       qc.invalidateQueries({ queryKey: ["menu", location] });
     },
   });
@@ -179,11 +197,37 @@ export function MenusPage() {
         </Card>
       </div>
 
-      <div className="mt-5">
+      <div className="mt-5 flex items-center gap-2">
         <Button type="button" disabled={save.isPending} onClick={() => save.mutate()}>
           {save.isPending ? "Guardando…" : "Guardar menú"}
         </Button>
+        <Button type="button" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setConfirmDelete(true)}>
+          Eliminar menú
+        </Button>
       </div>
+
+      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Eliminar “{locationLabel(location)}”?</DialogTitle>
+            <DialogDescription>
+              Se eliminarán {items.length} enlace(s) de este menú. Las páginas enlazadas no se borran. Esta acción no se
+              puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          {removeMenu.isError && (
+            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {removeMenu.error.message}
+            </p>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" type="button" onClick={() => setConfirmDelete(false)}>Cancelar</Button>
+            <Button variant="destructive" type="button" disabled={removeMenu.isPending} onClick={() => removeMenu.mutate()}>
+              {removeMenu.isPending ? "Eliminando…" : "Eliminar menú"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 }

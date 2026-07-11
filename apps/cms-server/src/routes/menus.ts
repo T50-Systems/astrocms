@@ -36,4 +36,14 @@ export async function menuRoutes(app: FastifyInstance): Promise<void> {
       return sendError(reply, err);
     }
   });
+
+  app.delete("/menus/:location", write, async (req, reply) => {
+    try {
+      const { location } = parse(locationParam, req.params);
+      await app.core.menus.remove(app.siteId, location);
+      return reply.code(204).send();
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
 }

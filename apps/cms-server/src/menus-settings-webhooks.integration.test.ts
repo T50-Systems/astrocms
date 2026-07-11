@@ -100,6 +100,25 @@ describe.skipIf(!DB)("API v1 — menús, ajustes y webhooks (integración)", () 
     expect((pub.json() as { items: unknown[] }).items).toHaveLength(1);
   });
 
+  it("elimina un menú (204) y responde 404 después", async () => {
+    const location = `del-${randomUUID().slice(0, 8)}`;
+    const put = await app.inject({
+      method: "PUT",
+      url: `/api/v1/menus/${location}`,
+      ...auth({ payload: { name: "Borrable", items: [{ label: "X", linkType: "url", url: "/x", children: [] }] } }),
+    });
+    expect(put.statusCode).toBe(200);
+
+    const del = await app.inject({ method: "DELETE", url: `/api/v1/menus/${location}`, ...auth() });
+    expect(del.statusCode).toBe(204);
+
+    const gone = await app.inject({ method: "GET", url: `/api/v1/menus/${location}`, ...auth() });
+    expect(gone.statusCode).toBe(404);
+
+    const again = await app.inject({ method: "DELETE", url: `/api/v1/menus/${location}`, ...auth() });
+    expect(again.statusCode).toBe(404);
+  });
+
   it("resuelve url del entry en items de menú y marca invalid al borrarlo", async () => {
     const slug = `/menu-link-${randomUUID().slice(0, 8)}`;
     const page = await app.inject({

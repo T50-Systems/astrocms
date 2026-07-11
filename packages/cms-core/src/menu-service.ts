@@ -96,6 +96,11 @@ export function createMenuService(db: Database, clock: Clock) {
       return toMenu(await menuByLocation(siteId, location));
     },
 
+    async remove(siteId: string, location: string): Promise<void> {
+      const row = await menuByLocation(siteId, location); // 404 si no existe
+      await db.delete(menus).where(eq(menus.id, row.id)); // cascade borra menu_items
+    },
+
     async upsert(siteId: string, location: string, input: UpsertMenuRequest): Promise<Menu> {
       await db.transaction(async (tx) => {
         const existing = (

@@ -71,6 +71,7 @@ export interface MenuResource {
   list(): Promise<Menu[]>;
   get(location: string): Promise<Menu>;
   upsert(location: string, req: UpsertMenuRequest): Promise<Menu>;
+  remove(location: string): Promise<void>;
 }
 
 export interface SettingsResource {
@@ -199,6 +200,7 @@ export function createCmsClient(opts: CmsClientOptions): CmsClient {
       list: () => request<Menu[]>("GET", "/menus"),
       get: (location) => request<Menu>("GET", `/menus/${encodeURIComponent(location)}`),
       upsert: (location, req) => request<Menu>("PUT", `/menus/${encodeURIComponent(location)}`, { body: req }),
+      remove: (location) => request<void>("DELETE", `/menus/${encodeURIComponent(location)}`),
     },
     settings: {
       get: (group) => request<SettingsGroup>("GET", `/settings/${encodeURIComponent(group)}`),
