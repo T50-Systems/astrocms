@@ -1,0 +1,13 @@
+---
+interface Props {
+  label?: string;
+  href?: string;
+}
+const { label = "Botón", href = "#" } = Astro.props;
+const attrs = Object.fromEntries(Object.entries(Astro.props).filter(([key]) => !["label", "href"].includes(key)));
+---
+<a class="btn" href={href} {...attrs}>{label}</a>
+
+<style>
+  .btn { display: inline-block; padding: 0.6rem 1rem; border-radius: 6px; background: #111; color: #fff; text-decoration: none; }
+</style>

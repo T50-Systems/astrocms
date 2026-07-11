@@ -1,0 +1,10 @@
+---
+interface Props {
+  text?: string;
+  level?: 1 | 2 | 3;
+}
+const { text = "", level = 2 } = Astro.props;
+const attrs = Object.fromEntries(Object.entries(Astro.props).filter(([key]) => !["text", "level"].includes(key)));
+const Tag = `h${level}` as "h1" | "h2" | "h3";
+---
+<Tag {...attrs}>{text}</Tag>

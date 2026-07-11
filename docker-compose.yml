@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: astrocms
+      POSTGRES_PASSWORD: astrocms
+      POSTGRES_DB: astrocms
+    ports:
+      # 5434 en el host: 5432 lo ocupa un Postgres nativo y 5433 un proceso Python ajeno.
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U astrocms -d astrocms"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Almacenamiento S3-compatible para desarrollo (StorageDriver s3/minio, ADR-0008).
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
+  miniodata:

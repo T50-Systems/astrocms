@@ -1,0 +1,8 @@
+---
+interface Props {
+  text?: string;
+}
+const { text = "" } = Astro.props;
+const attrs = Object.fromEntries(Object.entries(Astro.props).filter(([key]) => key !== "text"));
+---
+<p {...attrs}>{text}</p>

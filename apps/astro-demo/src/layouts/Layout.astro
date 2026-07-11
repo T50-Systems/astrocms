@@ -1,0 +1,28 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    <style>
+      :root { color-scheme: light dark; }
+      body { font-family: system-ui, sans-serif; max-width: 42rem; margin: 3rem auto; padding: 0 1rem; line-height: 1.6; }
+      footer { margin-top: 3rem; font-size: 0.85rem; opacity: 0.6; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <slot />
+    </main>
+    <footer>Renderizado por Astro (SSR) · AstroCMS demo</footer>
+  </body>
+</html>

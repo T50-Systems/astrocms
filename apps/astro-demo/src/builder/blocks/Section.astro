@@ -1,0 +1,15 @@
+---
+interface Props {
+  width?: "content" | "wide" | "full";
+}
+const { width = "content" } = Astro.props;
+const attrs = Object.fromEntries(Object.entries(Astro.props).filter(([key]) => key !== "width"));
+const max = width === "full" ? "100%" : width === "wide" ? "60rem" : "42rem";
+---
+<section class="section" style={`max-width:${max};margin-inline:auto`} {...attrs}>
+  <slot />
+</section>
+
+<style>
+  .section { padding: 1.5rem 1rem; }
+</style>

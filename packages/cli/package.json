@@ -1,0 +1,31 @@
+{
+  "name": "@astrocms/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "astrocms": "./bin/astrocms.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "echo \"(lint pendiente)\""
+  },
+  "dependencies": {
+    "@astrocms/cms-database": "workspace:*",
+    "@astrocms/contracts": "workspace:*",
+    "@astrocms/schemas": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

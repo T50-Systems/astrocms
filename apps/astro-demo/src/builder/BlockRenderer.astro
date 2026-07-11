@@ -1,0 +1,25 @@
+---
+import type { BuilderNode } from "@astrocms/contracts";
+import { getBlockComponent } from "./registry.ts";
+
+interface Props {
+  node: BuilderNode;
+  preview?: boolean;
+}
+const { node, preview = false } = Astro.props;
+const Comp = getBlockComponent(node.type);
+// En preview se inyectan atributos para mapear clicks/hover a nodos (protocolo iframe).
+const builderAttrs = preview ? { "data-builder-node-id": node.id, "data-builder-type": node.type } : {};
+---
+{
+  node.hidden ? null : Comp ? (
+    <Comp {...node.props} {...builderAttrs}>
+      {node.children?.map((child) => <Astro.self node={child} preview={preview} />)}
+    </Comp>
+  ) : (
+    <div data-builder-unknown={node.type}>
+      <!-- bloque desconocido: el preview emitiría schema-mismatch -->
+      Bloque no registrado: {node.type}
+    </div>
+  )
+}

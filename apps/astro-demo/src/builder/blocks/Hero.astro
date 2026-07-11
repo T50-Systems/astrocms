@@ -1,0 +1,20 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+  alignment?: "left" | "center" | "right";
+}
+const { title = "", description, alignment = "center" } = Astro.props;
+const attrs = Object.fromEntries(Object.entries(Astro.props).filter(([key]) => !["title", "description", "alignment"].includes(key)));
+---
+<section class="hero" style={`text-align:${alignment}`} {...attrs}>
+  <h1>{title}</h1>
+  {description && <p class="hero__desc">{description}</p>}
+  <slot />
+</section>
+
+<style>
+  .hero { padding: 3rem 1rem; }
+  .hero h1 { font-size: 2.25rem; margin: 0 0 0.5rem; }
+  .hero__desc { opacity: 0.75; margin: 0; }
+</style>

@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@astrocms/builder-adapters/cms": ["../../packages/builder-adapters/src/cms.ts"],
+      "@astrocms/builder-core": ["../../packages/builder-core/src/index.ts"],
+      "@astrocms/builder-react": ["../../packages/builder-react/src/index.ts"]
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}

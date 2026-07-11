@@ -1,0 +1,23 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { getCms } from "../lib/cms.ts";
+
+// Catch-all SSR: resuelve la página publicada por slug. '/' cuando no hay segmento.
+const slugParam = Astro.params.slug;
+const slug = "/" + (slugParam ?? "");
+const page = await getCms().public.getPageBySlug(slug);
+
+if (!page) {
+  return new Response("Página no encontrada", { status: 404 });
+}
+
+const body = typeof page.data?.body === "string" ? page.data.body : undefined;
+---
+
+<Layout title={page.seo?.title ?? page.title} description={page.seo?.description}>
+  <article>
+    <h1>{page.title}</h1>
+    {body && <p>{body}</p>}
+    {!body && <p><em>Esta página aún no tiene contenido de cuerpo.</em></p>}
+  </article>
+</Layout>

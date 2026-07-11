@@ -1,0 +1,36 @@
+{
+  "name": "@astrocms/cms-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env src/server.ts",
+    "start": "tsx --env-file=../../.env src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "echo \"(lint pendiente)\""
+  },
+  "dependencies": {
+    "@astrocms/cms-auth": "workspace:*",
+    "@astrocms/cms-core": "workspace:*",
+    "@astrocms/cms-database": "workspace:*",
+    "@astrocms/contracts": "workspace:*",
+    "@astrocms/storage": "workspace:*",
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^10.0.2",
+    "@fastify/multipart": "^9.0.3",
+    "@fastify/rate-limit": "^10.2.0",
+    "fastify": "^5.2.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@astrocms/builder-adapters": "workspace:*",
+    "@astrocms/builder-core": "workspace:*",
+    "@astrocms/cms-sdk": "workspace:*",
+    "@types/node": "^22.7.0",
+    "drizzle-orm": "^0.36.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

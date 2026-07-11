@@ -1,0 +1,17 @@
+---
+import BlockRenderer from "../../builder/BlockRenderer.astro";
+import Layout from "../../layouts/Layout.astro";
+import { getCms } from "../../lib/cms.ts";
+
+// Renderiza un documento del builder PUBLICADO por id (SSR).
+const { id } = Astro.params;
+const doc = id ? await getCms().public.getBuilderDocument(id) : null;
+
+if (!doc) {
+  return new Response("Documento no encontrado o no publicado", { status: 404 });
+}
+---
+
+<Layout title={doc.meta?.title ?? "Página (builder)"}>
+  <BlockRenderer node={doc.root} />
+</Layout>

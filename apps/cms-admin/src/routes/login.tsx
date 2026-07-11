@@ -1,0 +1,44 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { loginRequestSchema, type LoginRequest } from "@astrocms/contracts";
+import { useLogin, useSession } from "../auth.tsx";
+import { Button, ErrorBox, Field, inputStyle, Page } from "../ui.tsx";
+
+export function LoginPage() {
+  const nav = useNavigate();
+  const { data: session } = useSession();
+  const login = useLogin();
+  const { register, handleSubmit, formState } = useForm<LoginRequest>({
+    resolver: zodResolver(loginRequestSchema),
+    defaultValues: { email: "", password: "" },
+  });
+
+  useEffect(() => {
+    if (session) nav({ to: "/" });
+  }, [session, nav]);
+
+  const onSubmit = handleSubmit(async (values) => {
+    await login.mutateAsync(values);
+    nav({ to: "/" });
+  });
+
+  return (
+    <Page>
+      <h1>Iniciar sesión</h1>
+      {login.isError && <ErrorBox error={login.error} />}
+      <form onSubmit={onSubmit} noValidate>
+        <Field label="Email" htmlFor="email" error={formState.errors.email?.message}>
+          <input id="email" type="email" autoComplete="username" style={inputStyle} {...register("email")} />
+        </Field>
+        <Field label="Contraseña" htmlFor="password" error={formState.errors.password?.message}>
+          <input id="password" type="password" autoComplete="current-password" style={inputStyle} {...register("password")} />
+        </Field>
+        <Button type="submit" disabled={login.isPending}>
+          {login.isPending ? "Entrando…" : "Entrar"}
+        </Button>
+      </form>
+    </Page>
+  );
+}
