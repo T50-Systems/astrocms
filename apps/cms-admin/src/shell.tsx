@@ -24,16 +24,17 @@ const topbar: CSSProperties = {
   zIndex: 10,
   fontSize: 13,
 };
+const SIDEBAR_W = 180;
+const TOPBAR_H = 40;
 const sidebar: CSSProperties = {
-  width: 180,
-  minWidth: 180,
+  width: SIDEBAR_W,
   background: "#23282d",
   color: "#c3c4c7",
-  // Fija al hacer scroll: pegada bajo la barra superior (40px), sólo el contenido se desplaza.
-  position: "sticky",
-  top: 40,
-  alignSelf: "flex-start",
-  height: "calc(100vh - 40px)",
+  // Totalmente fija: no se desplaza con el scroll (sólo el contenido se mueve).
+  position: "fixed",
+  top: TOPBAR_H,
+  left: 0,
+  bottom: 0,
   overflowY: "auto",
   paddingTop: 8,
   fontSize: 14,
@@ -47,7 +48,8 @@ const link: CSSProperties = {
   textDecoration: "none",
 };
 const linkActive: CSSProperties = { background: "#2271b1", color: "#fff" };
-const content: CSSProperties = { flex: 1, minWidth: 0, background: "#f0f0f1" };
+// La barra lateral es fixed (fuera del flujo): el contenido se desplaza a la derecha con un margen.
+const content: CSSProperties = { minWidth: 0, background: "#f0f0f1", marginLeft: SIDEBAR_W, minHeight: "calc(100vh - 40px)" };
 
 export interface AppShellProps {
   email: string;
@@ -80,7 +82,7 @@ export function AppShell({ email, siteName, onLogout, children }: AppShellProps)
         </div>
       </header>
 
-      <div style={{ display: "flex" }}>
+      <div>
         <nav aria-label="Navegación principal" style={sidebar}>
           {NAV.map((item) => (
             <Link
