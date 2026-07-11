@@ -1,8 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import { X } from "lucide-react";
 import { cms } from "../lib.ts";
-import { Button, ErrorBox, Loading, Page } from "../ui.tsx";
+import { JsonTextarea } from "@/components/json-textarea.tsx";
+import { ModeToggle } from "@/components/mode-toggle.tsx";
+import { PageContainer } from "@/components/page-container.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
+import { cn } from "@/lib/utils.ts";
 
 const GROUP = "design-tokens";
 const TYPES = ["color", "dimension", "fontFamily", "fontWeight", "number", "duration", "shadow", "other"];
@@ -54,12 +61,6 @@ function buildDtcg(tokens: FlatToken[]): Record<string, unknown> {
   }
   return root;
 }
-
-const card: CSSProperties = { background: "#fff", border: "1px solid #dcdcde", borderRadius: 8, padding: "0.5rem", marginBottom: "1rem" };
-const th: CSSProperties = { textAlign: "left", padding: "0.45rem 0.5rem", fontWeight: 600, fontSize: "0.82rem", borderBottom: "1px solid #dcdcde" };
-const td: CSSProperties = { padding: "0.35rem 0.5rem", borderBottom: "1px solid #f0f0f1", verticalAlign: "middle" };
-const cell: CSSProperties = { width: "100%", padding: "0.35rem 0.5rem", borderRadius: 6, border: "1px solid #ccc", fontSize: "0.85rem", boxSizing: "border-box" };
-const toggleBtn = (active: boolean): CSSProperties => ({ border: "1px solid #c3c4c7", background: active ? "#2271b1" : "#fff", color: active ? "#fff" : "#1a1a1a", cursor: "pointer", padding: "0.35rem 0.7rem", fontSize: "0.85rem" });
 
 const EXAMPLE = `{
   "color": {
@@ -133,85 +134,139 @@ export function TokensPage() {
     }
   };
 
-  if (settings.isLoading) return <Page><Loading /></Page>;
+  if (settings.isLoading) return <PageContainer><p className="text-muted-foreground">Cargando…</p></PageContainer>;
+
+  const generalError = settings.error ?? save.error;
 
   return (
-    <Page wide>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", marginBottom: "0.25rem", flexWrap: "wrap" }}>
-        <h1 style={{ margin: 0 }}>Tokens de diseño</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
-          {notice && <span style={{ color: notice.startsWith("Guardado") ? "#0a6b2e" : "#646970", fontSize: "0.85rem" }}>{notice}</span>}
-          <div style={{ display: "flex" }} role="group" aria-label="Modo de edición">
-            <button type="button" onClick={() => setMode("table")} aria-pressed={mode === "table"} style={{ ...toggleBtn(mode === "table"), borderRadius: "6px 0 0 6px" }}>Tabla</button>
-            <button type="button" onClick={showJson} aria-pressed={mode === "json"} style={{ ...toggleBtn(mode === "json"), borderRadius: "0 6px 6px 0", borderLeft: 0 }}>JSON DTCG</button>
-          </div>
-          <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: "none" }}
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) importJson(f); e.target.value = ""; }} />
-          <Button ghost type="button" onClick={() => fileRef.current?.click()}>Importar JSON</Button>
-          <Button ghost type="button" onClick={exportJson}>Exportar JSON</Button>
-          <Button type="button" onClick={() => save.mutate()} disabled={save.isPending || Boolean(jsonError)}>{save.isPending ? "Guardando…" : "Guardar cambios"}</Button>
+    <PageContainer>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Tokens de diseño</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          {notice && (
+            <span
+              role="status"
+              className={cn("text-sm", notice.startsWith("Guardado") ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}
+            >
+              {notice}
+            </span>
+          )}
+          <ModeToggle
+            value={mode}
+            options={[{ value: "table", label: "Tabla" }, { value: "json", label: "JSON DTCG" }]}
+            onChange={(v) => (v === "json" ? showJson() : setMode("table"))}
+            ariaLabel="Modo de edición"
+          />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) importJson(f); e.target.value = ""; }}
+          />
+          <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>Importar JSON</Button>
+          <Button type="button" variant="outline" onClick={exportJson}>Exportar JSON</Button>
+          <Button type="button" onClick={() => save.mutate()} disabled={save.isPending || Boolean(jsonError)}>
+            {save.isPending ? "Guardando…" : "Guardar cambios"}
+          </Button>
         </div>
       </div>
-      <p style={{ color: "#666", marginTop: 0, maxWidth: "48rem" }}>
+      <p className="text-muted-foreground max-w-3xl">
         Colores, espaciados y tipografía en formato estándar <strong>DTCG</strong> (Design Tokens Community Group).
         El sitio los expone como variables CSS (p. ej. <code>color.brand</code> → <code>--color-brand</code>).
       </p>
 
-      {(settings.isError || save.isError) && <ErrorBox error={settings.error ?? save.error} />}
+      {(settings.isError || save.isError) && generalError && (
+        <p role="alert" className="mb-3 mt-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {generalError.message}
+        </p>
+      )}
 
       {mode === "table" ? (
         <>
-          <div style={card}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  <th style={{ ...th, width: "38%" }}>Nombre (ruta)</th>
-                  <th style={{ ...th, width: 150 }}>Tipo</th>
-                  <th style={th}>Valor</th>
-                  <th style={{ ...th, width: 40 }} />
-                </tr>
-              </thead>
-              <tbody>
+          <div className="mt-5 rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[38%]">Nombre (ruta)</TableHead>
+                  <TableHead className="w-[150px]">Tipo</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead className="w-10" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {tokens.length === 0 && (
-                  <tr><td colSpan={4} style={{ ...td, color: "#646970" }}>No hay tokens todavía. Añade el primero o importa un JSON DTCG.</td></tr>
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-muted-foreground">
+                      No hay tokens todavía. Añade el primero o importa un JSON DTCG.
+                    </TableCell>
+                  </TableRow>
                 )}
                 {tokens.map((t) => (
-                  <tr key={t.id}>
-                    <td style={td}>
-                      <input aria-label="Ruta del token" placeholder="color.brand" style={{ ...cell, fontFamily: "ui-monospace, monospace" }} value={t.path} onChange={(e) => update(t.id, "path", e.target.value)} />
-                    </td>
-                    <td style={td}>
-                      <select aria-label="Tipo" style={cell} value={t.type} onChange={(e) => update(t.id, "type", e.target.value)}>
-                        {TYPES.map((ty) => <option key={ty} value={ty}>{ty}</option>)}
-                      </select>
-                    </td>
-                    <td style={td}>
-                      <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                  <TableRow key={t.id}>
+                    <TableCell>
+                      <Input
+                        className="h-8 font-mono text-sm"
+                        aria-label="Ruta del token"
+                        placeholder="color.brand"
+                        value={t.path}
+                        onChange={(e) => update(t.id, "path", e.target.value)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Select value={t.type} onValueChange={(v) => update(t.id, "type", v)}>
+                        <SelectTrigger className="h-8" aria-label="Tipo">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TYPES.map((ty) => <SelectItem key={ty} value={ty}>{ty}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
                         {t.type === "color" && (
-                          <input type="color" aria-label="Selector de color" value={/^#[0-9a-f]{6}$/i.test(t.value) ? t.value : "#000000"} onChange={(e) => update(t.id, "value", e.target.value)} style={{ width: 34, height: 30, padding: 2, border: "1px solid #ccc", borderRadius: 6, flexShrink: 0 }} />
+                          <input
+                            type="color"
+                            aria-label="Selector de color"
+                            value={/^#[0-9a-f]{6}$/i.test(t.value) ? t.value : "#000000"}
+                            onChange={(e) => update(t.id, "value", e.target.value)}
+                            className="h-8 w-9 shrink-0 cursor-pointer rounded-md border border-input p-0.5"
+                          />
                         )}
-                        <input aria-label="Valor" placeholder="#2271b1 · 8px · Inter" style={cell} value={t.value} onChange={(e) => update(t.id, "value", e.target.value)} />
+                        <Input
+                          className="h-8 text-sm"
+                          aria-label="Valor"
+                          placeholder="#2271b1 · 8px · Inter"
+                          value={t.value}
+                          onChange={(e) => update(t.id, "value", e.target.value)}
+                        />
                       </div>
-                    </td>
-                    <td style={td}>
-                      <button type="button" aria-label="Eliminar token" onClick={() => removeRow(t.id)} style={{ border: 0, background: "transparent", color: "#b32d2e", cursor: "pointer", fontSize: "1.1rem" }}>×</button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Eliminar token"
+                        className="size-8 text-destructive hover:text-destructive"
+                        onClick={() => removeRow(t.id)}
+                      >
+                        <X />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
-          <Button ghost type="button" onClick={addRow}>+ Añadir token</Button>
+          <Button type="button" variant="outline" className="mt-3" onClick={addRow}>+ Añadir token</Button>
         </>
       ) : (
-        <div style={{ maxWidth: "48rem" }}>
-          <label htmlFor="tokens-json" style={{ position: "absolute", left: "-9999px" }}>Tokens en formato DTCG JSON</label>
-          <textarea id="tokens-json" spellCheck={false} rows={22} value={jsonText} onChange={(e) => editJson(e.target.value)} placeholder={EXAMPLE}
-            aria-invalid={Boolean(jsonError)}
-            style={{ width: "100%", padding: "0.9rem 1rem", borderRadius: 8, border: `1px solid ${jsonError ? "#d63638" : "#dcdcde"}`, background: "#1d2327", color: "#e6e6e6", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "0.85rem", lineHeight: 1.5, boxSizing: "border-box", resize: "vertical" }} />
-          {jsonError && <div role="alert" style={{ color: "#d63638", fontSize: "0.82rem", marginTop: "0.4rem" }}>{jsonError}</div>}
+        <div className="mt-5 max-w-3xl">
+          <JsonTextarea id="tokens-json" label="Tokens en formato DTCG JSON" value={jsonText} onChange={editJson} error={jsonError} placeholder={EXAMPLE} />
         </div>
       )}
-    </Page>
+    </PageContainer>
   );
 }
