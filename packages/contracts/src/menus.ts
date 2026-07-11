@@ -32,11 +32,20 @@ export type MenuItem = {
   label: string;
   linkType: MenuItemLinkType;
   entryId?: string | undefined;
+  /**
+   * Para linkType "entry", el servidor la CALCULA desde el slug del entry
+   * (se ignora en el upsert para ese linkType). Para "url"/"custom" es la del usuario.
+   */
   url?: string | undefined;
   target?: MenuItemTarget | undefined;
+  /** Read-only, calculado: el entry enlazado ya no existe (como `invalid` en WordPress). */
+  invalid?: boolean | undefined;
   children: MenuItem[];
 };
 
+// Nota de diseño: linkType "term" (categorías como items, estilo WordPress) queda
+// descartado por ahora: astro-demo no tiene páginas de archivo de taxonomías
+// (solo [...slug], /b/[id]); reconsiderar cuando existan rutas de archivo.
 export const menuItemSchema: z.ZodType<MenuItem> = z.object({
   id: idSchema,
   label: z.string(),
@@ -44,6 +53,7 @@ export const menuItemSchema: z.ZodType<MenuItem> = z.object({
   entryId: idSchema.optional(),
   url: z.string().optional(),
   target: menuItemTargetSchema.optional(),
+  invalid: z.boolean().optional(),
   children: z.array(z.lazy(() => menuItemSchema)),
 });
 

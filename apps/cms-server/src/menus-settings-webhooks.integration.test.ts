@@ -100,6 +100,40 @@ describe.skipIf(!DB)("API v1 — menús, ajustes y webhooks (integración)", () 
     expect((pub.json() as { items: unknown[] }).items).toHaveLength(1);
   });
 
+  it("resuelve url del entry en items de menú y marca invalid al borrarlo", async () => {
+    const slug = `/menu-link-${randomUUID().slice(0, 8)}`;
+    const page = await app.inject({
+      method: "POST",
+      url: "/api/v1/pages",
+      ...auth({ payload: { title: "Página enlazada", slug, editorType: "rich-text" } }),
+    });
+    expect(page.statusCode).toBe(201);
+    const pageId = (page.json() as { id: string }).id;
+
+    const location = `loc-${randomUUID().slice(0, 8)}`;
+    const put = await app.inject({
+      method: "PUT",
+      url: `/api/v1/menus/${location}`,
+      ...auth({
+        payload: { name: "Con entry", items: [{ label: "Enlazada", linkType: "entry", entryId: pageId, children: [] }] },
+      }),
+    });
+    expect(put.statusCode).toBe(200);
+    const item = (put.json() as { items: Array<{ url?: string; invalid?: boolean }> }).items[0]!;
+    expect(item.url).toBe(slug); // url calculada desde el slug del entry
+    expect(item.invalid).toBeUndefined();
+
+    // Borrar la página → FK set null → el item queda marcado como roto.
+    const del = await app.inject({ method: "DELETE", url: `/api/v1/pages/${pageId}`, ...auth() });
+    expect(del.statusCode).toBe(204);
+
+    const after = await app.inject({ method: "GET", url: `/api/v1/menus/${location}`, ...auth() });
+    expect(after.statusCode).toBe(200);
+    const broken = (after.json() as { items: Array<{ url?: string; invalid?: boolean }> }).items[0]!;
+    expect(broken.invalid).toBe(true);
+    expect(broken.url).toBeUndefined();
+  });
+
   it("set/get de settings y lectura pública", async () => {
     const values = { title: "AstroCMS Test", description: "Descripción desde integración" };
     const put = await app.inject({

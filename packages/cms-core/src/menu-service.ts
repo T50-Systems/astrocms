@@ -1,6 +1,6 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Menu, MenuItem, MenuItemInput, UpsertMenuRequest } from "@astrocms/contracts";
-import { menuItems, menus } from "@astrocms/cms-database";
+import { entries, menuItems, menus } from "@astrocms/cms-database";
 import type { Database } from "@astrocms/cms-database";
 import { notFound } from "./errors.js";
 import type { Clock } from "./ports.js";
@@ -9,22 +9,30 @@ type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0] | Database;
 type MenuRow = typeof menus.$inferSelect;
 type MenuItemRow = typeof menuItems.$inferSelect;
 
-function toMenuItem(row: MenuItemRow, children: MenuItem[]): MenuItem {
-  return {
+/** slugs de los entries enlazados, para resolver url y detectar enlaces rotos. */
+type EntrySlugs = Map<string, string>;
+
+function toMenuItem(row: MenuItemRow, children: MenuItem[], slugs: EntrySlugs): MenuItem {
+  const base = {
     id: row.id,
     label: row.label,
     linkType: row.linkType,
     ...(row.entryId ? { entryId: row.entryId } : {}),
-    ...(row.url ? { url: row.url } : {}),
     ...(row.target ? { target: row.target } : {}),
     children,
   };
+  if (row.linkType === "entry") {
+    // url calculada desde el slug del entry; si no existe (FK set null o borrado), enlace roto.
+    const slug = row.entryId ? slugs.get(row.entryId) : undefined;
+    return slug ? { ...base, url: slug } : { ...base, invalid: true };
+  }
+  return { ...base, ...(row.url ? { url: row.url } : {}) };
 }
 
-function buildTree(rows: MenuItemRow[], parentId: string | null): MenuItem[] {
+function buildTree(rows: MenuItemRow[], parentId: string | null, slugs: EntrySlugs): MenuItem[] {
   return rows
     .filter((row) => row.parentId === parentId)
-    .map((row) => toMenuItem(row, buildTree(rows, row.id)));
+    .map((row) => toMenuItem(row, buildTree(rows, row.id, slugs), slugs));
 }
 
 async function insertItems(tx: Tx, menuId: string, parentId: string | null, items: MenuItemInput[]): Promise<void> {
@@ -68,7 +76,14 @@ export function createMenuService(db: Database, clock: Clock) {
       .from(menuItems)
       .where(eq(menuItems.menuId, row.id))
       .orderBy(asc(menuItems.position), asc(menuItems.createdAt));
-    return { location: row.location, name: row.name, items: buildTree(rows, null) };
+    // Batch: slugs de todos los entries enlazados (guard: inArray lanza con lista vacía).
+    const entryIds = [...new Set(rows.filter((r) => r.linkType === "entry" && r.entryId).map((r) => r.entryId!))];
+    const slugs: EntrySlugs = new Map();
+    if (entryIds.length > 0) {
+      const found = await db.select({ id: entries.id, slug: entries.slug }).from(entries).where(inArray(entries.id, entryIds));
+      for (const e of found) slugs.set(e.id, e.slug);
+    }
+    return { location: row.location, name: row.name, items: buildTree(rows, null, slugs) };
   }
 
   return {
