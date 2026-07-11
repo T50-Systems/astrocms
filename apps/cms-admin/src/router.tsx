@@ -8,6 +8,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useSession, useLogout } from "./auth.tsx";
 import { cms } from "./lib.ts";
+import { DesignTokensBridge } from "@/components/design-tokens-bridge.tsx";
 import { AppShell } from "./shell.tsx";
 import { LoginPage } from "./routes/login.tsx";
 import { PagesListPage } from "./routes/pages-list.tsx";
@@ -39,13 +40,17 @@ function Root() {
     ? siteSettings.data.values.title
     : "AstroCMS";
   return (
-    <AppShell
-      email={session.user.email}
-      siteName={siteName}
-      onLogout={() => logout.mutate(undefined, { onSuccess: () => nav({ to: "/login" }) })}
-    >
-      <Outlet />
-    </AppShell>
+    <>
+      {/* Aplica tokens DTCG (color.brand → --primary) al tema del panel. Requiere sesión. */}
+      <DesignTokensBridge />
+      <AppShell
+        email={session.user.email}
+        siteName={siteName}
+        onLogout={() => logout.mutate(undefined, { onSuccess: () => nav({ to: "/login" }) })}
+      >
+        <Outlet />
+      </AppShell>
+    </>
   );
 }
 
