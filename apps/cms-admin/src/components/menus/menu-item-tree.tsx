@@ -1,12 +1,17 @@
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, X } from "lucide-react";
 import type { MenuItemInput } from "@astrocms/contracts";
+import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { Label } from "@/components/ui/label.tsx";
+
+/** Item editable en la UI: MenuItemInput + campos read-only que el servidor calcula. */
+export type EditableMenuItem = MenuItemInput & { url?: string | undefined; invalid?: boolean | undefined };
 
 export interface MenuItemTreeProps {
-  items: MenuItemInput[];
+  items: EditableMenuItem[];
   /** Prefijo de ruta del nivel actual (vacío en la raíz). */
   path?: number[];
-  /** Nivel raíz: true solo en la llamada superior (para outdent deshabilitado). */
   onMove: (path: number[], delta: number) => void;
   onIndent: (path: number[]) => void;
   onOutdent: (path: number[]) => void;
@@ -25,8 +30,18 @@ export function MenuItemTree({ items, path = [], onMove, onIndent, onOutdent, on
           <div key={key} className="grid gap-2">
             <div className="flex items-center gap-2 rounded-md border bg-card px-3 py-2">
               <strong className="min-w-0 flex-1 truncate">{item.label}</strong>
-              <span className="max-w-48 truncate text-sm text-muted-foreground" title={item.linkType === "entry" ? item.entryId : item.url}>
-                {item.linkType === "entry" ? item.entryId : item.url}
+              {item.invalid && <Badge variant="destructive">Enlace roto</Badge>}
+              <span className="max-w-48 truncate text-sm text-muted-foreground" title={item.url ?? item.entryId}>
+                {item.url ?? (item.linkType === "entry" ? item.entryId : "")}
+              </span>
+              <span className="flex shrink-0 items-center gap-1.5">
+                <Checkbox
+                  id={`nt-${key}`}
+                  aria-label={`Abrir ${item.label} en pestaña nueva`}
+                  checked={item.target === "_blank"}
+                  onCheckedChange={(checked) => onPatch(itemPath, { target: checked === true ? "_blank" : "_self" })}
+                />
+                <Label htmlFor={`nt-${key}`} className="text-xs font-normal text-muted-foreground">Pestaña nueva</Label>
               </span>
               <div className="flex shrink-0 items-center gap-1">
                 <Button variant="outline" size="icon" className="size-8" type="button" aria-label={`Subir ${item.label}`}
