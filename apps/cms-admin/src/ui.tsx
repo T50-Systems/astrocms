@@ -1,4 +1,5 @@
-import type { CSSProperties, ReactNode } from "react";
+import { cloneElement, isValidElement } from "react";
+import type { CSSProperties, ReactElement, ReactNode } from "react";
 
 const styles: Record<string, CSSProperties> = {
   page: { fontFamily: "system-ui, sans-serif", maxWidth: "48rem", margin: "2rem auto", padding: "0 1rem", color: "#1a1a1a" },
@@ -22,13 +23,26 @@ export function Button(props: React.ButtonHTMLAttributes<HTMLButtonElement> & { 
 }
 
 export function Field({ label, htmlFor, error, children }: { label: string; htmlFor: string; error?: string | undefined; children: ReactNode }) {
+  const errorId = `${htmlFor}-error`;
+  const fieldChildren = error
+    ? cloneFieldChildren(children, {
+        "aria-invalid": true,
+        "aria-describedby": errorId,
+      })
+    : children;
+
   return (
     <div style={styles.field}>
       <label style={styles.label} htmlFor={htmlFor}>{label}</label>
-      {children}
-      {error && <div role="alert" style={{ color: "#b00020", fontSize: "0.8rem", marginTop: "0.25rem" }}>{error}</div>}
+      {fieldChildren}
+      {error && <div id={errorId} role="alert" style={{ color: "#b00020", fontSize: "0.8rem", marginTop: "0.25rem" }}>{error}</div>}
     </div>
   );
+}
+
+function cloneFieldChildren(children: ReactNode, props: Record<string, unknown>): ReactNode {
+  if (!isValidElement(children)) return children;
+  return cloneElement(children as ReactElement<Record<string, unknown>>, props);
 }
 
 export const inputStyle = styles.input;

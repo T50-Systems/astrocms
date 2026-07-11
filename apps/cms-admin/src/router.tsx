@@ -24,7 +24,7 @@ function Root() {
     <>
       {session && (
         <header style={{ borderBottom: "1px solid #eee", padding: "0.6rem 1rem", display: "flex", justifyContent: "space-between", fontFamily: "system-ui" }}>
-          <nav style={{ display: "flex", gap: "0.8rem", alignItems: "center" }}>
+          <nav aria-label="Navegación principal" style={{ display: "flex", gap: "0.8rem", alignItems: "center" }}>
             <Link to="/" style={{ fontWeight: 700 }}>AstroCMS</Link>
             <Link to="/menus">Menús</Link>
             <Link to="/taxonomies">Taxonomías</Link>
@@ -38,7 +38,9 @@ function Root() {
           </span>
         </header>
       )}
-      <Outlet />
+      <main>
+        <Outlet />
+      </main>
     </>
   );
 }

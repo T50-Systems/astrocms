@@ -25,14 +25,14 @@ export function Toolbar() {
         <button type="button" style={{ ...styles.button, ...disabledStyle(!engine.canRedo()) }} disabled={!engine.canRedo()} onClick={() => engine.redo()}>
           Rehacer
         </button>
-        <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13 }}>
+        <label htmlFor="builder-breakpoint" style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13 }}>
           Breakpoint
-          <select style={styles.input} value={state.breakpoint} onChange={(event) => engine.setBreakpoint(event.target.value)}>
+          <select id="builder-breakpoint" style={styles.input} value={state.breakpoint} onChange={(event) => engine.setBreakpoint(event.target.value)}>
             {manifest.tokens.breakpoints.map((bp) => <option key={bp} value={bp}>{bp}</option>)}
           </select>
         </label>
       </div>
-      <div style={{ minWidth: 180, textAlign: "center", color: "#667085", fontSize: 12 }}>{status}</div>
+      <div role="status" aria-live="polite" style={{ minWidth: 180, textAlign: "center", color: "#667085", fontSize: 12 }}>{status}</div>
       <div style={{ display: "flex", gap: 8 }}>
         <button type="button" style={styles.button} onClick={() => void run("Guardando", () => onSave(state.document))}>
           Guardar
