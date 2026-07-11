@@ -18,6 +18,7 @@ import { MediaPage } from "./routes/media.tsx";
 import { MenusPage } from "./routes/menus.tsx";
 import { SettingsPage } from "./routes/settings.tsx";
 import { GuidelinesPage } from "./routes/guidelines.tsx";
+import { TokensPage } from "./routes/tokens.tsx";
 import { TagsPage } from "./routes/tags.tsx";
 import { TaxonomiesPage } from "./routes/taxonomies.tsx";
 
@@ -60,8 +61,9 @@ const taxonomiesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/t
 const tagsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/tags", component: TagsPage });
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/settings", component: SettingsPage });
 const guidelinesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/guidelines", component: GuidelinesPage });
+const tokensRoute = createRoute({ getParentRoute: () => rootRoute, path: "/tokens", component: TokensPage });
 
-const routeTree = rootRoute.addChildren([indexRoute, loginRoute, newRoute, editRoute, builderRoute, mediaRoute, menusRoute, taxonomiesRoute, tagsRoute, settingsRoute, guidelinesRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, loginRoute, newRoute, editRoute, builderRoute, mediaRoute, menusRoute, taxonomiesRoute, tagsRoute, settingsRoute, guidelinesRoute, tokensRoute]);
 
 export const router = createRouter({ routeTree });
 

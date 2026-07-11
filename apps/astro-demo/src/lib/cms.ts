@@ -20,6 +20,32 @@ export interface SiteSettings {
 
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
+/** Aplana un documento DTCG a variables CSS: `color.brand` → `--color-brand`. */
+export function dtcgToCssVars(obj: unknown, prefix = ""): Record<string, string> {
+  if (!obj || typeof obj !== "object") return {};
+  const rec = obj as Record<string, unknown>;
+  if ("$value" in rec) {
+    const value = rec.$value;
+    return { [`--${prefix.replace(/\./g, "-")}`]: typeof value === "string" || typeof value === "number" ? String(value) : "" };
+  }
+  let vars: Record<string, string> = {};
+  for (const [k, v] of Object.entries(rec)) {
+    if (k.startsWith("$")) continue;
+    vars = { ...vars, ...dtcgToCssVars(v, prefix ? `${prefix}.${k}` : k) };
+  }
+  return vars;
+}
+
+/** Tokens de diseño (grupo "design-tokens") como mapa de variables CSS. Tolerante a fallos. */
+export async function getDesignTokenVars(): Promise<Record<string, string>> {
+  try {
+    const group = await getCms().public.getSettings("design-tokens");
+    return dtcgToCssVars(group.values);
+  } catch {
+    return {};
+  }
+}
+
 /** Ajustes públicos del sitio (grupo "site"). Tolerante a fallos: devuelve valores por defecto. */
 export async function getSiteSettings(): Promise<SiteSettings> {
   let values: Record<string, unknown> = {};

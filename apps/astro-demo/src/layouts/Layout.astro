@@ -1,5 +1,5 @@
 ---
-import { getSiteSettings } from "../lib/cms.ts";
+import { getSiteSettings, getDesignTokenVars } from "../lib/cms.ts";
 
 interface Props {
   title: string;
@@ -8,6 +8,11 @@ interface Props {
 }
 const { title, description, ogImage } = Astro.props;
 const site = await getSiteSettings();
+const tokenVars = await getDesignTokenVars();
+const tokenCss =
+  Object.keys(tokenVars).length > 0
+    ? `:root{${Object.entries(tokenVars).map(([k, v]) => `${k}:${v};`).join("")}}`
+    : "";
 
 const metaDescription = description || site.seoDescription || site.description || undefined;
 const ogImageUrl = ogImage || site.ogImage || undefined;
@@ -22,6 +27,9 @@ const fullTitle = title === site.title ? title : `${title} · ${site.title}`;
     <title>{fullTitle}</title>
     {metaDescription && <meta name="description" content={metaDescription} />}
     <meta name="theme-color" content={site.brandColor} />
+
+    {/* Tokens de diseño (DTCG) como variables CSS en :root */}
+    {tokenCss && <style is:inline set:html={tokenCss} />}
 
     {/* Open Graph */}
     <meta property="og:type" content="website" />
