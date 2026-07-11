@@ -88,6 +88,7 @@ export interface TaxonomyResource {
   list(): Promise<Taxonomy[]>;
   get(key: string): Promise<TaxonomyDetail>;
   upsertTerm(key: string, term: UpsertTermRequest): Promise<Term>;
+  deleteTerm(key: string, termId: string): Promise<void>;
   entryTerms(entryId: string): Promise<TermRef[]>;
   setEntryTerms(entryId: string, termIds: string[]): Promise<TermRef[]>;
 }
@@ -214,6 +215,8 @@ export function createCmsClient(opts: CmsClientOptions): CmsClient {
       get: (key) => request<TaxonomyDetail>("GET", `/taxonomies/${encodeURIComponent(key)}`),
       upsertTerm: (key, term) =>
         request<Term>("POST", `/taxonomies/${encodeURIComponent(key)}/terms`, { body: term }),
+      deleteTerm: (key, termId) =>
+        request<void>("DELETE", `/taxonomies/${encodeURIComponent(key)}/terms/${encodeURIComponent(termId)}`),
       entryTerms: (entryId) => request<TermRef[]>("GET", `/entries/${entryId}/terms`),
       setEntryTerms: (entryId, termIds) =>
         request<TermRef[]>("PUT", `/entries/${entryId}/terms`, { body: { termIds } }),

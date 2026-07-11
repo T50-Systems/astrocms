@@ -159,6 +159,13 @@ export function createTaxonomyService(db: Database) {
       return toTerm({ ...row, name: input.name, description, parentId, position, count: 0 }, []);
     },
 
+    async deleteTerm(termId: string): Promise<void> {
+      const existing = (await db.select({ id: terms.id }).from(terms).where(eq(terms.id, termId)).limit(1))[0];
+      if (!existing) throw notFound("término no existe");
+      // Las asignaciones (term_relationships) caen en cascada; los hijos ponen parentId a null.
+      await db.delete(terms).where(eq(terms.id, termId));
+    },
+
     async assignTerms(entryId: string, termIds: string[]): Promise<TermRef[]> {
       const uniqueTermIds = [...new Set(termIds)];
       await db.transaction(async (tx) => {

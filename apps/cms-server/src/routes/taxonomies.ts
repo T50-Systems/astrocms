@@ -6,6 +6,7 @@ import { parse, sendError } from "../http.js";
 
 const keyParam = z.object({ key: z.string().min(1) });
 const idParam = z.object({ id: z.string().min(1) });
+const termParam = z.object({ key: z.string().min(1), termId: z.string().min(1) });
 
 export async function taxonomyRoutes(app: FastifyInstance): Promise<void> {
   const { requireAuth, requirePermission } = makeGuards(app);
@@ -39,6 +40,16 @@ export async function taxonomyRoutes(app: FastifyInstance): Promise<void> {
       const taxonomy = await app.core.taxonomies.getTaxonomy(app.siteId, key);
       const term = await app.core.taxonomies.upsertTerm({ taxonomyId: taxonomy.id, ...input });
       return reply.code(201).send(term);
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
+  app.delete("/taxonomies/:key/terms/:termId", taxonomyWrite, async (req, reply) => {
+    try {
+      const { termId } = parse(termParam, req.params);
+      await app.core.taxonomies.deleteTerm(termId);
+      return reply.code(204).send();
     } catch (err) {
       return sendError(reply, err);
     }

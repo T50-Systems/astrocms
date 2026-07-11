@@ -157,4 +157,36 @@ describe.skipIf(!DB)("API v1 — taxonomías (integración)", () => {
       ]),
     );
   });
+
+  it("edita (upsert por slug) y elimina un término", async () => {
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/v1/taxonomies/category/terms",
+      ...auth({ payload: { name: `Borrable ${suffix}` } }),
+    });
+    expect(created.statusCode).toBe(201);
+    const term = created.json() as { id: string; slug: string };
+
+    // Editar: mismo slug, nuevo nombre/descripción -> actualiza en sitio.
+    const edited = await app.inject({
+      method: "POST",
+      url: "/api/v1/taxonomies/category/terms",
+      ...auth({ payload: { slug: term.slug, name: `Editado ${suffix}`, description: "nueva desc" } }),
+    });
+    expect(edited.statusCode).toBe(201);
+    expect(edited.json().id).toBe(term.id);
+    expect(edited.json().name).toBe(`Editado ${suffix}`);
+
+    // Eliminar.
+    const del = await app.inject({ method: "DELETE", url: `/api/v1/taxonomies/category/terms/${term.id}`, ...auth() });
+    expect(del.statusCode).toBe(204);
+
+    const after = await app.inject({ method: "GET", url: "/api/v1/taxonomies/category", ...auth() });
+    const stillThere = (after.json() as TaxonomyDetail).terms.some((t) => t.id === term.id);
+    expect(stillThere).toBe(false);
+
+    // Borrar de nuevo -> 404.
+    const gone = await app.inject({ method: "DELETE", url: `/api/v1/taxonomies/category/terms/${term.id}`, ...auth() });
+    expect(gone.statusCode).toBe(404);
+  });
 });
