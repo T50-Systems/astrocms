@@ -26,6 +26,15 @@ export function useLogin() {
   });
 }
 
+/** Bypass de desarrollo: inicia sesión sin contraseña (sólo si el servidor lo habilita). */
+export function useDevLogin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => cms.auth.devLogin(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+  });
+}
+
 export function useLogout() {
   const qc = useQueryClient();
   return useMutation({

@@ -54,6 +54,12 @@ describe.skipIf(!DB)("API v1 — flujo vertical (integración)", () => {
     csrf = csrfFrom(res);
   };
 
+  it("el bypass dev-login está deshabilitado por defecto (404)", async () => {
+    // Sin DEV_AUTOLOGIN la ruta no se registra: nunca accesible salvo opt-in de desarrollo.
+    const res = await app.inject({ method: "POST", url: "/api/v1/auth/dev-login" });
+    expect(res.statusCode).toBe(404);
+  });
+
   it("rechaza login con contraseña incorrecta (401)", async () => {
     const res = await app.inject({
       method: "POST",

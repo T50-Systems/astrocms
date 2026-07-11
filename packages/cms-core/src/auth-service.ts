@@ -86,6 +86,46 @@ export function createAuthService(db: Database, clock: Clock, recordAudit?: Audi
       return { user: toUser(row, roleSlugs), token, expiresAt: expiresAt.toISOString() };
     },
 
+    /**
+     * Inicio de sesión de DESARROLLO por email, SIN contraseña. El borde HTTP debe
+     * exponerlo SOLO fuera de producción y bajo un flag explícito (DEV_AUTOLOGIN).
+     * Nunca debe estar accesible en producción.
+     */
+    async devLogin(input: {
+      email: string;
+      ttlSeconds: number;
+      ip?: string;
+      userAgent?: string;
+    }): Promise<LoginResult> {
+      const row = (
+        await db.select().from(users).where(eq(users.email, input.email)).limit(1)
+      )[0];
+      if (!row || row.status !== "active") throw unauthorized("Usuario de desarrollo no encontrado");
+      const { token, tokenHash } = issueSessionToken();
+      const expiresAt = sessionExpiry(clock.now(), input.ttlSeconds);
+      await db.insert(sessions).values({
+        userId: row.id,
+        tokenHash,
+        expiresAt,
+        ip: input.ip ?? null,
+        userAgent: input.userAgent ?? null,
+      });
+      const roleSlugs = await roleSlugsFor(db, row.id);
+      try {
+        await recordAudit?.({
+          siteId: row.siteId,
+          actorUserId: row.id,
+          action: "auth.dev-login",
+          entityType: "user",
+          entityId: row.id,
+          ...(input.ip ? { ip: input.ip } : {}),
+        });
+      } catch {
+        // La auditoría no debe romper el login.
+      }
+      return { user: toUser(row, roleSlugs), token, expiresAt: expiresAt.toISOString() };
+    },
+
     async resolveSession(token: string): Promise<Session | null> {
       const tokenHash = hashToken(token);
       const now = clock.now();

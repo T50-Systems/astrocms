@@ -17,6 +17,7 @@ export function registerCsrf(app: FastifyInstance): void {
     if (!url.startsWith("/api/v1")) return;
     if (url.startsWith("/api/v1/public")) return;
     if (url === "/api/v1/auth/login") return;
+    if (url === "/api/v1/auth/dev-login") return; // sólo existe en desarrollo (ver routes/auth.ts)
 
     const header = req.headers[CSRF_HEADER];
     const cookie = req.cookies[CSRF_COOKIE];

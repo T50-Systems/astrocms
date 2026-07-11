@@ -98,6 +98,8 @@ export interface AuditResource {
 export interface CmsClient {
   auth: {
     login(req: LoginRequest): Promise<LoginResponse>;
+    /** Bypass de desarrollo (sin contraseña); sólo funciona si el servidor lo habilita. */
+    devLogin(): Promise<LoginResponse>;
     logout(): Promise<void>;
     logoutAll(): Promise<void>;
     me(): Promise<Session>;
@@ -135,6 +137,7 @@ export function createCmsClient(opts: CmsClientOptions): CmsClient {
   return {
     auth: {
       login: (req) => request<LoginResponse>("POST", "/auth/login", { body: req }),
+      devLogin: () => request<LoginResponse>("POST", "/auth/dev-login"),
       logout: () => request<void>("POST", "/auth/logout"),
       logoutAll: () => request<void>("POST", "/auth/logout-all"),
       me: () => request<Session>("GET", "/me"),
