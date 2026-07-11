@@ -1,0 +1,26 @@
+---
+import type { MenuItem } from "@astrocms/contracts";
+
+interface Props {
+  items: MenuItem[];
+  /** true solo en la lista raíz (clase distinta para submenús). */
+  root?: boolean;
+}
+const { items, root = true } = Astro.props;
+
+// Renderizables: con url y no rotos (los "invalid" apuntan a páginas borradas).
+const visible = items.filter((item) => !item.invalid && item.url);
+---
+
+{visible.length > 0 && (
+  <ul class={root ? "nav-root" : "nav-sub"}>
+    {visible.map((item) => (
+      <li>
+        <a href={item.url} target={item.target === "_blank" ? "_blank" : undefined} rel={item.target === "_blank" ? "noopener" : undefined}>
+          {item.label}
+        </a>
+        {item.children.length > 0 && <Astro.self items={item.children} root={false} />}
+      </li>
+    ))}
+  </ul>
+)}

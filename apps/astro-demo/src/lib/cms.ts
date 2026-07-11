@@ -1,9 +1,19 @@
+import type { Menu } from "@astrocms/contracts";
 import { createCmsClient } from "@astrocms/cms-sdk";
 
 /** Cliente del CMS para SSR: usa la API pública (sólo contenido publicado). */
 export function getCms() {
   const baseUrl = process.env.CMS_API_URL ?? "http://127.0.0.1:3000/api/v1";
   return createCmsClient({ baseUrl });
+}
+
+/** Menú público por ubicación. Tolerante a fallos: null si no existe o el CMS no responde. */
+export async function getMenu(location: string): Promise<Menu | null> {
+  try {
+    return await getCms().public.getMenu(location);
+  } catch {
+    return null;
+  }
 }
 
 export interface SiteSettings {
