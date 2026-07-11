@@ -12,6 +12,7 @@ import { PagesListPage } from "./routes/pages-list.tsx";
 import { NewPage } from "./routes/page-new.tsx";
 import { EditPage } from "./routes/page-edit.tsx";
 import { BuilderPage } from "./routes/page-builder.tsx";
+import { MediaPage } from "./routes/media.tsx";
 import { MenusPage } from "./routes/menus.tsx";
 import { SettingsPage } from "./routes/settings.tsx";
 import { TagsPage } from "./routes/tags.tsx";
@@ -42,12 +43,13 @@ const loginRoute = createRoute({ getParentRoute: () => rootRoute, path: "/login"
 const newRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pages/new", component: NewPage });
 const editRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pages/$pageId", component: EditPage });
 const builderRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pages/$pageId/builder", component: BuilderPage });
+const mediaRoute = createRoute({ getParentRoute: () => rootRoute, path: "/media", component: MediaPage });
 const menusRoute = createRoute({ getParentRoute: () => rootRoute, path: "/menus", component: MenusPage });
 const taxonomiesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/taxonomies", component: TaxonomiesPage });
 const tagsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/tags", component: TagsPage });
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/settings", component: SettingsPage });
 
-const routeTree = rootRoute.addChildren([indexRoute, loginRoute, newRoute, editRoute, builderRoute, menusRoute, taxonomiesRoute, tagsRoute, settingsRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, loginRoute, newRoute, editRoute, builderRoute, mediaRoute, menusRoute, taxonomiesRoute, tagsRoute, settingsRoute]);
 
 export const router = createRouter({ routeTree });
 

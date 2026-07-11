@@ -5,6 +5,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 const NAV: Array<{ to: string; label: string; icon: string }> = [
   { to: "/", label: "Páginas", icon: "📄" },
+  { to: "/media", label: "Medios", icon: "🖼️" },
   { to: "/taxonomies", label: "Categorías", icon: "🏷️" },
   { to: "/tags", label: "Etiquetas", icon: "🔖" },
   { to: "/menus", label: "Menús", icon: "☰" },
