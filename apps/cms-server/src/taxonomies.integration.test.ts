@@ -4,6 +4,7 @@ import type { LightMyRequestResponse } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createCmsCore } from "@astrocms/cms-core";
 import { createDb } from "@astrocms/cms-database";
+import type { TaxonomyDetail, Term } from "@astrocms/contracts";
 import { buildApp } from "./app.js";
 import { loadEnv } from "./env.js";
 
@@ -19,6 +20,9 @@ describe.skipIf(!DB)("API v1 — taxonomías (integración)", () => {
   const suffix = randomUUID().slice(0, 8);
   const pageSlug = `/tax-${suffix}`;
   const termSlug = `tax-${suffix}`;
+  const tagSlug = `tag-${suffix}`;
+  const categoryDescription = `Descripción categoría ${suffix}`;
+  const tagDescription = `Descripción etiqueta ${suffix}`;
 
   beforeAll(async () => {
     process.env.SESSION_SECRET ??= "test-secret-of-32-characters-min!!";
@@ -55,18 +59,33 @@ describe.skipIf(!DB)("API v1 — taxonomías (integración)", () => {
     csrf = set.find((c) => c.name === "astrocms_csrf")?.value ?? "";
   };
 
-  it("crea un término category", async () => {
+  const findTerm = (terms: Term[], id: string): Term | undefined => {
+    for (const term of terms) {
+      if (term.id === id) return term;
+      const child = findTerm(term.children ?? [], id);
+      if (child) return child;
+    }
+    return undefined;
+  };
+
+  it("crea un término category con descripción", async () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/v1/taxonomies/category/terms",
-      ...auth({ payload: { slug: termSlug, name: `Tax ${suffix}` } }),
+      ...auth({ payload: { slug: termSlug, name: `Tax ${suffix}`, description: categoryDescription } }),
     });
     expect(res.statusCode).toBe(201);
     termId = res.json().id;
     expect(res.json().slug).toBe(termSlug);
+
+    const get = await app.inject({ method: "GET", url: "/api/v1/taxonomies/category", ...auth() });
+    expect(get.statusCode).toBe(200);
+    const taxonomy = get.json() as TaxonomyDetail;
+    const term = findTerm(taxonomy.terms, termId);
+    expect(term).toEqual(expect.objectContaining({ id: termId, description: categoryDescription, count: 0 }));
   });
 
-  it("asigna el término a una página y lista sus términos", async () => {
+  it("asigna el término a una página y actualiza su cantidad", async () => {
     const page = await app.inject({
       method: "POST",
       url: "/api/v1/pages",
@@ -90,6 +109,42 @@ describe.skipIf(!DB)("API v1 — taxonomías (integración)", () => {
     expect(listed.json()).toEqual([
       expect.objectContaining({ id: termId, slug: termSlug, name: `Tax ${suffix}` }),
     ]);
+
+    const taxonomy = await app.inject({ method: "GET", url: "/api/v1/taxonomies/category", ...auth() });
+    expect(taxonomy.statusCode).toBe(200);
+    const term = findTerm((taxonomy.json() as TaxonomyDetail).terms, termId);
+    expect(term?.count).toBeGreaterThanOrEqual(1);
+  });
+
+  it("crea una etiqueta en tag y la lista por API privada y pública", async () => {
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/v1/taxonomies/tag/terms",
+      ...auth({ payload: { slug: tagSlug, name: `Tag ${suffix}`, description: tagDescription } }),
+    });
+    expect(created.statusCode).toBe(201);
+    const tagId = created.json().id as string;
+
+    const privateRes = await app.inject({ method: "GET", url: "/api/v1/taxonomies/tag", ...auth() });
+    expect(privateRes.statusCode).toBe(200);
+    expect(privateRes.json()).toEqual(
+      expect.objectContaining({
+        key: "tag",
+        hierarchical: false,
+        terms: expect.arrayContaining([
+          expect.objectContaining({ id: tagId, slug: tagSlug, name: `Tag ${suffix}`, description: tagDescription, count: 0 }),
+        ]),
+      }),
+    );
+
+    const publicRes = await app.inject({ method: "GET", url: "/api/v1/public/taxonomies/tag" });
+    expect(publicRes.statusCode).toBe(200);
+    expect(publicRes.json()).toEqual(
+      expect.objectContaining({
+        key: "tag",
+        terms: expect.arrayContaining([expect.objectContaining({ id: tagId, slug: tagSlug, description: tagDescription })]),
+      }),
+    );
   });
 
   it("publica GET /public/taxonomies/category con términos", async () => {
@@ -97,7 +152,9 @@ describe.skipIf(!DB)("API v1 — taxonomías (integración)", () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().key).toBe("category");
     expect(res.json().terms).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: termId, slug: termSlug, name: `Tax ${suffix}` })]),
+      expect.arrayContaining([
+        expect.objectContaining({ id: termId, slug: termSlug, name: `Tax ${suffix}`, description: categoryDescription }),
+      ]),
     );
   });
 });

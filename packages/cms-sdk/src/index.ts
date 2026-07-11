@@ -19,6 +19,7 @@ import type {
   SettingsGroup,
   Taxonomy,
   TaxonomyDetail,
+  Term,
   TermRef,
   UpdateEntryRequest,
   UpsertTermRequest,
@@ -80,7 +81,7 @@ export interface WebhookResource {
 export interface TaxonomyResource {
   list(): Promise<Taxonomy[]>;
   get(key: string): Promise<TaxonomyDetail>;
-  upsertTerm(key: string, term: UpsertTermRequest): Promise<TermRef>;
+  upsertTerm(key: string, term: UpsertTermRequest): Promise<Term>;
   entryTerms(entryId: string): Promise<TermRef[]>;
   setEntryTerms(entryId: string, termIds: string[]): Promise<TermRef[]>;
 }
@@ -199,7 +200,7 @@ export function createCmsClient(opts: CmsClientOptions): CmsClient {
       list: () => request<Taxonomy[]>("GET", "/taxonomies"),
       get: (key) => request<TaxonomyDetail>("GET", `/taxonomies/${encodeURIComponent(key)}`),
       upsertTerm: (key, term) =>
-        request<TermRef>("POST", `/taxonomies/${encodeURIComponent(key)}/terms`, { body: term }),
+        request<Term>("POST", `/taxonomies/${encodeURIComponent(key)}/terms`, { body: term }),
       entryTerms: (entryId) => request<TermRef[]>("GET", `/entries/${entryId}/terms`),
       setEntryTerms: (entryId, termIds) =>
         request<TermRef[]>("PUT", `/entries/${entryId}/terms`, { body: { termIds } }),

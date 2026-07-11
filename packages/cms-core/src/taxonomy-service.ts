@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, eq, inArray } from "drizzle-orm";
 import type { Taxonomy, Term, TermRef, UpsertTermRequest } from "@astrocms/contracts";
 import { entries, termRelationships, terms, taxonomies } from "@astrocms/cms-database";
 import type { Database } from "@astrocms/cms-database";
@@ -14,6 +14,7 @@ function termSlugBase(name: string): string {
 type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0] | Database;
 type TaxonomyRow = typeof taxonomies.$inferSelect;
 type TermRow = typeof terms.$inferSelect;
+type TermWithCount = TermRow & { count: number };
 
 function toTaxonomy(row: TaxonomyRow): Taxonomy {
   return {
@@ -24,19 +25,21 @@ function toTaxonomy(row: TaxonomyRow): Taxonomy {
   };
 }
 
-function toTerm(row: TermRow, children: Term[]): Term {
+function toTerm(row: TermWithCount, children: Term[]): Term {
   return {
     id: row.id,
     taxonomyId: row.taxonomyId,
     slug: row.slug,
     name: row.name,
+    ...(row.description !== null ? { description: row.description } : {}),
     ...(row.parentId ? { parentId: row.parentId } : {}),
     position: row.position,
+    count: row.count,
     ...(children.length > 0 ? { children } : {}),
   };
 }
 
-function buildTermTree(rows: TermRow[], parentId: string | null): Term[] {
+function buildTermTree(rows: TermWithCount[], parentId: string | null): Term[] {
   return rows
     .filter((row) => row.parentId === parentId)
     .map((row) => toTerm(row, buildTermTree(rows, row.id)));
@@ -93,12 +96,33 @@ export function createTaxonomyService(db: Database) {
     },
 
     async listTerms(taxonomyId: string): Promise<Term[]> {
+      const relationshipCounts = db
+        .select({
+          termId: termRelationships.termId,
+          relationshipCount: count(termRelationships.entryId).as("relationship_count"),
+        })
+        .from(termRelationships)
+        .groupBy(termRelationships.termId)
+        .as("relationship_counts");
       const rows = await db
-        .select()
+        .select({
+          id: terms.id,
+          taxonomyId: terms.taxonomyId,
+          parentId: terms.parentId,
+          slug: terms.slug,
+          name: terms.name,
+          description: terms.description,
+          position: terms.position,
+          count: relationshipCounts.relationshipCount,
+        })
         .from(terms)
+        .leftJoin(relationshipCounts, eq(terms.id, relationshipCounts.termId))
         .where(eq(terms.taxonomyId, taxonomyId))
         .orderBy(asc(terms.position), asc(terms.name));
-      return buildTermTree(rows, null);
+      return buildTermTree(
+        rows.map((row) => ({ ...row, count: row.count ?? 0 })),
+        null,
+      );
     },
 
     async upsertTerm(input: UpsertTermRequest & { taxonomyId: string }): Promise<Term> {
@@ -115,23 +139,24 @@ export function createTaxonomyService(db: Database) {
 
       const parentId = input.parentId ?? null;
       const position = input.position ?? 0;
+      const description = input.description ?? null;
       const row =
         existing ??
         (
           await db
             .insert(terms)
-            .values({ taxonomyId: input.taxonomyId, slug, name: input.name, parentId, position })
+            .values({ taxonomyId: input.taxonomyId, slug, name: input.name, description, parentId, position })
             .returning()
         )[0]!;
 
       if (existing) {
         await db
           .update(terms)
-          .set({ name: input.name, parentId, position })
+          .set({ name: input.name, description, parentId, position })
           .where(eq(terms.id, existing.id));
       }
 
-      return toTerm({ ...row, name: input.name, parentId, position }, []);
+      return toTerm({ ...row, name: input.name, description, parentId, position, count: 0 }, []);
     },
 
     async assignTerms(entryId: string, termIds: string[]): Promise<TermRef[]> {
@@ -160,6 +185,7 @@ export function createTaxonomyService(db: Database) {
           taxonomyId: terms.taxonomyId,
           slug: terms.slug,
           name: terms.name,
+          description: terms.description,
         })
         .from(termRelationships)
         .innerJoin(terms, eq(termRelationships.termId, terms.id))
@@ -170,6 +196,7 @@ export function createTaxonomyService(db: Database) {
         taxonomyId: row.taxonomyId,
         slug: row.slug,
         name: row.name,
+        ...(row.description !== null ? { description: row.description } : {}),
       }));
     },
   };

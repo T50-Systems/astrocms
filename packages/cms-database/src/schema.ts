@@ -249,6 +249,7 @@ export const terms = pgTable(
     parentId: uuid("parent_id").references((): AnyPgColumn => terms.id, { onDelete: "set null" }),
     slug: text("slug").notNull(),
     name: text("name").notNull(),
+    description: text("description"),
     position: integer("position").notNull().default(0),
   },
   (t) => ({ slugPerTaxonomy: unique("terms_taxonomy_slug_uq").on(t.taxonomyId, t.slug) }),

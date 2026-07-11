@@ -14,6 +14,7 @@ import { EditPage } from "./routes/page-edit.tsx";
 import { BuilderPage } from "./routes/page-builder.tsx";
 import { MenusPage } from "./routes/menus.tsx";
 import { SettingsPage } from "./routes/settings.tsx";
+import { TagsPage } from "./routes/tags.tsx";
 import { TaxonomiesPage } from "./routes/taxonomies.tsx";
 
 function Root() {
@@ -43,9 +44,10 @@ const editRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pages/$
 const builderRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pages/$pageId/builder", component: BuilderPage });
 const menusRoute = createRoute({ getParentRoute: () => rootRoute, path: "/menus", component: MenusPage });
 const taxonomiesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/taxonomies", component: TaxonomiesPage });
+const tagsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/tags", component: TagsPage });
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/settings", component: SettingsPage });
 
-const routeTree = rootRoute.addChildren([indexRoute, loginRoute, newRoute, editRoute, builderRoute, menusRoute, taxonomiesRoute, settingsRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, loginRoute, newRoute, editRoute, builderRoute, menusRoute, taxonomiesRoute, tagsRoute, settingsRoute]);
 
 export const router = createRouter({ routeTree });
 

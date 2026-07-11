@@ -13,8 +13,8 @@ const styles: Record<string, CSSProperties> = {
   muted: { color: "#666" },
 };
 
-export function Page({ children }: { children: ReactNode }) {
-  return <div style={styles.page}>{children}</div>;
+export function Page({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
+  return <div style={{ ...styles.page, ...(wide ? { maxWidth: "72rem" } : {}) }}>{children}</div>;
 }
 
 export function Button(props: React.ButtonHTMLAttributes<HTMLButtonElement> & { ghost?: boolean }) {

@@ -1,41 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FormEvent } from "react";
 import { useState } from "react";
-import type { Term } from "@astrocms/contracts";
 import { cms } from "../lib.ts";
 import { Button, Empty, ErrorBox, Field, inputStyle, Loading, Page } from "../ui.tsx";
 
-type TermRow = Term & { depth: number };
-
-function flattenTerms(terms: Term[], depth = 0): TermRow[] {
-  return terms.flatMap((term) => [
-    { ...term, depth },
-    ...flattenTerms(term.children ?? [], depth + 1),
-  ]);
-}
-
-export function TaxonomiesPage() {
+export function TagsPage() {
   const qc = useQueryClient();
-  const category = useQuery({ queryKey: ["taxonomy", "category"], queryFn: () => cms.taxonomies.get("category") });
+  const tags = useQuery({ queryKey: ["taxonomy", "tag"], queryFn: () => cms.taxonomies.get("tag") });
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [parentId, setParentId] = useState("");
-
-  const rows = flattenTerms(category.data?.terms ?? []);
 
   const save = useMutation({
-    // El slug se genera solo en el servidor a partir del nombre (como WordPress).
     mutationFn: () =>
-      cms.taxonomies.upsertTerm("category", {
+      cms.taxonomies.upsertTerm("tag", {
         name: name.trim(),
         description: description.trim(),
-        ...(parentId ? { parentId } : {}),
       }),
     onSuccess: () => {
       setName("");
       setDescription("");
-      setParentId("");
-      qc.invalidateQueries({ queryKey: ["taxonomy", "category"] });
+      qc.invalidateQueries({ queryKey: ["taxonomy", "tag"] });
     },
   });
 
@@ -47,47 +31,36 @@ export function TaxonomiesPage() {
 
   return (
     <Page wide>
-      <h1>Categorías</h1>
-      <p style={{ color: "#666", marginTop: "-0.5rem" }}>Clasifica tus páginas y entradas en grupos.</p>
-      {category.isLoading && <Loading />}
-      {(category.isError || save.isError) && <ErrorBox error={category.error ?? save.error} />}
-      {category.data?.terms.length === 0 && <Empty>Aún no hay categorías. Crea la primera abajo.</Empty>}
+      <h1>Etiquetas</h1>
+      <p style={{ color: "#666", marginTop: "-0.5rem" }}>Agrupa contenido con términos planos y flexibles.</p>
+      {tags.isLoading && <Loading />}
+      {(tags.isError || save.isError) && <ErrorBox error={tags.error ?? save.error} />}
+      {tags.data?.terms.length === 0 && <Empty>Aún no hay etiquetas. Crea la primera abajo.</Empty>}
 
       <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: "1.25rem", alignItems: "start" }}>
         <form onSubmit={submit}>
-          <h2 style={{ fontSize: "1.1rem" }}>Añadir nueva categoría</h2>
-          <Field label="Nombre" htmlFor="term-name">
+          <h2 style={{ fontSize: "1.1rem" }}>Añadir nueva etiqueta</h2>
+          <Field label="Nombre" htmlFor="tag-name">
             <input
-              id="term-name"
-              placeholder="Ej. Noticias"
+              id="tag-name"
+              placeholder="Ej. Salud"
               style={inputStyle}
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
           </Field>
-          <Field label="Descripción" htmlFor="term-description">
+          <Field label="Descripción" htmlFor="tag-description">
             <textarea
-              id="term-description"
-              placeholder="Describe cómo se usa esta categoría."
+              id="tag-description"
+              placeholder="Describe cuándo usar esta etiqueta."
               rows={4}
               style={inputStyle}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
             />
           </Field>
-          <Field label="Categoría superior (opcional)" htmlFor="term-parent">
-            <select id="term-parent" style={inputStyle} value={parentId} onChange={(event) => setParentId(event.target.value)}>
-              <option value="">Ninguna</option>
-              {rows.map((term) => (
-                <option key={term.id} value={term.id}>
-                  {"— ".repeat(term.depth)}
-                  {term.name}
-                </option>
-              ))}
-            </select>
-          </Field>
           <Button type="submit" disabled={save.isPending || !name.trim()}>
-            {save.isPending ? "Guardando…" : "Añadir categoría"}
+            {save.isPending ? "Guardando…" : "Añadir etiqueta"}
           </Button>
         </form>
 
@@ -102,12 +75,9 @@ export function TaxonomiesPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((term) => (
+            {(tags.data?.terms ?? []).map((term) => (
               <tr key={term.id}>
-                <td style={{ borderBottom: "1px solid #eee", padding: "0.55rem", fontWeight: 600 }}>
-                  {"— ".repeat(term.depth)}
-                  {term.name}
-                </td>
+                <td style={{ borderBottom: "1px solid #eee", padding: "0.55rem", fontWeight: 600 }}>{term.name}</td>
                 <td style={{ borderBottom: "1px solid #eee", padding: "0.55rem", color: "#555" }}>{term.description ?? ""}</td>
                 <td style={{ borderBottom: "1px solid #eee", padding: "0.55rem", color: "#555" }}>{term.slug}</td>
                 <td style={{ borderBottom: "1px solid #eee", padding: "0.55rem" }}>{term.count}</td>

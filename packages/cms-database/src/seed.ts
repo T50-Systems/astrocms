@@ -105,10 +105,18 @@ async function main() {
       .onConflictDoNothing();
   }
 
-  await db
-    .insert(taxonomies)
-    .values({ siteId: site.id, key: "category", name: "Categorías", hierarchical: false })
-    .onConflictDoNothing();
+  for (const taxonomy of [
+    { key: "category", name: "Categorías", hierarchical: true },
+    { key: "tag", name: "Etiquetas", hierarchical: false },
+  ] as const) {
+    await db
+      .insert(taxonomies)
+      .values({ siteId: site.id, key: taxonomy.key, name: taxonomy.name, hierarchical: taxonomy.hierarchical })
+      .onConflictDoUpdate({
+        target: [taxonomies.siteId, taxonomies.key],
+        set: { name: taxonomy.name, hierarchical: taxonomy.hierarchical },
+      });
+  }
   const category = (
     await db
       .select()

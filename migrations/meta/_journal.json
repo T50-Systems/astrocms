@@ -43,6 +43,13 @@
       "when": 1783747894047,
       "tag": "0005_wealthy_karnak",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783753752832,
+      "tag": "0006_adorable_karma",
+      "breakpoints": true
     }
   ]
 }
