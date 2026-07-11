@@ -27,7 +27,7 @@ function Root() {
           <nav aria-label="Navegación principal" style={{ display: "flex", gap: "0.8rem", alignItems: "center" }}>
             <Link to="/" style={{ fontWeight: 700 }}>AstroCMS</Link>
             <Link to="/menus">Menús</Link>
-            <Link to="/taxonomies">Taxonomías</Link>
+            <Link to="/taxonomies">Categorías</Link>
             <Link to="/settings">Ajustes</Link>
           </nav>
           <span style={{ fontSize: "0.85rem" }}>

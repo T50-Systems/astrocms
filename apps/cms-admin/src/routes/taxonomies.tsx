@@ -27,11 +27,11 @@ export function TaxonomiesPage() {
 
   return (
     <Page>
-      <h1>Taxonomías</h1>
-      <h2 style={{ fontSize: "1.1rem" }}>Categorías</h2>
+      <h1>Categorías</h1>
+      <p style={{ color: "#666", marginTop: "-0.5rem" }}>Clasifica tus páginas y entradas en grupos.</p>
       {category.isLoading && <Loading />}
       {(category.isError || save.isError) && <ErrorBox error={category.error ?? save.error} />}
-      {category.data?.terms.length === 0 && <Empty>No hay términos en category.</Empty>}
+      {category.data?.terms.length === 0 && <Empty>Aún no hay categorías. Crea la primera abajo.</Empty>}
       <div style={{ display: "grid", gap: "0.5rem", marginBottom: "1.5rem" }}>
         {category.data?.terms.map((term) => (
           <div key={term.id} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #eee", padding: "0.5rem 0" }}>
@@ -49,7 +49,7 @@ export function TaxonomiesPage() {
           <input id="term-slug" style={inputStyle} value={slug} onChange={(event) => setSlug(event.target.value)} />
         </Field>
         <Button type="submit" disabled={save.isPending || !name.trim() || !slug.trim()}>
-          {save.isPending ? "Guardando..." : "Añadir término"}
+          {save.isPending ? "Guardando..." : "Añadir categoría"}
         </Button>
       </form>
     </Page>
