@@ -5,7 +5,9 @@ import {
   Outlet,
   useNavigate,
 } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useSession, useLogout } from "./auth.tsx";
+import { cms } from "./lib.ts";
 import { AppShell } from "./shell.tsx";
 import { LoginPage } from "./routes/login.tsx";
 import { PagesListPage } from "./routes/pages-list.tsx";
@@ -22,14 +24,22 @@ function Root() {
   const { data: session } = useSession();
   const logout = useLogout();
   const nav = useNavigate();
+  const siteSettings = useQuery({
+    queryKey: ["settings", "site"],
+    queryFn: () => cms.settings.get("site"),
+    enabled: Boolean(session),
+  });
   // Sin sesión (login): sin shell. Con sesión: layout tipo WordPress (barra superior + lateral).
   if (!session) {
     return <Outlet />;
   }
+  const siteName = typeof siteSettings.data?.values.title === "string" && siteSettings.data.values.title.trim()
+    ? siteSettings.data.values.title
+    : "AstroCMS";
   return (
     <AppShell
       email={session.user.email}
-      siteName="AstroCMS"
+      siteName={siteName}
       onLogout={() => logout.mutate(undefined, { onSuccess: () => nav({ to: "/login" }) })}
     >
       <Outlet />
