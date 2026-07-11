@@ -58,6 +58,8 @@ export function MediaPage() {
   const [term, setTerm] = useState("");
   const [folder, setFolder] = useState<string>(ALL); // ALL o nombre de carpeta
   const [localFolders, setLocalFolders] = useState<string[]>([]); // carpetas recién creadas (aún vacías)
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [bulkFolder, setBulkFolder] = useState<string>(NONE); // destino para "mover" en lote
   const inputRef = useRef<HTMLInputElement>(null);
 
   const chooseView = (v: "grid" | "list") => {
@@ -95,6 +97,17 @@ export function MediaPage() {
     mutationFn: ({ id, folder: f }: { id: string; folder: string | null }) => cms.media.update(id, { folder: f }),
     onSuccess: invalidate,
   });
+  const clearSelection = () => setSelected(new Set());
+  const bulkMove = useMutation({
+    mutationFn: async ({ ids, folder: f }: { ids: string[]; folder: string | null }) => {
+      await Promise.all(ids.map((id) => cms.media.update(id, { folder: f })));
+    },
+    onSuccess: () => { invalidate(); clearSelection(); },
+  });
+  const bulkRemove = useMutation({
+    mutationFn: async (ids: string[]) => { await Promise.all(ids.map((id) => cms.media.remove(id))); },
+    onSuccess: () => { invalidate(); clearSelection(); },
+  });
 
   // Carpetas conocidas = las del servidor + las creadas localmente (aún sin archivos).
   const folders = useMemo(() => {
@@ -123,6 +136,25 @@ export function MediaPage() {
   };
 
   const items = media.data?.data ?? [];
+  const itemIds = items.map((a) => a.id);
+  const allSelected = itemIds.length > 0 && itemIds.every((id) => selected.has(id));
+  const toggleAll = () => setSelected((cur) => (itemIds.every((id) => cur.has(id)) ? new Set() : new Set(itemIds)));
+  const toggleOne = (id: string) =>
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const applyBulkMove = () => {
+    const ids = [...selected];
+    if (ids.length) bulkMove.mutate({ ids, folder: bulkFolder === NONE ? null : bulkFolder });
+  };
+  const applyBulkDelete = () => {
+    const ids = [...selected];
+    if (ids.length && window.confirm(`¿Eliminar ${ids.length} archivo(s)?`)) bulkRemove.mutate(ids);
+  };
+  const bulkBusy = bulkMove.isPending || bulkRemove.isPending;
 
   return (
     <Page wide>
@@ -202,6 +234,23 @@ export function MediaPage() {
             </form>
           </div>
 
+          {(bulkMove.isError || bulkRemove.isError) && <ErrorBox error={bulkMove.error ?? bulkRemove.error} />}
+
+          {/* Barra de edición masiva (aparece al seleccionar) */}
+          {selected.size > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", background: "#f0f6fc", border: "1px solid #c5d9ed", borderRadius: 6, padding: "0.5rem 0.75rem", marginBottom: "0.9rem" }}>
+              <strong style={{ fontSize: "0.9rem" }}>{selected.size} seleccionado(s)</strong>
+              <label htmlFor="bulk-move" style={{ fontSize: "0.85rem" }}>Mover a:</label>
+              <select id="bulk-move" value={bulkFolder} onChange={(e) => setBulkFolder(e.target.value)} style={searchInput}>
+                <option value={NONE}>— sin carpeta —</option>
+                {folderNames.map((name) => <option key={name} value={name}>{name}</option>)}
+              </select>
+              <Button type="button" onClick={applyBulkMove} disabled={bulkBusy}>{bulkMove.isPending ? "Moviendo…" : "Mover"}</Button>
+              <Button ghost type="button" onClick={applyBulkDelete} disabled={bulkBusy} style={{ color: "#b32d2e" }}>{bulkRemove.isPending ? "Eliminando…" : "Eliminar"}</Button>
+              <Button ghost type="button" onClick={clearSelection} disabled={bulkBusy}>Deseleccionar</Button>
+            </div>
+          )}
+
           {media.isLoading && <Loading />}
           {media.isError && <ErrorBox error={media.error} />}
           {media.data && items.length === 0 && (
@@ -211,9 +260,11 @@ export function MediaPage() {
           {media.data && items.length > 0 && view === "grid" && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "0.8rem" }}>
               {items.map((asset) => (
-                <figure key={asset.id} style={{ margin: 0, border: "1px solid #dcdcde", borderRadius: 8, overflow: "hidden", background: "#fff" }}>
+                <figure key={asset.id} style={{ margin: 0, border: `1px solid ${selected.has(asset.id) ? "#2271b1" : "#dcdcde"}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
                   <div style={{ position: "relative", aspectRatio: "1 / 1", background: "#f6f7f7" }}>
                     <img src={thumbUrl(asset)} alt={asset.alt ?? asset.filename} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    <input type="checkbox" aria-label={`Seleccionar ${asset.filename}`} checked={selected.has(asset.id)} onChange={() => toggleOne(asset.id)}
+                      style={{ position: "absolute", top: 5, left: 5, width: 18, height: 18, cursor: "pointer" }} />
                     <button type="button" aria-label={`Eliminar ${asset.filename}`} disabled={remove.isPending}
                       onClick={() => { if (window.confirm(`¿Eliminar "${asset.filename}"?`)) remove.mutate(asset.id); }}
                       style={{ position: "absolute", top: 4, right: 4, border: 0, borderRadius: 4, background: "rgba(0,0,0,0.6)", color: "#fff", cursor: "pointer", padding: "2px 7px" }}>×</button>
@@ -234,6 +285,9 @@ export function MediaPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", background: "#fff", border: "1px solid #dcdcde" }}>
               <thead>
                 <tr>
+                  <th scope="col" style={{ ...thCell, width: 36 }}>
+                    <input type="checkbox" aria-label="Seleccionar todos" checked={allSelected} onChange={toggleAll} />
+                  </th>
                   <th scope="col" style={thCell}>Archivo</th>
                   <th scope="col" style={{ ...thCell, width: 170 }}>Carpeta</th>
                   <th scope="col" style={{ ...thCell, width: 90 }}>Tamaño</th>
@@ -244,6 +298,9 @@ export function MediaPage() {
               <tbody>
                 {items.map((asset) => (
                   <tr key={asset.id}>
+                    <td style={tdCell}>
+                      <input type="checkbox" aria-label={`Seleccionar ${asset.filename}`} checked={selected.has(asset.id)} onChange={() => toggleOne(asset.id)} />
+                    </td>
                     <td style={tdCell}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0 }}>
                         <img src={thumbUrl(asset)} alt={asset.alt ?? asset.filename} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4, background: "#f6f7f7", flexShrink: 0 }} />
