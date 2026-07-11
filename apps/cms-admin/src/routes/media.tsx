@@ -1,9 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
-import type { CSSProperties, DragEvent } from "react";
+import type { DragEvent } from "react";
+import { Folder, FolderPlus, LayoutGrid, Library, List } from "lucide-react";
 import type { MediaAsset } from "@astrocms/contracts";
 import { cms } from "../lib.ts";
-import { Button, Empty, ErrorBox, Loading, Page } from "../ui.tsx";
+import { PageContainer } from "@/components/page-container.tsx";
+import { Badge } from "@/components/ui/badge.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Label } from "@/components/ui/label.tsx";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
+import { cn } from "@/lib/utils.ts";
 
 const ALL = "__all__";
 const NONE = "__none__"; // "sin carpeta" como destino al mover
@@ -22,32 +31,7 @@ function fmtDate(v: string): string {
   return Number.isNaN(d.getTime()) ? v : dateFmt.format(d);
 }
 
-const toolbarBtn: CSSProperties = {
-  border: "1px solid #c3c4c7",
-  background: "#fff",
-  cursor: "pointer",
-  padding: "0.35rem 0.55rem",
-  fontSize: "1rem",
-  lineHeight: 1,
-};
-const searchInput: CSSProperties = { padding: "0.4rem 0.5rem", borderRadius: 6, border: "1px solid #ccc", fontSize: "0.85rem", background: "#fff" };
-const moveSelect: CSSProperties = { ...searchInput, padding: "0.2rem 0.3rem", fontSize: "0.78rem", maxWidth: "10rem" };
-
-const folderBtn = (active: boolean): CSSProperties => ({
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: "0.4rem",
-  width: "100%",
-  textAlign: "left",
-  border: 0,
-  borderRadius: 6,
-  background: active ? "#2271b1" : "transparent",
-  color: active ? "#fff" : "#1a1a1a",
-  cursor: "pointer",
-  padding: "0.45rem 0.6rem",
-  fontSize: "0.88rem",
-});
+const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Error inesperado");
 
 export function MediaPage() {
   const qc = useQueryClient();
@@ -157,31 +141,52 @@ export function MediaPage() {
   const bulkBusy = bulkMove.isPending || bulkRemove.isPending;
 
   return (
-    <Page wide>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", marginBottom: "0.25rem" }}>
-        <h1 style={{ margin: 0 }}>Medios</h1>
+    <PageContainer>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold">Medios</h1>
         <Button onClick={() => setShowUpload((s) => !s)} aria-expanded={showUpload}>Añadir archivo</Button>
       </div>
-      <p style={{ color: "#666", marginTop: 0 }}>Sube y organiza las imágenes de tu sitio.</p>
+      <p className="mt-1 mb-4 text-muted-foreground">Sube y organiza las imágenes de tu sitio.</p>
 
       {/* Navegación tipo carpeta + área de contenido */}
-      <div style={{ display: "grid", gridTemplateColumns: "210px minmax(0, 1fr)", gap: "1.25rem", alignItems: "start" }}>
-        <nav aria-label="Carpetas" style={{ border: "1px solid #dcdcde", borderRadius: 8, background: "#fff", padding: "0.5rem", display: "flex", flexDirection: "column", gap: 2 }}>
-          <button type="button" style={folderBtn(folder === ALL)} aria-current={folder === ALL} onClick={() => setFolder(ALL)}>
-            <span>🗂️ Todos los medios</span>
+      <div className="grid grid-cols-[210px_minmax(0,1fr)] items-start gap-5">
+        <nav aria-label="Carpetas" className="flex flex-col gap-0.5 rounded-lg border bg-card p-2">
+          <button
+            type="button"
+            aria-current={folder === ALL}
+            onClick={() => setFolder(ALL)}
+            className={cn(
+              "flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-2 text-left text-sm",
+              folder === ALL ? "bg-primary text-primary-foreground" : "hover:bg-accent",
+            )}
+          >
+            <span className="flex items-center gap-2 truncate"><Library className="size-4 shrink-0" /> Todos los medios</span>
           </button>
           {folders.map((f) => (
-            <button key={f.name} type="button" style={folderBtn(folder === f.name)} aria-current={folder === f.name} onClick={() => setFolder(f.name)}>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📁 {f.name}</span>
-              <span style={{ opacity: 0.75, fontSize: "0.78rem" }}>{f.count}</span>
+            <button
+              key={f.name}
+              type="button"
+              aria-current={folder === f.name}
+              onClick={() => setFolder(f.name)}
+              className={cn(
+                "flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-2 text-left text-sm",
+                folder === f.name ? "bg-primary text-primary-foreground" : "hover:bg-accent",
+              )}
+            >
+              <span className="flex items-center gap-2 truncate"><Folder className="size-4 shrink-0" /> {f.name}</span>
+              <span className="text-xs opacity-75">{f.count}</span>
             </button>
           ))}
-          <button type="button" onClick={newFolder} style={{ ...folderBtn(false), color: "#2271b1", marginTop: 4, borderTop: "1px solid #f0f0f1", borderRadius: 0, paddingTop: "0.6rem" }}>
-            <span>➕ Nueva carpeta</span>
+          <button
+            type="button"
+            onClick={newFolder}
+            className="mt-1 flex w-full items-center gap-2 rounded-md border-t px-2.5 pb-1 pt-3 text-left text-sm text-primary hover:underline"
+          >
+            <FolderPlus className="size-4 shrink-0" /> Nueva carpeta
           </button>
         </nav>
 
-        <div style={{ minWidth: 0 }}>
+        <div className="min-w-0">
           {/* Zona de subida: sólo visible al pulsar "Añadir archivo" */}
           {showUpload && (
             <div
@@ -191,90 +196,107 @@ export function MediaPage() {
               }}
               onDragLeave={() => setDragOver(false)}
               onDrop={onDrop}
-              style={{
-                border: `2px dashed ${dragOver ? "#2271b1" : "#c3c4c7"}`,
-                background: dragOver ? "#f0f6fc" : "#fff",
-                borderRadius: 8,
-                padding: "1.5rem 1rem",
-                textAlign: "center",
-                marginBottom: "1rem",
-              }}
+              className={cn(
+                "mb-4 rounded-lg border-2 border-dashed p-6 text-center",
+                dragOver ? "border-primary bg-primary/5" : "border-border bg-card",
+              )}
             >
-              <p style={{ fontSize: "1.05rem", margin: "0 0 0.6rem" }}>Arrastra archivos aquí para subirlos</p>
-              <p style={{ color: "#666", margin: "0 0 0.9rem" }}>o</p>
-              <input ref={inputRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={(e) => handleFiles(e.target.files)} />
+              <p className="mb-2 text-base">Arrastra archivos aquí para subirlos</p>
+              <p className="mb-3 text-muted-foreground">o</p>
+              <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
               <Button type="button" disabled={upload.isPending} onClick={() => inputRef.current?.click()}>
                 {upload.isPending ? "Subiendo…" : "Seleccionar archivos"}
               </Button>
-              <p style={{ color: "#999", fontSize: "0.8rem", marginTop: "0.9rem" }}>
+              <p className="mt-3 text-xs text-muted-foreground">
                 Imágenes JPG, PNG, WebP o GIF.
                 {folder !== ALL && <> Se subirán a <strong>{folder}</strong>.</>}
               </p>
             </div>
           )}
 
-          {upload.isError && <ErrorBox error={upload.error} />}
-          {remove.isError && <ErrorBox error={remove.error} />}
-          {move.isError && <ErrorBox error={move.error} />}
-
-          {/* Cabecera: carpeta actual + vista + buscar */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.9rem", flexWrap: "wrap" }}>
-            <h2 style={{ margin: 0, fontSize: "1.1rem" }}>{folder === ALL ? "Todos los medios" : `📁 ${folder}`}</h2>
-            <div style={{ display: "flex", marginLeft: "0.5rem" }} role="group" aria-label="Modo de vista">
-              <button type="button" onClick={() => chooseView("list")} aria-pressed={view === "list"} title="Vista de lista"
-                style={{ ...toolbarBtn, borderRadius: "6px 0 0 6px", background: view === "list" ? "#2271b1" : "#fff", color: view === "list" ? "#fff" : "#1a1a1a" }}>☰</button>
-              <button type="button" onClick={() => chooseView("grid")} aria-pressed={view === "grid"} title="Vista de cuadrícula"
-                style={{ ...toolbarBtn, borderRadius: "0 6px 6px 0", borderLeft: 0, background: view === "grid" ? "#2271b1" : "#fff", color: view === "grid" ? "#fff" : "#1a1a1a" }}>▦</button>
-            </div>
-            <form onSubmit={(e) => { e.preventDefault(); setTerm(search.trim()); }} style={{ display: "flex", gap: "0.5rem", marginLeft: "auto" }}>
-              <label htmlFor="media-search" style={{ position: "absolute", left: "-9999px" }}>Buscar medios</label>
-              <input id="media-search" placeholder="Buscar medios" value={search} onChange={(e) => setSearch(e.target.value)}
-                style={{ ...searchInput, width: "13rem", maxWidth: "45vw" }} />
-              <Button ghost type="submit">Buscar</Button>
-            </form>
-          </div>
-
-          {(bulkMove.isError || bulkRemove.isError) && <ErrorBox error={bulkMove.error ?? bulkRemove.error} />}
+          {upload.isError && <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(upload.error)}</p>}
+          {remove.isError && <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(remove.error)}</p>}
+          {move.isError && <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(move.error)}</p>}
+          {(bulkMove.isError || bulkRemove.isError) && (
+            <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(bulkMove.error ?? bulkRemove.error)}</p>
+          )}
 
           {/* Barra de edición masiva (aparece al seleccionar) */}
           {selected.size > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", background: "#f0f6fc", border: "1px solid #c5d9ed", borderRadius: 6, padding: "0.5rem 0.75rem", marginBottom: "0.9rem" }}>
-              <strong style={{ fontSize: "0.9rem" }}>{selected.size} seleccionado(s)</strong>
-              <label htmlFor="bulk-move" style={{ fontSize: "0.85rem" }}>Mover a:</label>
-              <select id="bulk-move" value={bulkFolder} onChange={(e) => setBulkFolder(e.target.value)} style={searchInput}>
-                <option value={NONE}>— sin carpeta —</option>
-                {folderNames.map((name) => <option key={name} value={name}>{name}</option>)}
-              </select>
-              <Button type="button" onClick={applyBulkMove} disabled={bulkBusy}>{bulkMove.isPending ? "Moviendo…" : "Mover"}</Button>
-              <Button ghost type="button" onClick={applyBulkDelete} disabled={bulkBusy} style={{ color: "#b32d2e" }}>{bulkRemove.isPending ? "Eliminando…" : "Eliminar"}</Button>
-              <Button ghost type="button" onClick={clearSelection} disabled={bulkBusy}>Deseleccionar</Button>
+            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-primary/20 bg-primary/5 p-3">
+              <strong className="text-sm">{selected.size} seleccionado(s)</strong>
+              <Label htmlFor="bulk-move" className="text-sm font-normal">Mover a:</Label>
+              <Select value={bulkFolder} onValueChange={setBulkFolder}>
+                <SelectTrigger id="bulk-move" className="w-44"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>— sin carpeta —</SelectItem>
+                  {folderNames.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button type="button" size="sm" onClick={applyBulkMove} disabled={bulkBusy}>{bulkMove.isPending ? "Moviendo…" : "Mover"}</Button>
+              <Button type="button" size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={applyBulkDelete} disabled={bulkBusy}>
+                {bulkRemove.isPending ? "Eliminando…" : "Eliminar"}
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={clearSelection} disabled={bulkBusy}>Deseleccionar</Button>
             </div>
           )}
 
-          {media.isLoading && <Loading />}
-          {media.isError && <ErrorBox error={media.error} />}
+          {/* Cabecera: carpeta actual + vista + buscar */}
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <h2 className="m-0 text-lg font-semibold">{folder === ALL ? "Todos los medios" : folder}</h2>
+            <div role="group" aria-label="Modo de vista" className="ml-2 flex">
+              <Button type="button" size="icon" aria-pressed={view === "list"} title="Vista de lista"
+                variant={view === "list" ? "default" : "outline"} className="rounded-r-none" onClick={() => chooseView("list")}>
+                <List />
+              </Button>
+              <Button type="button" size="icon" aria-pressed={view === "grid"} title="Vista de cuadrícula"
+                variant={view === "grid" ? "default" : "outline"} className="-ml-px rounded-l-none" onClick={() => chooseView("grid")}>
+                <LayoutGrid />
+              </Button>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); setTerm(search.trim()); }} className="ml-auto flex items-center gap-2">
+              <label htmlFor="media-search" className="sr-only">Buscar medios</label>
+              <Input id="media-search" placeholder="Buscar medios" value={search} onChange={(e) => setSearch(e.target.value)} className="w-52" />
+              <Button variant="outline" type="submit">Buscar</Button>
+            </form>
+          </div>
+
+          {media.isLoading && <p className="text-muted-foreground">Cargando…</p>}
+          {media.isError && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(media.error)}</p>}
           {media.data && items.length === 0 && (
-            <Empty>{term ? "No hay medios que coincidan con la búsqueda." : folder !== ALL ? "Esta carpeta está vacía." : "No hay medios todavía. Sube el primero con Añadir archivo."}</Empty>
+            <p className="text-muted-foreground">
+              {term ? "No hay medios que coincidan con la búsqueda." : folder !== ALL ? "Esta carpeta está vacía." : "No hay medios todavía. Sube el primero con Añadir archivo."}
+            </p>
           )}
 
           {media.data && items.length > 0 && view === "grid" && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "0.8rem" }}>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
               {items.map((asset) => (
-                <figure key={asset.id} style={{ margin: 0, border: `1px solid ${selected.has(asset.id) ? "#2271b1" : "#dcdcde"}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-                  <div style={{ position: "relative", aspectRatio: "1 / 1", background: "#f6f7f7" }}>
-                    <img src={thumbUrl(asset)} alt={asset.alt ?? asset.filename} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                    <input type="checkbox" aria-label={`Seleccionar ${asset.filename}`} checked={selected.has(asset.id)} onChange={() => toggleOne(asset.id)}
-                      style={{ position: "absolute", top: 5, left: 5, width: 18, height: 18, cursor: "pointer" }} />
-                    <button type="button" aria-label={`Eliminar ${asset.filename}`} disabled={remove.isPending}
+                <figure key={asset.id} className={cn("m-0 overflow-hidden rounded-lg border bg-card", selected.has(asset.id) && "border-primary ring-1 ring-primary")}>
+                  <div className="relative aspect-square bg-muted">
+                    <img src={thumbUrl(asset)} alt={asset.alt ?? asset.filename} className="block size-full object-cover" />
+                    <Checkbox
+                      className="absolute left-1.5 top-1.5 bg-background"
+                      aria-label={`Seleccionar ${asset.filename}`}
+                      checked={selected.has(asset.id)}
+                      onCheckedChange={() => toggleOne(asset.id)}
+                    />
+                    <button
+                      type="button"
+                      aria-label={`Eliminar ${asset.filename}`}
+                      disabled={remove.isPending}
                       onClick={() => { if (window.confirm(`¿Eliminar "${asset.filename}"?`)) remove.mutate(asset.id); }}
-                      style={{ position: "absolute", top: 4, right: 4, border: 0, borderRadius: 4, background: "rgba(0,0,0,0.6)", color: "#fff", cursor: "pointer", padding: "2px 7px" }}>×</button>
+                      className="absolute right-1 top-1 cursor-pointer rounded bg-black/60 px-1.5 text-white"
+                    >
+                      ×
+                    </button>
                     {asset.folder && folder === ALL && (
-                      <span style={{ position: "absolute", bottom: 4, left: 4, background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: "0.7rem", padding: "1px 6px", borderRadius: 4 }}>📁 {asset.folder}</span>
+                      <Badge variant="secondary" className="absolute bottom-1 left-1"><Folder className="size-3" /> {asset.folder}</Badge>
                     )}
                   </div>
-                  <figcaption style={{ padding: "0.4rem 0.5rem", fontSize: "0.75rem" }}>
-                    <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={asset.filename}>{asset.filename}</div>
-                    <div style={{ color: "#888" }}>{humanBytes(asset.bytes)}</div>
+                  <figcaption className="p-2 text-xs">
+                    <div className="truncate" title={asset.filename}>{asset.filename}</div>
+                    <div className="text-muted-foreground">{humanBytes(asset.bytes)}</div>
                   </figcaption>
                 </figure>
               ))}
@@ -282,58 +304,58 @@ export function MediaPage() {
           )}
 
           {media.data && items.length > 0 && view === "list" && (
-            <table style={{ width: "100%", borderCollapse: "collapse", background: "#fff", border: "1px solid #dcdcde" }}>
-              <thead>
-                <tr>
-                  <th scope="col" style={{ ...thCell, width: 36 }}>
-                    <input type="checkbox" aria-label="Seleccionar todos" checked={allSelected} onChange={toggleAll} />
-                  </th>
-                  <th scope="col" style={thCell}>Archivo</th>
-                  <th scope="col" style={{ ...thCell, width: 170 }}>Carpeta</th>
-                  <th scope="col" style={{ ...thCell, width: 90 }}>Tamaño</th>
-                  <th scope="col" style={{ ...thCell, width: 120 }}>Fecha</th>
-                  <th scope="col" style={{ ...thCell, width: 90 }} />
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((asset) => (
-                  <tr key={asset.id}>
-                    <td style={tdCell}>
-                      <input type="checkbox" aria-label={`Seleccionar ${asset.filename}`} checked={selected.has(asset.id)} onChange={() => toggleOne(asset.id)} />
-                    </td>
-                    <td style={tdCell}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0 }}>
-                        <img src={thumbUrl(asset)} alt={asset.alt ?? asset.filename} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4, background: "#f6f7f7", flexShrink: 0 }} />
-                        <span style={{ display: "inline-block", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", verticalAlign: "middle" }} title={asset.filename}>{asset.filename}</span>
-                      </div>
-                    </td>
-                    <td style={tdCell}>
-                      <label htmlFor={`move-${asset.id}`} style={{ position: "absolute", left: "-9999px" }}>Mover {asset.filename} de carpeta</label>
-                      <select id={`move-${asset.id}`} value={asset.folder ?? NONE} disabled={move.isPending}
-                        onChange={(e) => move.mutate({ id: asset.id, folder: e.target.value === NONE ? null : e.target.value })} style={moveSelect}>
-                        <option value={NONE}>— sin carpeta —</option>
-                        {folderNames.map((name) => (
-                          <option key={name} value={name}>{name}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td style={tdCell}>{humanBytes(asset.bytes)}</td>
-                    <td style={tdCell}>{fmtDate(asset.createdAt)}</td>
-                    <td style={tdCell}>
-                      <button type="button" disabled={remove.isPending}
-                        onClick={() => { if (window.confirm(`¿Eliminar "${asset.filename}"?`)) remove.mutate(asset.id); }}
-                        style={{ border: 0, background: "transparent", color: "#b32d2e", cursor: "pointer" }}>Eliminar</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="rounded-lg border bg-card">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox aria-label="Seleccionar todos" checked={allSelected} onCheckedChange={() => toggleAll()} />
+                    </TableHead>
+                    <TableHead>Archivo</TableHead>
+                    <TableHead className="w-44">Carpeta</TableHead>
+                    <TableHead className="w-24">Tamaño</TableHead>
+                    <TableHead className="w-32">Fecha</TableHead>
+                    <TableHead className="w-24" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((asset) => (
+                    <TableRow key={asset.id}>
+                      <TableCell>
+                        <Checkbox aria-label={`Seleccionar ${asset.filename}`} checked={selected.has(asset.id)} onCheckedChange={() => toggleOne(asset.id)} />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <img src={thumbUrl(asset)} alt={asset.alt ?? asset.filename} className="size-10 shrink-0 rounded bg-muted object-cover" />
+                          <span className="inline-block max-w-72 truncate align-middle" title={asset.filename}>{asset.filename}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <label htmlFor={`move-${asset.id}`} className="sr-only">Mover {asset.filename} de carpeta</label>
+                        <Select value={asset.folder ?? NONE} disabled={move.isPending}
+                          onValueChange={(v) => move.mutate({ id: asset.id, folder: v === NONE ? null : v })}>
+                          <SelectTrigger id={`move-${asset.id}`} className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NONE}>— sin carpeta —</SelectItem>
+                            {folderNames.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="text-sm">{humanBytes(asset.bytes)}</TableCell>
+                      <TableCell className="text-sm">{fmtDate(asset.createdAt)}</TableCell>
+                      <TableCell>
+                        <button type="button" disabled={remove.isPending}
+                          onClick={() => { if (window.confirm(`¿Eliminar "${asset.filename}"?`)) remove.mutate(asset.id); }}
+                          className="text-sm text-destructive hover:underline">Eliminar</button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </div>
       </div>
-    </Page>
+    </PageContainer>
   );
 }
-
-const thCell: CSSProperties = { textAlign: "left", borderBottom: "1px solid #dcdcde", padding: "0.6rem", fontWeight: 600, fontSize: "0.85rem" };
-const tdCell: CSSProperties = { borderBottom: "1px solid #f0f0f1", padding: "0.6rem", fontSize: "0.85rem", verticalAlign: "middle" };
