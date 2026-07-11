@@ -1,11 +1,19 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import type { CSSProperties, ReactNode } from "react";
+import { Controller, useForm } from "react-hook-form";
+import type { ReactNode } from "react";
 import { z } from "zod";
 import { cms } from "../lib.ts";
-import { Button, ErrorBox, Field, inputStyle, Loading, Page } from "../ui.tsx";
+import { JsonTextarea } from "@/components/json-textarea.tsx";
+import { ModeToggle } from "@/components/mode-toggle.tsx";
+import { PageContainer } from "@/components/page-container.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Label } from "@/components/ui/label.tsx";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Textarea } from "@/components/ui/textarea.tsx";
 
 const formSchema = z.object({
   title: z.string().min(1, "El título es obligatorio"),
@@ -41,24 +49,25 @@ const TIMEZONES = [
 
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
-const toggleBtn = (active: boolean): CSSProperties => ({
-  border: "1px solid #c3c4c7",
-  background: active ? "#2271b1" : "#fff",
-  color: active ? "#fff" : "#1a1a1a",
-  cursor: "pointer",
-  padding: "0.35rem 0.7rem",
-  fontSize: "0.85rem",
-});
-
-const sectionCard: CSSProperties = { background: "#fff", border: "1px solid #dcdcde", borderRadius: 8, padding: "1.1rem 1.25rem", marginBottom: "1rem" };
-
 function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
-    <section style={sectionCard}>
-      <h2 style={{ margin: "0 0 0.15rem", fontSize: "1.05rem" }}>{title}</h2>
-      {description && <p style={{ margin: "0 0 1rem", color: "#646970", fontSize: "0.85rem" }}>{description}</p>}
+    <Card className="mb-4">
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+        {description && <CardDescription>{description}</CardDescription>}
+      </CardHeader>
+      <CardContent className="space-y-4">{children}</CardContent>
+    </Card>
+  );
+}
+
+function FormField({ id, label, error, children }: { id: string; label: string; error?: string | undefined; children: ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
       {children}
-    </section>
+      {error && <p id={`${id}-error`} role="alert" className="text-sm text-destructive">{error}</p>}
+    </div>
   );
 }
 
@@ -67,7 +76,7 @@ export function SettingsPage() {
   const settings = useQuery({ queryKey: ["settings", "site"], queryFn: () => cms.settings.get("site") });
   const v = settings.data?.values ?? {};
 
-  const { register, handleSubmit, formState, getValues, reset } = useForm<FormValues>({
+  const { register, handleSubmit, formState, getValues, reset, control } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     values: {
       title: str(v.title),
@@ -109,82 +118,165 @@ export function SettingsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["settings", "site"] }),
   });
 
-  if (settings.isLoading) return <Page><Loading /></Page>;
+  if (settings.isLoading) return <PageContainer><p className="text-muted-foreground">Cargando…</p></PageContainer>;
+
+  const generalError = settings.error ?? save.error;
 
   return (
-    <Page wide>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", marginBottom: "1rem" }}>
-        <h1 style={{ margin: 0 }}>Ajustes</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-          {save.isSuccess && !save.isPending && <span style={{ color: "#0a6b2e", fontSize: "0.85rem" }}>Guardado ✓</span>}
-          <div style={{ display: "flex" }} role="group" aria-label="Modo de edición">
-            <button type="button" onClick={() => setMode("form")} aria-pressed={mode === "form"} style={{ ...toggleBtn(mode === "form"), borderRadius: "6px 0 0 6px" }}>Formulario</button>
-            <button type="button" onClick={showJson} aria-pressed={mode === "json"} style={{ ...toggleBtn(mode === "json"), borderRadius: "0 6px 6px 0", borderLeft: 0 }}>JSON</button>
-          </div>
-          <Button type="submit" form="settings-form" disabled={save.isPending || Boolean(jsonError)}>{save.isPending ? "Guardando…" : "Guardar cambios"}</Button>
+    <PageContainer>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Ajustes</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          {save.isSuccess && !save.isPending && (
+            <span role="status" className="text-sm text-emerald-600 dark:text-emerald-400">Guardado ✓</span>
+          )}
+          <ModeToggle
+            value={mode}
+            options={[{ value: "form", label: "Formulario" }, { value: "json", label: "JSON" }]}
+            ariaLabel="Modo de edición"
+            onChange={(val) => (val === "json" ? showJson() : setMode("form"))}
+          />
+          <Button type="submit" form="settings-form" disabled={save.isPending || Boolean(jsonError)}>
+            {save.isPending ? "Guardando…" : "Guardar cambios"}
+          </Button>
         </div>
       </div>
 
-      {(settings.isError || save.isError) && <ErrorBox error={settings.error ?? save.error} />}
+      {(settings.isError || save.isError) && generalError && (
+        <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {generalError.message}
+        </p>
+      )}
 
-      <form id="settings-form" onSubmit={handleSubmit((values) => save.mutate(values))} noValidate style={{ maxWidth: "46rem" }}>
+      <form id="settings-form" onSubmit={handleSubmit((values) => save.mutate(values))} noValidate className="max-w-2xl">
         {mode === "form" ? (
-        <>
-        <Section title="General del sitio" description="Nombre y datos básicos que identifican tu sitio.">
-          <Field label="Título del sitio" htmlFor="site-title" error={formState.errors.title?.message}>
-            <input id="site-title" style={inputStyle} {...register("title")} />
-          </Field>
-          <Field label="Lema" htmlFor="site-description" error={formState.errors.description?.message}>
-            <input id="site-description" placeholder="En pocas palabras, de qué trata tu sitio" style={inputStyle} {...register("description")} />
-          </Field>
-          <Field label="Dirección del sitio (URL)" htmlFor="site-url" error={formState.errors.siteUrl?.message}>
-            <input id="site-url" placeholder="https://misitio.com" style={inputStyle} {...register("siteUrl")} />
-          </Field>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-            <Field label="Idioma" htmlFor="site-language">
-              <select id="site-language" style={inputStyle} {...register("language")}>
-                {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
-              </select>
-            </Field>
-            <Field label="Zona horaria" htmlFor="site-timezone">
-              <select id="site-timezone" style={inputStyle} {...register("timezone")}>
-                {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
-              </select>
-            </Field>
-          </div>
-        </Section>
+          <>
+            <Section title="General del sitio" description="Nombre y datos básicos que identifican tu sitio.">
+              <FormField id="site-title" label="Título del sitio" error={formState.errors.title?.message}>
+                <Input
+                  id="site-title"
+                  aria-invalid={!!formState.errors.title}
+                  aria-describedby={formState.errors.title ? "site-title-error" : undefined}
+                  {...register("title")}
+                />
+              </FormField>
+              <FormField id="site-description" label="Lema" error={formState.errors.description?.message}>
+                <Input
+                  id="site-description"
+                  placeholder="En pocas palabras, de qué trata tu sitio"
+                  aria-invalid={!!formState.errors.description}
+                  aria-describedby={formState.errors.description ? "site-description-error" : undefined}
+                  {...register("description")}
+                />
+              </FormField>
+              <FormField id="site-url" label="Dirección del sitio (URL)" error={formState.errors.siteUrl?.message}>
+                <Input
+                  id="site-url"
+                  placeholder="https://misitio.com"
+                  aria-invalid={!!formState.errors.siteUrl}
+                  aria-describedby={formState.errors.siteUrl ? "site-url-error" : undefined}
+                  {...register("siteUrl")}
+                />
+              </FormField>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField id="site-language" label="Idioma" error={formState.errors.language?.message}>
+                  <Controller
+                    name="language"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value ?? "es"} onValueChange={field.onChange}>
+                        <SelectTrigger
+                          id="site-language"
+                          aria-invalid={!!formState.errors.language}
+                          aria-describedby={formState.errors.language ? "site-language-error" : undefined}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LANGUAGES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </FormField>
+                <FormField id="site-timezone" label="Zona horaria" error={formState.errors.timezone?.message}>
+                  <Controller
+                    name="timezone"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value ?? "America/Santo_Domingo"} onValueChange={field.onChange}>
+                        <SelectTrigger
+                          id="site-timezone"
+                          aria-invalid={!!formState.errors.timezone}
+                          aria-describedby={formState.errors.timezone ? "site-timezone-error" : undefined}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TIMEZONES.map((tz) => <SelectItem key={tz} value={tz}>{tz}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </FormField>
+              </div>
+            </Section>
 
-        <Section title="SEO por defecto" description="Se usan cuando una página no define los suyos propios.">
-          <Field label="Meta título por defecto" htmlFor="seo-title" error={formState.errors.seoTitle?.message}>
-            <input id="seo-title" style={inputStyle} {...register("seoTitle")} />
-          </Field>
-          <Field label="Meta descripción por defecto" htmlFor="seo-description" error={formState.errors.seoDescription?.message}>
-            <textarea id="seo-description" rows={3} style={inputStyle} {...register("seoDescription")} />
-          </Field>
-          <Field label="Imagen para compartir (Open Graph)" htmlFor="og-image" error={formState.errors.ogImage?.message}>
-            <input id="og-image" placeholder="https://…/imagen.jpg" style={inputStyle} {...register("ogImage")} />
-          </Field>
-        </Section>
+            <Section title="SEO por defecto" description="Se usan cuando una página no define los suyos propios.">
+              <FormField id="seo-title" label="Meta título por defecto" error={formState.errors.seoTitle?.message}>
+                <Input
+                  id="seo-title"
+                  aria-invalid={!!formState.errors.seoTitle}
+                  aria-describedby={formState.errors.seoTitle ? "seo-title-error" : undefined}
+                  {...register("seoTitle")}
+                />
+              </FormField>
+              <FormField id="seo-description" label="Meta descripción por defecto" error={formState.errors.seoDescription?.message}>
+                <Textarea
+                  id="seo-description"
+                  rows={3}
+                  aria-invalid={!!formState.errors.seoDescription}
+                  aria-describedby={formState.errors.seoDescription ? "seo-description-error" : undefined}
+                  {...register("seoDescription")}
+                />
+              </FormField>
+              <FormField id="og-image" label="Imagen para compartir (Open Graph)" error={formState.errors.ogImage?.message}>
+                <Input
+                  id="og-image"
+                  placeholder="https://…/imagen.jpg"
+                  aria-invalid={!!formState.errors.ogImage}
+                  aria-describedby={formState.errors.ogImage ? "og-image-error" : undefined}
+                  {...register("ogImage")}
+                />
+              </FormField>
+            </Section>
 
-        <Section title="Marca" description="Logo y color principal del sitio.">
-          <Field label="URL del logo" htmlFor="logo-url" error={formState.errors.logoUrl?.message}>
-            <input id="logo-url" placeholder="https://…/logo.png" style={inputStyle} {...register("logoUrl")} />
-          </Field>
-          <Field label="Color principal" htmlFor="brand-color">
-            <input id="brand-color" type="color" style={{ ...inputStyle, width: 64, height: 40, padding: 2 }} {...register("brandColor")} />
-          </Field>
-        </Section>
-        </>
+            <Section title="Marca" description="Logo y color principal del sitio.">
+              <FormField id="logo-url" label="URL del logo" error={formState.errors.logoUrl?.message}>
+                <Input
+                  id="logo-url"
+                  placeholder="https://…/logo.png"
+                  aria-invalid={!!formState.errors.logoUrl}
+                  aria-describedby={formState.errors.logoUrl ? "logo-url-error" : undefined}
+                  {...register("logoUrl")}
+                />
+              </FormField>
+              <FormField id="brand-color" label="Color principal" error={formState.errors.brandColor?.message}>
+                <input
+                  id="brand-color"
+                  type="color"
+                  className="h-10 w-16 cursor-pointer rounded-md border border-input bg-background p-1"
+                  aria-invalid={!!formState.errors.brandColor}
+                  aria-describedby={formState.errors.brandColor ? "brand-color-error" : undefined}
+                  {...register("brandColor")}
+                />
+              </FormField>
+            </Section>
+          </>
         ) : (
-          <div>
-            <label htmlFor="settings-json" style={{ position: "absolute", left: "-9999px" }}>Ajustes en formato JSON</label>
-            <textarea id="settings-json" spellCheck={false} rows={22} value={jsonText} onChange={(e) => editJson(e.target.value)}
-              aria-invalid={Boolean(jsonError)}
-              style={{ width: "100%", padding: "0.9rem 1rem", borderRadius: 8, border: `1px solid ${jsonError ? "#d63638" : "#dcdcde"}`, background: "#1d2327", color: "#e6e6e6", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "0.85rem", lineHeight: 1.5, boxSizing: "border-box", resize: "vertical" }} />
-            {jsonError && <div role="alert" style={{ color: "#d63638", fontSize: "0.82rem", marginTop: "0.4rem" }}>{jsonError}</div>}
-          </div>
+          <JsonTextarea id="settings-json" label="Ajustes en formato JSON" value={jsonText} onChange={editJson} error={jsonError} />
         )}
       </form>
-    </Page>
+    </PageContainer>
   );
 }
