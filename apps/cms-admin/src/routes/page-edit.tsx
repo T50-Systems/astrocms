@@ -1,13 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import type { CSSProperties } from "react";
+import type { ReactNode } from "react";
+import { ChevronDown, ChevronLeft, ChevronUp, ExternalLink } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { cms } from "../lib.ts";
-import { Button, ErrorBox, Loading, Page } from "../ui.tsx";
+import { PageContainer } from "@/components/page-container.tsx";
+import { Badge } from "@/components/ui/badge.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { Card } from "@/components/ui/card.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Label } from "@/components/ui/label.tsx";
+import { Textarea } from "@/components/ui/textarea.tsx";
 
 const routeApi = getRouteApi("/pages/$pageId");
-
 const previewOrigin = import.meta.env.VITE_PREVIEW_ORIGIN ?? "";
 
 interface EditForm {
@@ -24,35 +30,9 @@ function fmtDate(value: string): string {
   return Number.isNaN(d.getTime()) ? value : dateFmt.format(d);
 }
 
-const sidebarCard: CSSProperties = {
-  background: "#fff",
-  border: "1px solid #dcdcde",
-  borderRadius: 8,
-  padding: "0.9rem 1rem",
-  marginBottom: "0.8rem",
-};
-const rowStyle: CSSProperties = { display: "flex", justifyContent: "space-between", gap: "0.75rem", padding: "0.35rem 0", fontSize: "0.86rem" };
-const rowLabel: CSSProperties = { color: "#646970" };
-const sidebarLabel: CSSProperties = { display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#646970", margin: "0.6rem 0 0.25rem" };
-const sidebarInput: CSSProperties = { width: "100%", padding: "0.4rem 0.55rem", borderRadius: 6, border: "1px solid #ccc", fontSize: "0.85rem", boxSizing: "border-box" };
-
 function StatusBadge({ status }: { status: string }) {
   const published = status === "published";
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 5,
-        fontSize: "0.8rem",
-        fontWeight: 600,
-        color: published ? "#0a6b2e" : "#8a6d00",
-      }}
-    >
-      <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: published ? "#00a32a" : "#dba617" }} />
-      {published ? "Publicada" : "Borrador"}
-    </span>
-  );
+  return <Badge variant={published ? "success" : "warning"}>{published ? "Publicada" : "Borrador"}</Badge>;
 }
 
 export function EditPage() {
@@ -84,10 +64,7 @@ export function EditPage() {
   });
   const publish = useMutation({ mutationFn: () => cms.pages.publish(pageId), onSuccess: invalidate });
   const unpublish = useMutation({ mutationFn: () => cms.pages.unpublish(pageId), onSuccess: invalidate });
-  const restore = useMutation({
-    mutationFn: (versionNo: number) => cms.pages.restore(pageId, versionNo),
-    onSuccess: invalidate,
-  });
+  const restore = useMutation({ mutationFn: (versionNo: number) => cms.pages.restore(pageId, versionNo), onSuccess: invalidate });
 
   const { register, handleSubmit } = useForm<EditForm>({
     values: {
@@ -99,125 +76,100 @@ export function EditPage() {
     },
   });
 
-  if (page.isLoading) return <Page><Loading /></Page>;
-  if (page.isError || !page.data) return <Page><ErrorBox error={page.error ?? new Error("No encontrada")} /></Page>;
+  if (page.isLoading) return <PageContainer><p className="text-muted-foreground">Cargando…</p></PageContainer>;
+  if (page.isError || !page.data)
+    return <PageContainer><p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{(page.error as Error)?.message ?? "No encontrada"}</p></PageContainer>;
   const p = page.data;
 
-  const saveThenPublish = handleSubmit(async (v) => {
-    await save.mutateAsync(v);
-    await publish.mutateAsync();
-  });
+  const saveThenPublish = handleSubmit(async (v) => { await save.mutateAsync(v); await publish.mutateAsync(); });
   const busy = save.isPending || publish.isPending || unpublish.isPending;
+  const err = save.error ?? publish.error ?? unpublish.error;
 
   return (
-    <Page wide>
-      {/* Barra de acciones */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", marginBottom: "1.25rem" }}>
-        <Link to="/" style={{ color: "#2271b1" }}>← Páginas</Link>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+    <PageContainer>
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <Link to="/" className="flex items-center gap-1 text-sm text-primary hover:underline"><ChevronLeft className="size-4" /> Páginas</Link>
+        <div className="flex items-center gap-2">
           <StatusBadge status={p.status} />
-          <Button ghost type="submit" form="page-form" disabled={busy}>
-            {save.isPending ? "Guardando…" : "Guardar borrador"}
-          </Button>
+          <Button variant="outline" size="sm" type="submit" form="page-form" disabled={busy}>{save.isPending ? "Guardando…" : "Guardar borrador"}</Button>
           {p.status === "published" ? (
-            <Button type="button" onClick={() => unpublish.mutate()} disabled={busy}>Despublicar</Button>
+            <Button size="sm" type="button" onClick={() => unpublish.mutate()} disabled={busy}>Despublicar</Button>
           ) : (
-            <Button type="button" onClick={() => saveThenPublish()} disabled={busy}>
-              {publish.isPending ? "Publicando…" : "Publicar"}
-            </Button>
+            <Button size="sm" type="button" onClick={() => saveThenPublish()} disabled={busy}>{publish.isPending ? "Publicando…" : "Publicar"}</Button>
           )}
         </div>
       </div>
 
-      {(save.isError || publish.isError || unpublish.isError) && (
-        <ErrorBox error={save.error ?? publish.error ?? unpublish.error} />
-      )}
+      {err && <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{err.message}</p>}
 
-      {/* Dos columnas: contenido + ajustes */}
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 300px", gap: "1.5rem", alignItems: "start" }}>
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <form id="page-form" onSubmit={handleSubmit((v) => save.mutate(v))} noValidate>
-          <input
-            aria-label="Título"
-            placeholder="Añade un título"
-            style={{ width: "100%", border: 0, outline: 0, background: "transparent", fontSize: "2rem", fontWeight: 700, padding: "0.2rem 0", marginBottom: "1rem", boxSizing: "border-box" }}
-            {...register("title")}
-          />
-          <textarea
-            aria-label="Contenido"
-            placeholder="Escribe el contenido de la página…"
-            rows={16}
-            style={{ width: "100%", border: "1px solid #dcdcde", borderRadius: 8, padding: "1rem", fontSize: "1rem", lineHeight: 1.6, fontFamily: "inherit", boxSizing: "border-box", background: "#fff", minHeight: "24rem" }}
-            {...register("body")}
-          />
+          <input aria-label="Título" placeholder="Añade un título" className="mb-3 w-full border-0 bg-transparent p-1 text-3xl font-bold outline-none placeholder:text-muted-foreground" {...register("title")} />
+          <Textarea aria-label="Contenido" placeholder="Escribe el contenido de la página…" rows={16} className="min-h-96 text-base leading-relaxed" {...register("body")} />
         </form>
 
-        <aside>
-          <div style={sidebarCard}>
-            <div style={{ fontWeight: 700, fontSize: "0.9rem", marginBottom: "0.4rem" }}>Página</div>
-            <div style={rowStyle}><span style={rowLabel}>Estado</span><StatusBadge status={p.status} /></div>
-            <div style={rowStyle}><span style={rowLabel}>Guardada</span><span>{fmtDate(p.updatedAt)}</span></div>
-            <div style={rowStyle}><span style={rowLabel}>Versión</span><span>{p.currentVersionNo}</span></div>
-            <div style={rowStyle}><span style={rowLabel}>Autor</span><span>{p.authorName ?? "—"}</span></div>
-
-            <label htmlFor="slug" style={sidebarLabel}>ID en URL</label>
-            <input id="slug" style={sidebarInput} form="page-form" {...register("slug")} />
-
+        <aside className="flex flex-col gap-3">
+          <Card className="p-4">
+            <div className="mb-1 text-sm font-semibold">Página</div>
+            <dl className="text-sm">
+              <Row label="Estado"><StatusBadge status={p.status} /></Row>
+              <Row label="Guardada">{fmtDate(p.updatedAt)}</Row>
+              <Row label="Versión">{p.currentVersionNo}</Row>
+              <Row label="Autor">{p.authorName ?? "—"}</Row>
+            </dl>
+            <div className="mt-2 grid gap-1.5">
+              <Label htmlFor="slug" className="text-xs text-muted-foreground">ID en URL</Label>
+              <Input id="slug" className="h-8" form="page-form" {...register("slug")} />
+            </div>
             {p.status === "published" && previewOrigin && (
-              <a
-                href={`${previewOrigin}${p.slug}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{ display: "inline-block", marginTop: "0.7rem", color: "#2271b1", fontSize: "0.85rem" }}
-              >
-                Ver página ↗
+              <a href={`${previewOrigin}${p.slug}`} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-sm text-primary hover:underline">
+                Ver página <ExternalLink className="size-3.5" />
               </a>
             )}
-          </div>
+          </Card>
 
-          <div style={sidebarCard}>
-            <button
-              type="button"
-              onClick={() => setSeoOpen((o) => !o)}
-              aria-expanded={seoOpen}
-              style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", border: 0, background: "transparent", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: "0.9rem" }}
-            >
-              SEO <span aria-hidden>{seoOpen ? "▲" : "▼"}</span>
+          <Card className="p-4">
+            <button type="button" onClick={() => setSeoOpen((o) => !o)} aria-expanded={seoOpen} className="flex w-full items-center justify-between text-sm font-semibold">
+              SEO {seoOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
             </button>
             {seoOpen && (
-              <div style={{ marginTop: "0.5rem" }}>
-                <label htmlFor="seo-title" style={sidebarLabel}>Título SEO</label>
-                <input id="seo-title" style={sidebarInput} form="page-form" {...register("seoTitle")} />
-                <label htmlFor="seo-description" style={sidebarLabel}>Descripción SEO</label>
-                <textarea id="seo-description" rows={3} style={sidebarInput} form="page-form" {...register("seoDescription")} />
+              <div className="mt-3 grid gap-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="seo-title" className="text-xs text-muted-foreground">Título SEO</Label>
+                  <Input id="seo-title" className="h-8" form="page-form" {...register("seoTitle")} />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="seo-description" className="text-xs text-muted-foreground">Descripción SEO</Label>
+                  <Textarea id="seo-description" rows={3} form="page-form" {...register("seoDescription")} />
+                </div>
               </div>
             )}
-          </div>
+          </Card>
 
-          <div style={sidebarCard}>
-            <div style={{ fontWeight: 700, fontSize: "0.9rem", marginBottom: "0.5rem" }}>Revisiones</div>
-            {revisions.isLoading && <Loading />}
-            {revisions.data && revisions.data.length === 0 && <p style={{ color: "#646970", fontSize: "0.85rem", margin: 0 }}>Sin revisiones.</p>}
-            <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+          <Card className="p-4">
+            <div className="mb-2 text-sm font-semibold">Revisiones</div>
+            {revisions.isLoading && <p className="text-sm text-muted-foreground">Cargando…</p>}
+            {revisions.data && revisions.data.length === 0 && <p className="text-sm text-muted-foreground">Sin revisiones.</p>}
+            <ul className="divide-y">
               {revisions.data?.map((r) => (
-                <li key={r.versionNo} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.3rem 0", fontSize: "0.82rem", borderTop: r.versionNo === revisions.data[0]?.versionNo ? "none" : "1px solid #f0f0f1" }}>
-                  <span>
-                    v{r.versionNo} · {r.title}
-                    {r.isPublished && <em style={{ color: "#0a6b2e" }}> (publicada)</em>}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => restore.mutate(r.versionNo)}
-                    disabled={restore.isPending}
-                    style={{ border: 0, background: "transparent", color: "#2271b1", cursor: "pointer", fontSize: "0.82rem" }}
-                  >
-                    Restaurar
-                  </button>
+                <li key={r.versionNo} className="flex items-center justify-between py-1.5 text-sm">
+                  <span>v{r.versionNo} · {r.title}{r.isPublished && <em className="text-emerald-700"> (publicada)</em>}</span>
+                  <button type="button" onClick={() => restore.mutate(r.versionNo)} disabled={restore.isPending} className="text-xs text-primary hover:underline">Restaurar</button>
                 </li>
               ))}
             </ul>
-          </div>
+          </Card>
         </aside>
       </div>
-    </Page>
+    </PageContainer>
+  );
+}
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between py-1">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd>{children}</dd>
+    </div>
   );
 }
