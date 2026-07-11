@@ -35,7 +35,8 @@ export const taxonomyDetailSchema = taxonomySchema.extend({
 export type TaxonomyDetail = z.infer<typeof taxonomyDetailSchema>;
 
 export const upsertTermRequestSchema = z.object({
-  slug: z.string().min(1),
+  // slug opcional: si falta, el servidor lo deriva del nombre y lo hace único (como WordPress).
+  slug: z.string().min(1).optional(),
   name: z.string().min(1),
   parentId: idSchema.optional(),
   position: z.number().int().nonnegative().optional(),

@@ -8,20 +8,19 @@ export function TaxonomiesPage() {
   const qc = useQueryClient();
   const category = useQuery({ queryKey: ["taxonomy", "category"], queryFn: () => cms.taxonomies.get("category") });
   const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
 
   const save = useMutation({
-    mutationFn: () => cms.taxonomies.upsertTerm("category", { name: name.trim(), slug: slug.trim() }),
+    // El slug se genera solo en el servidor a partir del nombre (como WordPress).
+    mutationFn: () => cms.taxonomies.upsertTerm("category", { name: name.trim() }),
     onSuccess: () => {
       setName("");
-      setSlug("");
       qc.invalidateQueries({ queryKey: ["taxonomy", "category"] });
     },
   });
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!name.trim() || !slug.trim()) return;
+    if (!name.trim()) return;
     save.mutate();
   };
 
@@ -42,14 +41,11 @@ export function TaxonomiesPage() {
       </div>
 
       <form onSubmit={submit}>
-        <Field label="Nombre" htmlFor="term-name">
-          <input id="term-name" style={inputStyle} value={name} onChange={(event) => setName(event.target.value)} />
+        <Field label="Nombre de la categoría" htmlFor="term-name">
+          <input id="term-name" placeholder="Ej. Noticias" style={inputStyle} value={name} onChange={(event) => setName(event.target.value)} />
         </Field>
-        <Field label="Slug" htmlFor="term-slug">
-          <input id="term-slug" style={inputStyle} value={slug} onChange={(event) => setSlug(event.target.value)} />
-        </Field>
-        <Button type="submit" disabled={save.isPending || !name.trim() || !slug.trim()}>
-          {save.isPending ? "Guardando..." : "Añadir categoría"}
+        <Button type="submit" disabled={save.isPending || !name.trim()}>
+          {save.isPending ? "Guardando…" : "Añadir categoría"}
         </Button>
       </form>
     </Page>

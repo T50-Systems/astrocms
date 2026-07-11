@@ -109,6 +109,22 @@ export function createEntryService(
     }
   }
 
+  /** Deriva un slug único a partir de una base, añadiendo -2, -3… si ya existe (estilo WordPress). */
+  async function uniqueSlug(siteId: string, contentTypeId: string, base: string): Promise<string> {
+    const root = base && base !== "/" ? base : "/pagina";
+    for (let n = 1; ; n++) {
+      const candidate = n === 1 ? root : `${root}-${n}`;
+      const taken = (
+        await db
+          .select({ id: entries.id })
+          .from(entries)
+          .where(and(eq(entries.siteId, siteId), eq(entries.contentTypeId, contentTypeId), eq(entries.slug, candidate)))
+          .limit(1)
+      )[0];
+      if (!taken) return candidate;
+    }
+  }
+
   return {
     async create(args: {
       siteId: string;
@@ -116,7 +132,8 @@ export function createEntryService(
       input: CreateEntryRequest;
     }): Promise<Entry> {
       const ct = await contentTypeByKey(args.siteId, args.input.contentTypeKey);
-      const slug = args.input.slug ?? slugify(args.input.title);
+      // Si el cliente no da slug, se deriva del título y se hace único automáticamente (como WordPress).
+      const slug = args.input.slug ?? (await uniqueSlug(args.siteId, ct.id, slugify(args.input.title)));
       try {
         const entryId = await db.transaction(async (tx) => {
           const inserted = (

@@ -3,6 +3,13 @@ import type { Taxonomy, Term, TermRef, UpsertTermRequest } from "@astrocms/contr
 import { entries, termRelationships, terms, taxonomies } from "@astrocms/cms-database";
 import type { Database } from "@astrocms/cms-database";
 import { notFound, validation } from "./errors.js";
+import { slugify } from "./ports.js";
+
+/** Slug plano (sin '/') derivado de un nombre, para términos. */
+function termSlugBase(name: string): string {
+  const base = slugify(name).replace(/^\/+/, "");
+  return base || "termino";
+}
 
 type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0] | Database;
 type TaxonomyRow = typeof taxonomies.$inferSelect;
@@ -48,6 +55,21 @@ async function assertParent(tx: Tx, taxonomyId: string, parentId: string | undef
 }
 
 export function createTaxonomyService(db: Database) {
+  /** Deriva un slug único dentro de la taxonomía, añadiendo -2, -3… si ya existe. */
+  async function uniqueTermSlug(taxonomyId: string, base: string): Promise<string> {
+    for (let n = 1; ; n++) {
+      const candidate = n === 1 ? base : `${base}-${n}`;
+      const taken = (
+        await db
+          .select({ id: terms.id })
+          .from(terms)
+          .where(and(eq(terms.taxonomyId, taxonomyId), eq(terms.slug, candidate)))
+          .limit(1)
+      )[0];
+      if (!taken) return candidate;
+    }
+  }
+
   return {
     async listTaxonomies(siteId: string): Promise<Taxonomy[]> {
       const rows = await db
@@ -81,11 +103,13 @@ export function createTaxonomyService(db: Database) {
 
     async upsertTerm(input: UpsertTermRequest & { taxonomyId: string }): Promise<Term> {
       await assertParent(db, input.taxonomyId, input.parentId);
+      // Si no se da slug, se deriva del nombre y se hace único (como WordPress).
+      const slug = input.slug ?? (await uniqueTermSlug(input.taxonomyId, termSlugBase(input.name)));
       const existing = (
         await db
           .select()
           .from(terms)
-          .where(and(eq(terms.taxonomyId, input.taxonomyId), eq(terms.slug, input.slug)))
+          .where(and(eq(terms.taxonomyId, input.taxonomyId), eq(terms.slug, slug)))
           .limit(1)
       )[0];
 
@@ -96,7 +120,7 @@ export function createTaxonomyService(db: Database) {
         (
           await db
             .insert(terms)
-            .values({ taxonomyId: input.taxonomyId, slug: input.slug, name: input.name, parentId, position })
+            .values({ taxonomyId: input.taxonomyId, slug, name: input.name, parentId, position })
             .returning()
         )[0]!;
 
