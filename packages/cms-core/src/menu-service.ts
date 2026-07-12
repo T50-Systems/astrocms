@@ -61,7 +61,8 @@ async function insertItems(tx: Tx, menuId: string, parentId: string | null, item
           label: item.label,
           linkType: item.linkType,
           entryId: item.entryId ?? null,
-          url: item.url ?? null,
+          // Para linkType=entry la url siempre se calcula del slug: no persistir la del cliente.
+          url: item.linkType === "entry" ? null : item.url ?? null,
           target: item.target ?? null,
           meta: {
             ...(item.cssClasses?.length ? { cssClasses: item.cssClasses } : {}),
