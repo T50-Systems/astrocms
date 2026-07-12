@@ -100,6 +100,39 @@ describe.skipIf(!DB)("API v1 — menús, ajustes y webhooks (integración)", () 
     expect((pub.json() as { items: unknown[] }).items).toHaveLength(1);
   });
 
+  it("persiste propiedades avanzadas del item (meta) en el round-trip", async () => {
+    const location = `adv-${randomUUID().slice(0, 8)}`;
+    const put = await app.inject({
+      method: "PUT",
+      url: `/api/v1/menus/${location}`,
+      ...auth({
+        payload: {
+          name: "Avanzado",
+          items: [{
+            label: "Docs",
+            linkType: "url",
+            url: "/docs",
+            cssClasses: ["destacado", "cta"],
+            titleAttr: "Documentación",
+            description: "Guías y referencia",
+            children: [],
+          }],
+        },
+      }),
+    });
+    expect(put.statusCode).toBe(200);
+    const item = (put.json() as { items: Array<Record<string, unknown>> }).items[0]!;
+    expect(item.cssClasses).toEqual(["destacado", "cta"]);
+    expect(item.titleAttr).toBe("Documentación");
+    expect(item.description).toBe("Guías y referencia");
+
+    const get = await app.inject({ method: "GET", url: `/api/v1/menus/${location}`, ...auth() });
+    const round = (get.json() as { items: Array<Record<string, unknown>> }).items[0]!;
+    expect(round.cssClasses).toEqual(["destacado", "cta"]);
+
+    await app.inject({ method: "DELETE", url: `/api/v1/menus/${location}`, ...auth() });
+  });
+
   it("elimina un menú (204) y responde 404 después", async () => {
     const location = `del-${randomUUID().slice(0, 8)}`;
     const put = await app.inject({

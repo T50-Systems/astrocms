@@ -40,6 +40,9 @@ function normalize(items: EditableMenuItem[]): MenuItemInput[] {
     ...(item.entryId ? { entryId: item.entryId } : {}),
     ...(item.linkType !== "entry" && item.url ? { url: item.url } : {}),
     ...(item.target ? { target: item.target } : {}),
+    ...(item.cssClasses?.length ? { cssClasses: item.cssClasses } : {}),
+    ...(item.titleAttr ? { titleAttr: item.titleAttr } : {}),
+    ...(item.description ? { description: item.description } : {}),
     children: normalize((item.children ?? []) as EditableMenuItem[]),
   }));
 }
@@ -54,6 +57,9 @@ function toEditable(items: Menu["items"]): EditableMenuItem[] {
     ...(item.url ? { url: item.url } : {}),
     ...(item.target ? { target: item.target } : {}),
     ...(item.invalid ? { invalid: item.invalid } : {}),
+    ...(item.cssClasses?.length ? { cssClasses: item.cssClasses } : {}),
+    ...(item.titleAttr ? { titleAttr: item.titleAttr } : {}),
+    ...(item.description ? { description: item.description } : {}),
     children: toEditable(item.children),
   }));
 }

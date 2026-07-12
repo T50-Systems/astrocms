@@ -16,7 +16,14 @@ const visible = items.filter((item) => !item.invalid && item.url);
   <ul class={root ? "nav-root" : "nav-sub"}>
     {visible.map((item) => (
       <li>
-        <a href={item.url} target={item.target === "_blank" ? "_blank" : undefined} rel={item.target === "_blank" ? "noopener" : undefined}>
+        <a
+          href={item.url}
+          target={item.target === "_blank" ? "_blank" : undefined}
+          rel={item.target === "_blank" ? "noopener" : undefined}
+          class={item.cssClasses?.length ? item.cssClasses.join(" ") : undefined}
+          title={item.titleAttr || undefined}
+          data-description={item.description || undefined}
+        >
           {item.label}
         </a>
         {item.children.length > 0 && <Astro.self items={item.children} root={false} />}

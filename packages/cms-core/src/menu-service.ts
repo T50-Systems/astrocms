@@ -12,6 +12,18 @@ type MenuItemRow = typeof menuItems.$inferSelect;
 /** slugs de los entries enlazados, para resolver url y detectar enlaces rotos. */
 type EntrySlugs = Map<string, string>;
 
+/** Lee las propiedades avanzadas de menu_items.meta con parseo defensivo (jsonb sin forma garantizada). */
+function advancedFromMeta(meta: unknown): Pick<MenuItem, "cssClasses" | "titleAttr" | "description"> {
+  if (!meta || typeof meta !== "object") return {};
+  const rec = meta as Record<string, unknown>;
+  const cssClasses = Array.isArray(rec.cssClasses) ? rec.cssClasses.filter((c): c is string => typeof c === "string") : [];
+  return {
+    ...(cssClasses.length > 0 ? { cssClasses } : {}),
+    ...(typeof rec.titleAttr === "string" && rec.titleAttr ? { titleAttr: rec.titleAttr } : {}),
+    ...(typeof rec.description === "string" && rec.description ? { description: rec.description } : {}),
+  };
+}
+
 function toMenuItem(row: MenuItemRow, children: MenuItem[], slugs: EntrySlugs): MenuItem {
   const base = {
     id: row.id,
@@ -19,6 +31,7 @@ function toMenuItem(row: MenuItemRow, children: MenuItem[], slugs: EntrySlugs): 
     linkType: row.linkType,
     ...(row.entryId ? { entryId: row.entryId } : {}),
     ...(row.target ? { target: row.target } : {}),
+    ...advancedFromMeta(row.meta),
     children,
   };
   if (row.linkType === "entry") {
@@ -50,6 +63,11 @@ async function insertItems(tx: Tx, menuId: string, parentId: string | null, item
           entryId: item.entryId ?? null,
           url: item.url ?? null,
           target: item.target ?? null,
+          meta: {
+            ...(item.cssClasses?.length ? { cssClasses: item.cssClasses } : {}),
+            ...(item.titleAttr ? { titleAttr: item.titleAttr } : {}),
+            ...(item.description ? { description: item.description } : {}),
+          },
         })
         .returning({ id: menuItems.id })
     )[0]!;

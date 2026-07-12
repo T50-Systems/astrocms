@@ -14,6 +14,10 @@ export interface MenuItemInput {
   entryId?: string | undefined;
   url?: string | undefined;
   target?: MenuItemTarget | undefined;
+  /** Avanzado (estilo WordPress, persistido en menu_items.meta). */
+  cssClasses?: string[] | undefined;
+  titleAttr?: string | undefined;
+  description?: string | undefined;
   children?: MenuItemInput[] | undefined;
 }
 
@@ -24,6 +28,9 @@ export const menuItemInputSchema: z.ZodType<MenuItemInput> = z.object({
   entryId: idSchema.optional(),
   url: z.string().optional(),
   target: menuItemTargetSchema.optional(),
+  cssClasses: z.array(z.string()).optional(),
+  titleAttr: z.string().optional(),
+  description: z.string().optional(),
   children: z.array(z.lazy(() => menuItemInputSchema)).optional(),
 });
 
@@ -40,6 +47,10 @@ export type MenuItem = {
   target?: MenuItemTarget | undefined;
   /** Read-only, calculado: el entry enlazado ya no existe (como `invalid` en WordPress). */
   invalid?: boolean | undefined;
+  /** Avanzado (estilo WordPress, persistido en menu_items.meta). */
+  cssClasses?: string[] | undefined;
+  titleAttr?: string | undefined;
+  description?: string | undefined;
   children: MenuItem[];
 };
 
@@ -54,6 +65,9 @@ export const menuItemSchema: z.ZodType<MenuItem> = z.object({
   url: z.string().optional(),
   target: menuItemTargetSchema.optional(),
   invalid: z.boolean().optional(),
+  cssClasses: z.array(z.string()).optional(),
+  titleAttr: z.string().optional(),
+  description: z.string().optional(),
   children: z.array(z.lazy(() => menuItemSchema)),
 });
 

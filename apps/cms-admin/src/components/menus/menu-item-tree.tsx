@@ -1,12 +1,76 @@
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, X } from "lucide-react";
+import { useState } from "react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronDown, ChevronUp, X } from "lucide-react";
 import type { MenuItemInput } from "@astrocms/contracts";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
+import { Textarea } from "@/components/ui/textarea.tsx";
 
 /** Item editable en la UI: MenuItemInput + campos read-only que el servidor calcula. */
 export type EditableMenuItem = MenuItemInput & { url?: string | undefined; invalid?: boolean | undefined };
+
+/** Propiedades avanzadas estilo WordPress, plegadas por defecto (progressive disclosure). */
+function AdvancedFields({
+  item,
+  itemPath,
+  idKey,
+  onPatch,
+}: {
+  item: EditableMenuItem;
+  itemPath: number[];
+  idKey: string;
+  onPatch: (path: number[], patch: Partial<MenuItemInput>) => void;
+}) {
+  const hasValues = Boolean(item.cssClasses?.length || item.titleAttr || item.description);
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="-mt-1 pl-3">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+      >
+        {open ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+        Avanzado{!open && hasValues ? " •" : ""}
+      </button>
+      {open && (
+        <div className="mt-2 grid gap-2 rounded-md border bg-card p-3 md:grid-cols-2">
+          <div className="space-y-1">
+            <Label htmlFor={`adv-css-${idKey}`} className="text-xs">Clases CSS (separadas por espacios)</Label>
+            <Input
+              id={`adv-css-${idKey}`}
+              className="h-8 text-sm"
+              defaultValue={item.cssClasses?.join(" ") ?? ""}
+              onBlur={(e) => onPatch(itemPath, { cssClasses: e.target.value.split(/\s+/).filter(Boolean) })}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={`adv-title-${idKey}`} className="text-xs">Atributo title</Label>
+            <Input
+              id={`adv-title-${idKey}`}
+              className="h-8 text-sm"
+              value={item.titleAttr ?? ""}
+              onChange={(e) => onPatch(itemPath, { titleAttr: e.target.value })}
+            />
+          </div>
+          <div className="space-y-1 md:col-span-2">
+            <Label htmlFor={`adv-desc-${idKey}`} className="text-xs">Descripción</Label>
+            <Textarea
+              id={`adv-desc-${idKey}`}
+              rows={2}
+              className="text-sm"
+              value={item.description ?? ""}
+              onChange={(e) => onPatch(itemPath, { description: e.target.value })}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export interface MenuItemTreeProps {
   items: EditableMenuItem[];
@@ -66,6 +130,7 @@ export function MenuItemTree({ items, path = [], onMove, onIndent, onOutdent, on
                 </Button>
               </div>
             </div>
+            <AdvancedFields item={item} itemPath={itemPath} idKey={key} onPatch={onPatch} />
             {(item.children?.length ?? 0) > 0 && (
               <div className="ml-6 border-l pl-3">
                 <MenuItemTree
