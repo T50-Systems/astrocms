@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { hashPassword, ROLE_PERMISSIONS } from "@astrocms/cms-auth";
 import { KnownPermissions } from "@astrocms/contracts";
 import { createDb } from "./client.js";
@@ -10,6 +10,8 @@ import {
   roles,
   settings,
   sites,
+  taxonomies,
+  terms,
   userRoles,
   users,
 } from "./schema.js";
@@ -100,6 +102,36 @@ async function main() {
     await db
       .insert(settings)
       .values({ siteId: site.id, group: row.group, key: row.key, value: row.value })
+      .onConflictDoNothing();
+  }
+
+  for (const taxonomy of [
+    { key: "category", name: "Categorías", hierarchical: true },
+    { key: "tag", name: "Etiquetas", hierarchical: false },
+  ] as const) {
+    await db
+      .insert(taxonomies)
+      .values({ siteId: site.id, key: taxonomy.key, name: taxonomy.name, hierarchical: taxonomy.hierarchical })
+      .onConflictDoUpdate({
+        target: [taxonomies.siteId, taxonomies.key],
+        set: { name: taxonomy.name, hierarchical: taxonomy.hierarchical },
+      });
+  }
+  const category = (
+    await db
+      .select()
+      .from(taxonomies)
+      .where(and(eq(taxonomies.siteId, site.id), eq(taxonomies.key, "category")))
+      .limit(1)
+  )[0]!;
+
+  for (const [position, term] of [
+    { slug: "noticias", name: "Noticias" },
+    { slug: "guias", name: "Guías" },
+  ].entries()) {
+    await db
+      .insert(terms)
+      .values({ taxonomyId: category.id, slug: term.slug, name: term.name, position })
       .onConflictDoNothing();
   }
 

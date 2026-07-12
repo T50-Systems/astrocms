@@ -100,6 +100,174 @@ describe.skipIf(!DB)("API v1 — menús, ajustes y webhooks (integración)", () 
     expect((pub.json() as { items: unknown[] }).items).toHaveLength(1);
   });
 
+  it("rechaza urls de menú con esquemas peligrosos (400) y acepta relativas/http(s)", async () => {
+    const location = `sec-${randomUUID().slice(0, 8)}`;
+    const putBad = (url: string) =>
+      app.inject({
+        method: "PUT",
+        url: `/api/v1/menus/${location}`,
+        ...auth({ payload: { name: "Sec", items: [{ label: "X", linkType: "url", url, children: [] }] } }),
+      });
+
+    for (const url of ["javascript:alert(1)", "JaVaScRiPt:alert(1)", "data:text/html,x", "//evil.example"]) {
+      const res = await putBad(url);
+      expect(res.statusCode).toBe(400);
+      expect((res.json() as { error: { code: string } }).error.code).toBe("validation_error");
+    }
+
+    // Las válidas siguen funcionando (relativa y absoluta http/https), también anidadas.
+    const ok = await app.inject({
+      method: "PUT",
+      url: `/api/v1/menus/${location}`,
+      ...auth({
+        payload: {
+          name: "Sec",
+          items: [
+            { label: "Legal", linkType: "url", url: "/legal", children: [{ label: "Ext", linkType: "url", url: "https://example.com/x", children: [] }] },
+          ],
+        },
+      }),
+    });
+    expect(ok.statusCode).toBe(200);
+
+    await app.inject({ method: "DELETE", url: `/api/v1/menus/${location}`, ...auth() });
+  });
+
+  it("auto-añade páginas de nivel superior al publicar (autoAddPages)", async () => {
+    const location = `auto-${randomUUID().slice(0, 8)}`;
+    const put = await app.inject({
+      method: "PUT",
+      url: `/api/v1/menus/${location}`,
+      ...auth({ payload: { name: "Auto", autoAddPages: true, items: [] } }),
+    });
+    expect(put.statusCode).toBe(200);
+    expect((put.json() as { autoAddPages: boolean }).autoAddPages).toBe(true);
+
+    // Página top-level publicada → se añade al menú.
+    const slug = `/auto-${randomUUID().slice(0, 8)}`;
+    const page = await app.inject({
+      method: "POST",
+      url: "/api/v1/pages",
+      ...auth({ payload: { title: "Auto añadida", slug, editorType: "rich-text" } }),
+    });
+    const pageId = (page.json() as { id: string }).id;
+    const pub1 = await app.inject({ method: "POST", url: `/api/v1/pages/${pageId}/publish`, ...auth() });
+    expect(pub1.statusCode).toBe(200);
+
+    const menu1 = await app.inject({ method: "GET", url: `/api/v1/menus/${location}`, ...auth() });
+    const items1 = (menu1.json() as { items: Array<{ entryId?: string; label: string }> }).items;
+    expect(items1.some((i) => i.entryId === pageId && i.label === "Auto añadida")).toBe(true);
+
+    // Re-publicar no duplica.
+    await app.inject({ method: "POST", url: `/api/v1/pages/${pageId}/unpublish`, ...auth() });
+    await app.inject({ method: "POST", url: `/api/v1/pages/${pageId}/publish`, ...auth() });
+    const menu2 = await app.inject({ method: "GET", url: `/api/v1/menus/${location}`, ...auth() });
+    const items2 = (menu2.json() as { items: Array<{ entryId?: string }> }).items;
+    expect(items2.filter((i) => i.entryId === pageId)).toHaveLength(1);
+
+    // Página anidada NO se añade.
+    const nested = await app.inject({
+      method: "POST",
+      url: "/api/v1/pages",
+      ...auth({ payload: { title: "Anidada", slug: `${slug}/hija`, editorType: "rich-text" } }),
+    });
+    const nestedId = (nested.json() as { id: string }).id;
+    await app.inject({ method: "POST", url: `/api/v1/pages/${nestedId}/publish`, ...auth() });
+    const menu3 = await app.inject({ method: "GET", url: `/api/v1/menus/${location}`, ...auth() });
+    expect((menu3.json() as { items: Array<{ entryId?: string }> }).items.some((i) => i.entryId === nestedId)).toBe(false);
+
+    // limpieza
+    await app.inject({ method: "DELETE", url: `/api/v1/menus/${location}`, ...auth() });
+    await app.inject({ method: "DELETE", url: `/api/v1/pages/${pageId}`, ...auth() });
+    await app.inject({ method: "DELETE", url: `/api/v1/pages/${nestedId}`, ...auth() });
+  });
+
+  it("persiste propiedades avanzadas del item (meta) en el round-trip", async () => {
+    const location = `adv-${randomUUID().slice(0, 8)}`;
+    const put = await app.inject({
+      method: "PUT",
+      url: `/api/v1/menus/${location}`,
+      ...auth({
+        payload: {
+          name: "Avanzado",
+          items: [{
+            label: "Docs",
+            linkType: "url",
+            url: "/docs",
+            cssClasses: ["destacado", "cta"],
+            titleAttr: "Documentación",
+            description: "Guías y referencia",
+            children: [],
+          }],
+        },
+      }),
+    });
+    expect(put.statusCode).toBe(200);
+    const item = (put.json() as { items: Array<Record<string, unknown>> }).items[0]!;
+    expect(item.cssClasses).toEqual(["destacado", "cta"]);
+    expect(item.titleAttr).toBe("Documentación");
+    expect(item.description).toBe("Guías y referencia");
+
+    const get = await app.inject({ method: "GET", url: `/api/v1/menus/${location}`, ...auth() });
+    const round = (get.json() as { items: Array<Record<string, unknown>> }).items[0]!;
+    expect(round.cssClasses).toEqual(["destacado", "cta"]);
+
+    await app.inject({ method: "DELETE", url: `/api/v1/menus/${location}`, ...auth() });
+  });
+
+  it("elimina un menú (204) y responde 404 después", async () => {
+    const location = `del-${randomUUID().slice(0, 8)}`;
+    const put = await app.inject({
+      method: "PUT",
+      url: `/api/v1/menus/${location}`,
+      ...auth({ payload: { name: "Borrable", items: [{ label: "X", linkType: "url", url: "/x", children: [] }] } }),
+    });
+    expect(put.statusCode).toBe(200);
+
+    const del = await app.inject({ method: "DELETE", url: `/api/v1/menus/${location}`, ...auth() });
+    expect(del.statusCode).toBe(204);
+
+    const gone = await app.inject({ method: "GET", url: `/api/v1/menus/${location}`, ...auth() });
+    expect(gone.statusCode).toBe(404);
+
+    const again = await app.inject({ method: "DELETE", url: `/api/v1/menus/${location}`, ...auth() });
+    expect(again.statusCode).toBe(404);
+  });
+
+  it("resuelve url del entry en items de menú y marca invalid al borrarlo", async () => {
+    const slug = `/menu-link-${randomUUID().slice(0, 8)}`;
+    const page = await app.inject({
+      method: "POST",
+      url: "/api/v1/pages",
+      ...auth({ payload: { title: "Página enlazada", slug, editorType: "rich-text" } }),
+    });
+    expect(page.statusCode).toBe(201);
+    const pageId = (page.json() as { id: string }).id;
+
+    const location = `loc-${randomUUID().slice(0, 8)}`;
+    const put = await app.inject({
+      method: "PUT",
+      url: `/api/v1/menus/${location}`,
+      ...auth({
+        payload: { name: "Con entry", items: [{ label: "Enlazada", linkType: "entry", entryId: pageId, children: [] }] },
+      }),
+    });
+    expect(put.statusCode).toBe(200);
+    const item = (put.json() as { items: Array<{ url?: string; invalid?: boolean }> }).items[0]!;
+    expect(item.url).toBe(slug); // url calculada desde el slug del entry
+    expect(item.invalid).toBeUndefined();
+
+    // Borrar la página → FK set null → el item queda marcado como roto.
+    const del = await app.inject({ method: "DELETE", url: `/api/v1/pages/${pageId}`, ...auth() });
+    expect(del.statusCode).toBe(204);
+
+    const after = await app.inject({ method: "GET", url: `/api/v1/menus/${location}`, ...auth() });
+    expect(after.statusCode).toBe(200);
+    const broken = (after.json() as { items: Array<{ url?: string; invalid?: boolean }> }).items[0]!;
+    expect(broken.invalid).toBe(true);
+    expect(broken.url).toBeUndefined();
+  });
+
   it("set/get de settings y lectura pública", async () => {
     const values = { title: "AstroCMS Test", description: "Descripción desde integración" };
     const put = await app.inject({

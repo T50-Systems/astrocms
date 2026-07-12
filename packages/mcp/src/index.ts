@@ -160,7 +160,10 @@ function createTools(runtime: RuntimeDeps) {
       return ok(await runtime.core.entries.update({ id: input.id, userId, input: input.patch }));
     }),
 
-    publish_entry: withValidation(publishEntryInputSchema, async (input) => ok(await runtime.core.entries.publish(input.id))),
+    publish_entry: withValidation(publishEntryInputSchema, async (input) => {
+      const userId = await resolveUserId(runtime);
+      return ok(await runtime.core.entries.publish({ id: input.id, userId }));
+    }),
 
     validate_document: withValidation(validateDocumentInputSchema, async (input) => {
       return ok(validateDocument(input.document, runtime.manifest));

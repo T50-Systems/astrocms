@@ -15,6 +15,7 @@ export const KnownPermissions = [
   "media.write",
   "media.delete",
   "menus.write",
+  "taxonomy.write",
   "settings.write",
   "users.manage",
   "webhooks.manage",
@@ -41,6 +42,15 @@ export const sessionSchema = z.object({
   expiresAt: isoDateTimeSchema,
 });
 export type Session = z.infer<typeof sessionSchema>;
+
+export const userSessionSchema = z.object({
+  id: idSchema,
+  ip: z.string().nullable(),
+  userAgent: z.string().nullable(),
+  createdAt: isoDateTimeSchema,
+  expiresAt: isoDateTimeSchema,
+});
+export type UserSession = z.infer<typeof userSessionSchema>;
 
 export const loginRequestSchema = z.object({
   email: z.string().email(),

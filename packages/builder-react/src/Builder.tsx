@@ -8,16 +8,18 @@ import { styles } from "./styles.js";
 export function Builder() {
   return (
     <div style={styles.shell}>
-      <Toolbar />
+      <header>
+        <Toolbar />
+      </header>
       <div style={styles.body}>
-        <aside style={styles.side}>
+        <aside aria-label="Bloques y árbol del documento" style={styles.side}>
           <BlockPanel />
           <NodeTree />
         </aside>
-        <main style={styles.canvasWrap}>
+        <section aria-label="Lienzo del builder" style={styles.canvasWrap}>
           <BuilderCanvas />
-        </main>
-        <aside style={styles.right}>
+        </section>
+        <aside aria-label="Inspector de propiedades" style={styles.right}>
           <Inspector />
         </aside>
       </div>

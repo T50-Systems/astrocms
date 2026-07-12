@@ -1,28 +1,37 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, sql } from "drizzle-orm";
 import type {
   CreateEntryRequest,
   Entry,
   EntryRevision,
+  EntryStatus,
+  EntryStatusCounts,
   ListEntriesQuery,
   Paginated,
   UpdateEntryRequest,
 } from "@astrocms/contracts";
 import type { BuilderNode } from "@astrocms/contracts";
-import { builderDocuments, builderDocumentVersions, contentTypes, entries, entryVersions } from "@astrocms/cms-database";
+import { builderDocuments, builderDocumentVersions, contentTypes, entries, entryVersions, users } from "@astrocms/cms-database";
 import type { Database } from "@astrocms/cms-database";
 import { conflict, notFound } from "./errors.js";
 import { assertTransition } from "./entry-transitions.js";
 import { toEntry } from "./mappers.js";
 import { slugify, type Clock } from "./ports.js";
+import type { AuditRecordInput } from "./audit-service.js";
 
 type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0] | Database;
 type PublishCallback = (siteId: string, data: unknown) => Promise<void>;
+type AuditRecorder = (input: AuditRecordInput) => Promise<void>;
 
 function isUniqueViolation(err: unknown): boolean {
   return typeof err === "object" && err !== null && (err as { code?: string }).code === "23505";
 }
 
-export function createEntryService(db: Database, clock: Clock, onPublished?: PublishCallback) {
+export function createEntryService(
+  db: Database,
+  clock: Clock,
+  onPublished?: PublishCallback,
+  recordAudit?: AuditRecorder,
+) {
   async function contentTypeByKey(siteId: string, key: string) {
     const row = (
       await db
@@ -46,13 +55,21 @@ export function createEntryService(db: Database, clock: Clock, onPublished?: Pub
   }
 
   async function loadContract(entryId: string): Promise<Entry> {
-    const entry = (await db.select().from(entries).where(eq(entries.id, entryId)).limit(1))[0];
+    const row = (
+      await db
+        .select({ entry: entries, authorName: users.name })
+        .from(entries)
+        .innerJoin(users, eq(entries.authorId, users.id))
+        .where(eq(entries.id, entryId))
+        .limit(1)
+    )[0];
+    const entry = row?.entry;
     if (!entry) throw notFound("entry no existe");
     const current = await versionById(entry.currentVersionId);
     if (!current) throw notFound("versión actual no existe");
     const published = await versionById(entry.publishedVersionId);
     return toEntry({
-      entry,
+      entry: { ...entry, authorName: row.authorName },
       version: current,
       contentTypeKey: await keyById(entry.contentTypeId),
       ...(published ? { publishedVersionNo: published.versionNo } : {}),
@@ -94,6 +111,30 @@ export function createEntryService(db: Database, clock: Clock, onPublished?: Pub
     return doc.id;
   }
 
+  async function recordAuditSafe(input: AuditRecordInput): Promise<void> {
+    try {
+      await recordAudit?.(input);
+    } catch {
+      // La auditoría no debe romper operaciones de contenido.
+    }
+  }
+
+  /** Deriva un slug único a partir de una base, añadiendo -2, -3… si ya existe (estilo WordPress). */
+  async function uniqueSlug(siteId: string, contentTypeId: string, base: string): Promise<string> {
+    const root = base && base !== "/" ? base : "/pagina";
+    for (let n = 1; ; n++) {
+      const candidate = n === 1 ? root : `${root}-${n}`;
+      const taken = (
+        await db
+          .select({ id: entries.id })
+          .from(entries)
+          .where(and(eq(entries.siteId, siteId), eq(entries.contentTypeId, contentTypeId), eq(entries.slug, candidate)))
+          .limit(1)
+      )[0];
+      if (!taken) return candidate;
+    }
+  }
+
   return {
     async create(args: {
       siteId: string;
@@ -101,7 +142,8 @@ export function createEntryService(db: Database, clock: Clock, onPublished?: Pub
       input: CreateEntryRequest;
     }): Promise<Entry> {
       const ct = await contentTypeByKey(args.siteId, args.input.contentTypeKey);
-      const slug = args.input.slug ?? slugify(args.input.title);
+      // Si el cliente no da slug, se deriva del título y se hace único automáticamente (como WordPress).
+      const slug = args.input.slug ?? (await uniqueSlug(args.siteId, ct.id, slugify(args.input.title)));
       try {
         const entryId = await db.transaction(async (tx) => {
           const inserted = (
@@ -160,19 +202,46 @@ export function createEntryService(db: Database, clock: Clock, onPublished?: Pub
       const ct = await contentTypeByKey(args.siteId, args.contentTypeKey);
       const filters = [eq(entries.siteId, args.siteId), eq(entries.contentTypeId, ct.id)];
       if (args.query.status) filters.push(eq(entries.status, args.query.status));
+      const search = args.query.search?.trim();
+      if (search) filters.push(ilike(entryVersions.title, `%${search}%`));
       const where = and(...filters);
       const total = (
-        await db.select({ n: sql<number>`count(*)::int` }).from(entries).where(where)
+        await db
+          .select({ n: sql<number>`count(*)::int` })
+          .from(entries)
+          .innerJoin(entryVersions, eq(entries.currentVersionId, entryVersions.id))
+          .where(where)
       )[0]!.n;
       const rows = await db
         .select({ id: entries.id })
         .from(entries)
+        .innerJoin(entryVersions, eq(entries.currentVersionId, entryVersions.id))
         .where(where)
         .orderBy(desc(entries.updatedAt))
         .limit(args.query.pageSize)
         .offset((args.query.page - 1) * args.query.pageSize);
       const data = await Promise.all(rows.map((r) => loadContract(r.id)));
       return { data, page: args.query.page, pageSize: args.query.pageSize, total };
+    },
+
+    async statusCounts(args: {
+      siteId: string;
+      contentTypeKey: string;
+    }): Promise<EntryStatusCounts> {
+      const ct = await contentTypeByKey(args.siteId, args.contentTypeKey);
+      const rows = await db
+        .select({ status: entries.status, n: sql<number>`count(*)::int` })
+        .from(entries)
+        .where(and(eq(entries.siteId, args.siteId), eq(entries.contentTypeId, ct.id)))
+        .groupBy(entries.status);
+      const counts: Record<EntryStatus, number> = { draft: 0, published: 0, archived: 0 };
+      for (const row of rows) counts[row.status] = row.n;
+      return {
+        all: counts.draft + counts.published + counts.archived,
+        draft: counts.draft,
+        published: counts.published,
+        archived: counts.archived,
+      };
     },
 
     async update(args: {
@@ -223,33 +292,70 @@ export function createEntryService(db: Database, clock: Clock, onPublished?: Pub
       }
     },
 
-    async publish(id: string): Promise<Entry> {
-      const entry = (await db.select().from(entries).where(eq(entries.id, id)).limit(1))[0];
+    async publish(args: { id: string; userId?: string }): Promise<Entry> {
+      const entry = (await db.select().from(entries).where(eq(entries.id, args.id)).limit(1))[0];
       if (!entry) throw notFound("entry no existe");
       assertTransition(entry.status, "published");
       if (!entry.currentVersionId) throw conflict("sin versión que publicar");
+      const before = await loadContract(entry.id);
       await db
         .update(entries)
         .set({ status: "published", publishedVersionId: entry.currentVersionId, updatedAt: clock.now() })
-        .where(eq(entries.id, id));
-      const published = await this.get(id);
+        .where(eq(entries.id, args.id));
+      const published = await this.get(args.id);
       try {
         await onPublished?.(entry.siteId, published);
       } catch {
         // Los webhooks no deben romper la publicación.
       }
+      await recordAuditSafe({
+        siteId: entry.siteId,
+        ...(args.userId ? { actorUserId: args.userId } : {}),
+        action: "entry.published",
+        entityType: "entry",
+        entityId: entry.id,
+        before,
+        after: published,
+      });
       return published;
     },
 
-    async unpublish(id: string): Promise<Entry> {
-      const entry = (await db.select().from(entries).where(eq(entries.id, id)).limit(1))[0];
+    async unpublish(args: { id: string; userId?: string }): Promise<Entry> {
+      const entry = (await db.select().from(entries).where(eq(entries.id, args.id)).limit(1))[0];
       if (!entry) throw notFound("entry no existe");
       assertTransition(entry.status, "draft");
+      const before = await loadContract(entry.id);
       await db
         .update(entries)
         .set({ status: "draft", publishedVersionId: null, updatedAt: clock.now() })
-        .where(eq(entries.id, id));
-      return this.get(id);
+        .where(eq(entries.id, args.id));
+      const after = await this.get(args.id);
+      await recordAuditSafe({
+        siteId: entry.siteId,
+        ...(args.userId ? { actorUserId: args.userId } : {}),
+        action: "entry.unpublished",
+        entityType: "entry",
+        entityId: entry.id,
+        before,
+        after,
+      });
+      return after;
+    },
+
+    async remove(args: { id: string; userId?: string }): Promise<void> {
+      const entry = (await db.select().from(entries).where(eq(entries.id, args.id)).limit(1))[0];
+      if (!entry) throw notFound("entry no existe");
+      const before = await loadContract(entry.id);
+      await db.delete(entries).where(eq(entries.id, args.id));
+      await recordAuditSafe({
+        siteId: entry.siteId,
+        ...(args.userId ? { actorUserId: args.userId } : {}),
+        action: "entry.deleted",
+        entityType: "entry",
+        entityId: entry.id,
+        before,
+        after: null,
+      });
     },
 
     async revisions(id: string): Promise<EntryRevision[]> {

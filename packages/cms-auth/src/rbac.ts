@@ -11,11 +11,12 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     "media.write",
     "media.delete",
     "menus.write",
+    "taxonomy.write",
     "settings.write",
     "users.manage",
     "webhooks.manage",
   ],
-  editor: ["pages.read", "pages.write", "pages.publish", "media.read", "media.write"],
+  editor: ["pages.read", "pages.write", "pages.publish", "media.read", "media.write", "taxonomy.write"],
 };
 
 /** Resuelve el conjunto de permisos efectivos de un usuario a partir de sus roles. */

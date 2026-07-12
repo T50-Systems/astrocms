@@ -1,0 +1,27 @@
+<!-- @dsCard group="Components" -->
+<!doctype html><html><head><meta charset="utf-8"><title>Dialog</title><style>
+*{box-sizing:border-box;margin:0}
+:root{--radius:.625rem;--foreground:oklch(.145 0 0);--muted-foreground:oklch(.556 0 0);--primary:oklch(.53 .12 250);--primary-foreground:oklch(.985 0 0);--destructive:oklch(.577 .245 27.325);--destructive-foreground:oklch(.985 0 0);--border:oklch(.922 0 0);--input:oklch(.922 0 0);--background:#fff;--accent:oklch(.97 0 0)}
+body{font-family:system-ui,sans-serif;color:var(--foreground);background:rgb(0 0 0/.5);padding:40px;display:grid;place-items:center;min-height:340px}
+.dlg{position:relative;width:100%;max-width:480px;background:var(--background);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgb(0 0 0/.2);padding:24px;display:grid;gap:16px}
+.x{position:absolute;top:16px;right:16px;color:var(--muted-foreground);cursor:pointer;font-size:14px}
+h2{font-size:18px;font-weight:600;line-height:1}
+.desc{font-size:14px;color:var(--muted-foreground);margin-top:6px}
+.foot{display:flex;justify-content:flex-end;gap:8px}
+.btn{display:inline-flex;align-items:center;border-radius:8px;font-size:14px;font-weight:500;height:36px;padding:0 16px;border:1px solid transparent;cursor:pointer}
+.primary{background:var(--primary);color:var(--primary-foreground)}
+.danger{background:var(--destructive);color:var(--destructive-foreground)}
+.ghost{background:transparent;color:var(--foreground)}
+.ghost:hover{background:var(--accent)}
+.lbl{position:fixed;bottom:10px;left:0;right:0;text-align:center;font-size:11px;color:#fff;font-family:ui-monospace,monospace;opacity:.85}
+</style></head><body>
+<div class="dlg" role="dialog" aria-modal="true">
+  <span class="x">✕</span>
+  <div><h2>¿Eliminar “Menú principal”?</h2><p class="desc">Se eliminarán 3 enlace(s) de este menú. Las páginas enlazadas no se borran. Esta acción no se puede deshacer.</p></div>
+  <div class="foot">
+    <button class="btn ghost">Cancelar</button>
+    <button class="btn danger">Eliminar menú</button>
+  </div>
+</div>
+<p class="lbl">Radix Dialog controlado (open/onOpenChange) · overlay bg-black/50 · X + Escape + click fuera cierran · DialogTitle + DialogDescription obligatorios (a11y) · confirmaciones destructivas usan Button destructive</p>
+</body></html>

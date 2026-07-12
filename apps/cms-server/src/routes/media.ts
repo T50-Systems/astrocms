@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { mediaQuerySchema } from "@astrocms/contracts";
+import { mediaQuerySchema, updateMediaRequestSchema } from "@astrocms/contracts";
 import { validation } from "@astrocms/cms-core";
 import { makeGuards } from "../guards.js";
 import { parse, sendError } from "../http.js";
@@ -57,12 +57,34 @@ export async function mediaRoutes(app: FastifyInstance): Promise<void> {
     }
   });
 
+  app.get("/media/folders", read, async (_req, reply) => {
+    try {
+      const media = app.core.media;
+      if (!media) throw validation("media no configurado");
+      return reply.send(await media.folders(app.siteId));
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
   app.get("/media/:id", read, async (req, reply) => {
     try {
       const media = app.core.media;
       if (!media) throw validation("media no configurado");
       const { id } = parse(idParam, req.params);
       return reply.send(await media.get(id));
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
+  app.patch("/media/:id", write, async (req, reply) => {
+    try {
+      const media = app.core.media;
+      if (!media) throw validation("media no configurado");
+      const { id } = parse(idParam, req.params);
+      const patch = parse(updateMediaRequestSchema, req.body);
+      return reply.send(await media.update(id, patch));
     } catch (err) {
       return sendError(reply, err);
     }

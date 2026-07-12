@@ -16,9 +16,19 @@ describe("cms-sdk", () => {
   it("construye la query de listado", async () => {
     const f = fakeFetch(200, { data: [], page: 1, pageSize: 20, total: 0 });
     const cms = createCmsClient({ baseUrl: "/api/v1", fetch: f });
-    await cms.pages.list({ status: "published", page: 2 });
+    await cms.pages.list({ status: "published", search: "inicio", page: 2 });
     expect(f).toHaveBeenCalledWith(
-      expect.stringContaining("/api/v1/pages?status=published&page=2"),
+      expect.stringContaining("/api/v1/pages?status=published&search=inicio&page=2"),
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("consulta contadores de páginas", async () => {
+    const f = fakeFetch(200, { all: 2, draft: 1, published: 1, archived: 0 });
+    const cms = createCmsClient({ baseUrl: "/api/v1", fetch: f });
+    await expect(cms.pages.counts()).resolves.toEqual({ all: 2, draft: 1, published: 1, archived: 0 });
+    expect(f).toHaveBeenCalledWith(
+      "/api/v1/pages/counts",
       expect.objectContaining({ method: "GET" }),
     );
   });

@@ -6,6 +6,7 @@ import { apiError, parse, sendError } from "../http.js";
 const slugQuery = z.object({ slug: z.string().min(1) });
 const locationParam = z.object({ location: z.string().min(1) });
 const groupParam = z.object({ group: z.string().min(1) });
+const keyParam = z.object({ key: z.string().min(1) });
 
 /**
  * API pública: sólo contenido PUBLICADO, sin autenticación.
@@ -38,6 +39,17 @@ export async function publicRoutes(app: FastifyInstance): Promise<void> {
     try {
       const { group } = parse(groupParam, req.params);
       return reply.send(await app.core.settings.getGroup(app.siteId, group));
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
+  app.get("/public/taxonomies/:key", async (req, reply) => {
+    try {
+      const { key } = parse(keyParam, req.params);
+      const taxonomy = await app.core.taxonomies.getTaxonomy(app.siteId, key);
+      const terms = await app.core.taxonomies.listTerms(taxonomy.id);
+      return reply.send({ ...taxonomy, terms });
     } catch (err) {
       return sendError(reply, err);
     }

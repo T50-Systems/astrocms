@@ -1,0 +1,16 @@
+---
+interface Props {
+  items?: string;
+}
+const { items = "" } = Astro.props;
+const attrs = Object.fromEntries(Object.entries(Astro.props).filter(([key]) => key !== "items"));
+const lines = items.split("\n").map((item) => item.trim()).filter(Boolean);
+---
+<ul class="list" {...attrs}>
+  {lines.map((item) => <li>{item}</li>)}
+</ul>
+
+<style>
+  .list { margin: 1rem 0; padding-left: 1.25rem; line-height: 1.6; }
+  .list li + li { margin-top: 0.25rem; }
+</style>

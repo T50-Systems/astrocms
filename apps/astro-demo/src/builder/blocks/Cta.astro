@@ -1,0 +1,29 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+  buttonLabel?: string;
+  buttonHref?: string;
+}
+const { title = "", description = "", buttonLabel = "", buttonHref = "#" } = Astro.props;
+const attrs = Object.fromEntries(
+  Object.entries(Astro.props).filter(([key]) => !["title", "description", "buttonLabel", "buttonHref"].includes(key)),
+);
+---
+<section class="cta" {...attrs}>
+  <div>
+    {title && <h2>{title}</h2>}
+    {description && <p>{description}</p>}
+  </div>
+  {buttonLabel && <a href={buttonHref || "#"}>{buttonLabel}</a>}
+</section>
+
+<style>
+  .cta { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 2rem 0; padding: 1.25rem; border: 1px solid #ddd; border-radius: 6px; }
+  .cta h2 { margin: 0 0 0.35rem; }
+  .cta p { margin: 0; opacity: 0.75; }
+  .cta a { display: inline-block; padding: 0.6rem 1rem; border-radius: 6px; background: #111; color: #fff; text-decoration: none; white-space: nowrap; }
+  @media (max-width: 720px) {
+    .cta { align-items: flex-start; flex-direction: column; }
+  }
+</style>

@@ -7,6 +7,13 @@
       "runtimeArgs": ["--filter", "@astrocms/cms-admin", "dev"],
       "port": 5173,
       "autoPort": true
+    },
+    {
+      "name": "astro-demo",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@astrocms/astro-demo", "dev"],
+      "port": 4321,
+      "autoPort": true
     }
   ]
 }

@@ -11,6 +11,9 @@ const envSchema = z.object({
   STORAGE_ROOT: z.string().min(1).default(".astrocms-media"),
   ADMIN_ORIGIN: z.string().url().default("http://localhost:5173"),
   PREVIEW_ORIGIN: z.string().url().default("http://localhost:4321"),
+  // SOLO desarrollo: si se define un email, habilita /auth/dev-login (bypass sin contraseña).
+  // Ignorado en producción. Dejar vacío desactiva el bypass.
+  DEV_AUTOLOGIN: z.string().email().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
