@@ -6,11 +6,13 @@ import { ChevronDown, ChevronLeft, ChevronUp, ExternalLink } from "lucide-react"
 import { useForm } from "react-hook-form";
 import { cms } from "../lib.ts";
 import { PageContainer } from "@/components/page-container.tsx";
+import { Alert } from "@/components/ui/alert.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Card } from "@/components/ui/card.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 
 const routeApi = getRouteApi("/pages/$pageId");
@@ -76,9 +78,18 @@ export function EditPage() {
     },
   });
 
-  if (page.isLoading) return <PageContainer><p className="text-muted-foreground">Cargando…</p></PageContainer>;
+  if (page.isLoading)
+    return (
+      <PageContainer>
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </PageContainer>
+    );
   if (page.isError || !page.data)
-    return <PageContainer><p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{(page.error as Error)?.message ?? "No encontrada"}</p></PageContainer>;
+    return <PageContainer><Alert>{(page.error as Error)?.message ?? "No encontrada"}</Alert></PageContainer>;
   const p = page.data;
 
   const saveThenPublish = handleSubmit(async (v) => { await save.mutateAsync(v); await publish.mutateAsync(); });
@@ -91,16 +102,16 @@ export function EditPage() {
         <Link to="/" className="flex items-center gap-1 text-sm text-primary hover:underline"><ChevronLeft className="size-4" /> Páginas</Link>
         <div className="flex items-center gap-2">
           <StatusBadge status={p.status} />
-          <Button variant="outline" size="sm" type="submit" form="page-form" disabled={busy}>{save.isPending ? "Guardando…" : "Guardar borrador"}</Button>
+          <Button variant="outline" size="sm" type="submit" form="page-form" loading={save.isPending} disabled={busy}>{save.isPending ? "Guardando…" : "Guardar borrador"}</Button>
           {p.status === "published" ? (
             <Button size="sm" type="button" onClick={() => unpublish.mutate()} disabled={busy}>Despublicar</Button>
           ) : (
-            <Button size="sm" type="button" onClick={() => saveThenPublish()} disabled={busy}>{publish.isPending ? "Publicando…" : "Publicar"}</Button>
+            <Button size="sm" type="button" onClick={() => saveThenPublish()} loading={publish.isPending} disabled={busy}>{publish.isPending ? "Publicando…" : "Publicar"}</Button>
           )}
         </div>
       </div>
 
-      {err && <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{err.message}</p>}
+      {err && <Alert className="mb-3">{err.message}</Alert>}
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <form id="page-form" onSubmit={handleSubmit((v) => save.mutate(v))} noValidate>
@@ -148,7 +159,7 @@ export function EditPage() {
 
           <Card className="p-4">
             <div className="mb-2 text-sm font-semibold">Revisiones</div>
-            {revisions.isLoading && <p className="text-sm text-muted-foreground">Cargando…</p>}
+            {revisions.isLoading && <Skeleton className="h-4 w-32" />}
             {revisions.data && revisions.data.length === 0 && <p className="text-sm text-muted-foreground">Sin revisiones.</p>}
             <ul className="divide-y">
               {revisions.data?.map((r) => (

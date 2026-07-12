@@ -4,9 +4,11 @@ import { cms } from "../lib.ts";
 import { JsonTextarea } from "@/components/json-textarea.tsx";
 import { ModeToggle } from "@/components/mode-toggle.tsx";
 import { PageContainer } from "@/components/page-container.tsx";
+import { Alert } from "@/components/ui/alert.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Label } from "@/components/ui/label.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { cn } from "@/lib/utils.ts";
 
@@ -106,7 +108,16 @@ export function GuidelinesPage() {
     }
   };
 
-  if (settings.isLoading) return <PageContainer><p role="status" className="text-muted-foreground">Cargando…</p></PageContainer>;
+  if (settings.isLoading)
+    return (
+      <PageContainer>
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </PageContainer>
+    );
 
   const generalError = settings.error ?? save.error;
 
@@ -130,7 +141,7 @@ export function GuidelinesPage() {
             onChange={(e) => { const f = e.target.files?.[0]; if (f) importJson(f); e.target.value = ""; }} />
           <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>Importar JSON</Button>
           <Button type="button" variant="outline" onClick={exportJson}>Exportar JSON</Button>
-          <Button type="button" onClick={() => save.mutate(form)} disabled={save.isPending || Boolean(jsonError)}>
+          <Button type="button" onClick={() => save.mutate(form)} loading={save.isPending} disabled={Boolean(jsonError)}>
             {save.isPending ? "Guardando…" : "Guardar cambios"}
           </Button>
         </div>
@@ -141,7 +152,7 @@ export function GuidelinesPage() {
       </p>
 
       {(settings.isError || save.isError) && generalError && (
-        <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{generalError.message}</p>
+        <Alert className="mb-3">{generalError.message}</Alert>
       )}
 
       {mode === "form" ? (

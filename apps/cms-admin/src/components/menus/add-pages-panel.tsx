@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { SearchX } from "lucide-react";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { Input } from "@/components/ui/input.tsx";
 
 export interface AddPagesPanelProps {
@@ -45,7 +47,7 @@ export function AddPagesPanel({ pages, onAdd }: AddPagesPanelProps) {
           <Input id="add-pages-search" placeholder="Buscar páginas…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="max-h-64 space-y-1 overflow-y-auto">
-          {filtered.length === 0 && <p className="text-sm text-muted-foreground">No hay páginas que coincidan.</p>}
+          {filtered.length === 0 && <EmptyState icon={SearchX} title="No hay páginas que coincidan." />}
           {filtered.map((page) => (
             <label key={page.id} className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 hover:bg-accent">
               <Checkbox

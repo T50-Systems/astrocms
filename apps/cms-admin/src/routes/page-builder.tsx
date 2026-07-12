@@ -5,6 +5,8 @@ import { createCmsBuilderAdapter } from "@astrocms/builder-adapters/cms";
 import { Builder, BuilderProvider } from "@astrocms/builder-react";
 import type { BuilderDocument, BuilderNode, Entry } from "@astrocms/contracts";
 import { cms } from "../lib.ts";
+import { Alert, errMsg } from "@/components/ui/alert.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 
 const routeApi = getRouteApi("/pages/$pageId/builder");
 
@@ -24,16 +26,18 @@ export function BuilderPage() {
   });
 
   if (manifest.isLoading || document.isLoading || token.isLoading) {
-    return <p role="status" className="p-6 text-muted-foreground">Cargando builder...</p>;
+    return (
+      <div aria-busy className="space-y-3 p-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
   }
   const error = manifest.error ?? document.error ?? token.error;
   if (manifest.isError || document.isError || token.isError || !manifest.data || !document.data || !token.data) {
     const err = error ?? new Error("No se pudo cargar el builder");
-    return (
-      <p role="alert" className="m-6 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-        {err instanceof Error ? err.message : "Error inesperado"}
-      </p>
-    );
+    return <Alert className="m-6">{errMsg(err)}</Alert>;
   }
 
   return (

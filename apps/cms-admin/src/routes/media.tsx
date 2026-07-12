@@ -1,16 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
-import { Folder, FolderPlus, LayoutGrid, Library, List } from "lucide-react";
+import { Folder, FolderPlus, Image, LayoutGrid, Library, List, SearchX } from "lucide-react";
 import type { MediaAsset } from "@astrocms/contracts";
 import { cms } from "../lib.ts";
 import { PageContainer } from "@/components/page-container.tsx";
+import { Alert, errMsg } from "@/components/ui/alert.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
 import { cn } from "@/lib/utils.ts";
 
@@ -30,8 +33,6 @@ function fmtDate(v: string): string {
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? v : dateFmt.format(d);
 }
-
-const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Error inesperado");
 
 export function MediaPage() {
   const qc = useQueryClient();
@@ -204,7 +205,7 @@ export function MediaPage() {
               <p className="mb-2 text-base">Arrastra archivos aquí para subirlos</p>
               <p className="mb-3 text-muted-foreground">o</p>
               <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
-              <Button type="button" disabled={upload.isPending} onClick={() => inputRef.current?.click()}>
+              <Button type="button" loading={upload.isPending} onClick={() => inputRef.current?.click()}>
                 {upload.isPending ? "Subiendo…" : "Seleccionar archivos"}
               </Button>
               <p className="mt-3 text-xs text-muted-foreground">
@@ -214,11 +215,11 @@ export function MediaPage() {
             </div>
           )}
 
-          {upload.isError && <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(upload.error)}</p>}
-          {remove.isError && <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(remove.error)}</p>}
-          {move.isError && <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(move.error)}</p>}
+          {upload.isError && <Alert className="mb-3">{errMsg(upload.error)}</Alert>}
+          {remove.isError && <Alert className="mb-3">{errMsg(remove.error)}</Alert>}
+          {move.isError && <Alert className="mb-3">{errMsg(move.error)}</Alert>}
           {(bulkMove.isError || bulkRemove.isError) && (
-            <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(bulkMove.error ?? bulkRemove.error)}</p>
+            <Alert className="mb-3">{errMsg(bulkMove.error ?? bulkRemove.error)}</Alert>
           )}
 
           {/* Barra de edición masiva (aparece al seleccionar) */}
@@ -233,8 +234,8 @@ export function MediaPage() {
                   {folderNames.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Button type="button" size="sm" onClick={applyBulkMove} disabled={bulkBusy}>{bulkMove.isPending ? "Moviendo…" : "Mover"}</Button>
-              <Button type="button" size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={applyBulkDelete} disabled={bulkBusy}>
+              <Button type="button" size="sm" onClick={applyBulkMove} loading={bulkMove.isPending} disabled={bulkBusy}>{bulkMove.isPending ? "Moviendo…" : "Mover"}</Button>
+              <Button type="button" size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={applyBulkDelete} loading={bulkRemove.isPending} disabled={bulkBusy}>
                 {bulkRemove.isPending ? "Eliminando…" : "Eliminar"}
               </Button>
               <Button type="button" size="sm" variant="ghost" onClick={clearSelection} disabled={bulkBusy}>Deseleccionar</Button>
@@ -261,12 +262,22 @@ export function MediaPage() {
             </form>
           </div>
 
-          {media.isLoading && <p className="text-muted-foreground">Cargando…</p>}
-          {media.isError && <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(media.error)}</p>}
+          {media.isLoading && (
+            <div className="space-y-3">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-32 w-full" />
+              <Skeleton className="h-32 w-full" />
+            </div>
+          )}
+          {media.isError && <Alert>{errMsg(media.error)}</Alert>}
           {media.data && items.length === 0 && (
-            <p className="text-muted-foreground">
-              {term ? "No hay medios que coincidan con la búsqueda." : folder !== ALL ? "Esta carpeta está vacía." : "No hay medios todavía. Sube el primero con Añadir archivo."}
-            </p>
+            term ? (
+              <EmptyState icon={SearchX} title="No hay medios que coincidan con la búsqueda." />
+            ) : folder !== ALL ? (
+              <EmptyState icon={Image} title="Esta carpeta está vacía." />
+            ) : (
+              <EmptyState icon={Image} title="No hay medios todavía. Sube el primero con Añadir archivo." />
+            )
           )}
 
           {media.data && items.length > 0 && view === "grid" && (

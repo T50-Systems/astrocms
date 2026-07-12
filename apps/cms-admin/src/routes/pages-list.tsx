@@ -2,16 +2,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { Search } from "lucide-react";
+import { FileText, Search, SearchX } from "lucide-react";
 import type { Entry, EntryStatus } from "@astrocms/contracts";
 import { cms } from "../lib.ts";
 import { useSession } from "../auth.tsx";
 import { PageContainer } from "@/components/page-container.tsx";
+import { Alert } from "@/components/ui/alert.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
 import { cn } from "@/lib/utils.ts";
 
@@ -68,7 +71,16 @@ export function PagesListPage() {
     onSuccess: async () => { setSelected(new Set()); setBulkAction(""); setBulkEditing(false); setBulkStatus(""); await invalidateLists(); },
   });
 
-  if (sessionLoading || !session) return <PageContainer><p className="text-muted-foreground">Cargando…</p></PageContainer>;
+  if (sessionLoading || !session)
+    return (
+      <PageContainer>
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </PageContainer>
+    );
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setSearch(searchInput.trim()); setSelected(new Set()); };
   const toggleAll = () => setSelected((cur) => (pageIds.length > 0 && pageIds.every((id) => cur.has(id)) ? new Set() : new Set(pageIds)));
@@ -117,7 +129,7 @@ export function PagesListPage() {
             <SelectItem value="delete">Eliminar</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={applyBulk} disabled={!bulkAction || selected.size === 0 || removeSelected.isPending}>
+        <Button variant="outline" size="sm" onClick={applyBulk} loading={removeSelected.isPending} disabled={!bulkAction || selected.size === 0}>
           {removeSelected.isPending ? "Aplicando…" : "Aplicar"}
         </Button>
         {selected.size > 0 && <span className="text-sm text-muted-foreground">{selected.size} seleccionada(s)</span>}
@@ -135,7 +147,7 @@ export function PagesListPage() {
                 <SelectItem value="draft">Pasar a borrador</SelectItem>
               </SelectContent>
             </Select>
-            <Button size="sm" onClick={applyBulkEdit} disabled={!bulkStatus || bulkUpdate.isPending}>{bulkUpdate.isPending ? "Actualizando…" : "Actualizar"}</Button>
+            <Button size="sm" onClick={applyBulkEdit} loading={bulkUpdate.isPending} disabled={!bulkStatus}>{bulkUpdate.isPending ? "Actualizando…" : "Actualizar"}</Button>
             <Button variant="ghost" size="sm" onClick={() => { setBulkEditing(false); setBulkStatus(""); }}>Cancelar</Button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">{pages.data?.data.filter((p) => selected.has(p.id)).map((p) => p.title).join(" · ")}</p>
@@ -143,11 +155,25 @@ export function PagesListPage() {
       )}
 
       {errors.map((e, i) => (
-        <p key={i} role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{e.message}</p>
+        <Alert key={i} className="mb-3">{e.message}</Alert>
       ))}
-      {pages.isLoading && <p className="text-muted-foreground">Cargando…</p>}
+      {pages.isLoading && (
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      )}
       {pages.data && pages.data.data.length === 0 && (
-        <p className="text-muted-foreground">{search ? "No hay páginas que coincidan con la búsqueda." : "Aún no hay páginas. Crea la primera con Añadir nueva."}</p>
+        search ? (
+          <EmptyState icon={SearchX} title="No hay páginas que coincidan con la búsqueda." />
+        ) : (
+          <EmptyState
+            icon={FileText}
+            title="Aún no hay páginas. Crea la primera con Añadir nueva."
+            action={<Button size="sm" onClick={() => nav({ to: "/pages/new" })}>Añadir nueva</Button>}
+          />
+        )
       )}
 
       {pages.data && pages.data.data.length > 0 && (

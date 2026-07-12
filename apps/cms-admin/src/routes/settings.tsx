@@ -8,11 +8,13 @@ import { cms } from "../lib.ts";
 import { JsonTextarea } from "@/components/json-textarea.tsx";
 import { ModeToggle } from "@/components/mode-toggle.tsx";
 import { PageContainer } from "@/components/page-container.tsx";
+import { Alert } from "@/components/ui/alert.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { Field } from "@/components/ui/field.tsx";
 import { Input } from "@/components/ui/input.tsx";
-import { Label } from "@/components/ui/label.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 
 const formSchema = z.object({
@@ -58,16 +60,6 @@ function Section({ title, description, children }: { title: string; description?
       </CardHeader>
       <CardContent className="space-y-4">{children}</CardContent>
     </Card>
-  );
-}
-
-function FormField({ id, label, error, children }: { id: string; label: string; error?: string | undefined; children: ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      {children}
-      {error && <p id={`${id}-error`} role="alert" className="text-sm text-destructive">{error}</p>}
-    </div>
   );
 }
 
@@ -118,7 +110,16 @@ export function SettingsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["settings", "site"] }),
   });
 
-  if (settings.isLoading) return <PageContainer><p className="text-muted-foreground">Cargando…</p></PageContainer>;
+  if (settings.isLoading)
+    return (
+      <PageContainer>
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </PageContainer>
+    );
 
   const generalError = settings.error ?? save.error;
 
@@ -136,31 +137,29 @@ export function SettingsPage() {
             ariaLabel="Modo de edición"
             onChange={(val) => (val === "json" ? showJson() : setMode("form"))}
           />
-          <Button type="submit" form="settings-form" disabled={save.isPending || Boolean(jsonError)}>
+          <Button type="submit" form="settings-form" loading={save.isPending} disabled={Boolean(jsonError)}>
             {save.isPending ? "Guardando…" : "Guardar cambios"}
           </Button>
         </div>
       </div>
 
       {(settings.isError || save.isError) && generalError && (
-        <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {generalError.message}
-        </p>
+        <Alert className="mb-3">{generalError.message}</Alert>
       )}
 
       <form id="settings-form" onSubmit={handleSubmit((values) => save.mutate(values))} noValidate className="max-w-2xl">
         {mode === "form" ? (
           <>
             <Section title="General del sitio" description="Nombre y datos básicos que identifican tu sitio.">
-              <FormField id="site-title" label="Título del sitio" error={formState.errors.title?.message}>
+              <Field id="site-title" label="Título del sitio" error={formState.errors.title?.message}>
                 <Input
                   id="site-title"
                   aria-invalid={!!formState.errors.title}
                   aria-describedby={formState.errors.title ? "site-title-error" : undefined}
                   {...register("title")}
                 />
-              </FormField>
-              <FormField id="site-description" label="Lema" error={formState.errors.description?.message}>
+              </Field>
+              <Field id="site-description" label="Lema" error={formState.errors.description?.message}>
                 <Input
                   id="site-description"
                   placeholder="En pocas palabras, de qué trata tu sitio"
@@ -168,8 +167,8 @@ export function SettingsPage() {
                   aria-describedby={formState.errors.description ? "site-description-error" : undefined}
                   {...register("description")}
                 />
-              </FormField>
-              <FormField id="site-url" label="Dirección del sitio (URL)" error={formState.errors.siteUrl?.message}>
+              </Field>
+              <Field id="site-url" label="Dirección del sitio (URL)" error={formState.errors.siteUrl?.message}>
                 <Input
                   id="site-url"
                   placeholder="https://misitio.com"
@@ -177,9 +176,9 @@ export function SettingsPage() {
                   aria-describedby={formState.errors.siteUrl ? "site-url-error" : undefined}
                   {...register("siteUrl")}
                 />
-              </FormField>
+              </Field>
               <div className="grid grid-cols-2 gap-4">
-                <FormField id="site-language" label="Idioma" error={formState.errors.language?.message}>
+                <Field id="site-language" label="Idioma" error={formState.errors.language?.message}>
                   <Controller
                     name="language"
                     control={control}
@@ -198,8 +197,8 @@ export function SettingsPage() {
                       </Select>
                     )}
                   />
-                </FormField>
-                <FormField id="site-timezone" label="Zona horaria" error={formState.errors.timezone?.message}>
+                </Field>
+                <Field id="site-timezone" label="Zona horaria" error={formState.errors.timezone?.message}>
                   <Controller
                     name="timezone"
                     control={control}
@@ -218,20 +217,20 @@ export function SettingsPage() {
                       </Select>
                     )}
                   />
-                </FormField>
+                </Field>
               </div>
             </Section>
 
             <Section title="SEO por defecto" description="Se usan cuando una página no define los suyos propios.">
-              <FormField id="seo-title" label="Meta título por defecto" error={formState.errors.seoTitle?.message}>
+              <Field id="seo-title" label="Meta título por defecto" error={formState.errors.seoTitle?.message}>
                 <Input
                   id="seo-title"
                   aria-invalid={!!formState.errors.seoTitle}
                   aria-describedby={formState.errors.seoTitle ? "seo-title-error" : undefined}
                   {...register("seoTitle")}
                 />
-              </FormField>
-              <FormField id="seo-description" label="Meta descripción por defecto" error={formState.errors.seoDescription?.message}>
+              </Field>
+              <Field id="seo-description" label="Meta descripción por defecto" error={formState.errors.seoDescription?.message}>
                 <Textarea
                   id="seo-description"
                   rows={3}
@@ -239,8 +238,8 @@ export function SettingsPage() {
                   aria-describedby={formState.errors.seoDescription ? "seo-description-error" : undefined}
                   {...register("seoDescription")}
                 />
-              </FormField>
-              <FormField id="og-image" label="Imagen para compartir (Open Graph)" error={formState.errors.ogImage?.message}>
+              </Field>
+              <Field id="og-image" label="Imagen para compartir (Open Graph)" error={formState.errors.ogImage?.message}>
                 <Input
                   id="og-image"
                   placeholder="https://…/imagen.jpg"
@@ -248,11 +247,11 @@ export function SettingsPage() {
                   aria-describedby={formState.errors.ogImage ? "og-image-error" : undefined}
                   {...register("ogImage")}
                 />
-              </FormField>
+              </Field>
             </Section>
 
             <Section title="Marca" description="Logo y color principal del sitio.">
-              <FormField id="logo-url" label="URL del logo" error={formState.errors.logoUrl?.message}>
+              <Field id="logo-url" label="URL del logo" error={formState.errors.logoUrl?.message}>
                 <Input
                   id="logo-url"
                   placeholder="https://…/logo.png"
@@ -260,8 +259,8 @@ export function SettingsPage() {
                   aria-describedby={formState.errors.logoUrl ? "logo-url-error" : undefined}
                   {...register("logoUrl")}
                 />
-              </FormField>
-              <FormField id="brand-color" label="Color principal" error={formState.errors.brandColor?.message}>
+              </Field>
+              <Field id="brand-color" label="Color principal" error={formState.errors.brandColor?.message}>
                 <input
                   id="brand-color"
                   type="color"
@@ -270,7 +269,7 @@ export function SettingsPage() {
                   aria-describedby={formState.errors.brandColor ? "brand-color-error" : undefined}
                   {...register("brandColor")}
                 />
-              </FormField>
+              </Field>
             </Section>
           </>
         ) : (

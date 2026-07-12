@@ -5,9 +5,11 @@ import { cms } from "../lib.ts";
 import { JsonTextarea } from "@/components/json-textarea.tsx";
 import { ModeToggle } from "@/components/mode-toggle.tsx";
 import { PageContainer } from "@/components/page-container.tsx";
+import { Alert } from "@/components/ui/alert.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
 import { cn } from "@/lib/utils.ts";
 
@@ -134,7 +136,16 @@ export function TokensPage() {
     }
   };
 
-  if (settings.isLoading) return <PageContainer><p className="text-muted-foreground">Cargando…</p></PageContainer>;
+  if (settings.isLoading)
+    return (
+      <PageContainer>
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </PageContainer>
+    );
 
   const generalError = settings.error ?? save.error;
 
@@ -166,7 +177,7 @@ export function TokensPage() {
           />
           <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>Importar JSON</Button>
           <Button type="button" variant="outline" onClick={exportJson}>Exportar JSON</Button>
-          <Button type="button" onClick={() => save.mutate()} disabled={save.isPending || Boolean(jsonError)}>
+          <Button type="button" onClick={() => save.mutate()} loading={save.isPending} disabled={Boolean(jsonError)}>
             {save.isPending ? "Guardando…" : "Guardar cambios"}
           </Button>
         </div>
@@ -177,9 +188,7 @@ export function TokensPage() {
       </p>
 
       {(settings.isError || save.isError) && generalError && (
-        <p role="alert" className="mb-3 mt-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {generalError.message}
-        </p>
+        <Alert className="mb-3 mt-4">{generalError.message}</Alert>
       )}
 
       {mode === "table" ? (

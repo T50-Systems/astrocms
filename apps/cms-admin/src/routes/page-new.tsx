@@ -6,6 +6,7 @@ import { ChevronLeft } from "lucide-react";
 import { z } from "zod";
 import { cms } from "../lib.ts";
 import { PageContainer } from "@/components/page-container.tsx";
+import { Alert } from "@/components/ui/alert.tsx";
 import { Button } from "@/components/ui/button.tsx";
 
 const formSchema = z.object({
@@ -34,11 +35,9 @@ export function NewPage() {
         <Link to="/" className="flex items-center gap-1 text-sm text-primary hover:underline">
           <ChevronLeft className="size-4" /> Páginas
         </Link>
-        <Button type="submit" form="new-page-form" disabled={create.isPending}>{create.isPending ? "Creando…" : "Crear borrador"}</Button>
+        <Button type="submit" form="new-page-form" loading={create.isPending}>{create.isPending ? "Creando…" : "Crear borrador"}</Button>
       </div>
-      {create.isError && (
-        <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{create.error.message}</p>
-      )}
+      {create.isError && <Alert className="mb-3">{create.error.message}</Alert>}
       <form id="new-page-form" onSubmit={handleSubmit((v) => create.mutate(v))} noValidate className="max-w-3xl">
         <input
           aria-label="Título"

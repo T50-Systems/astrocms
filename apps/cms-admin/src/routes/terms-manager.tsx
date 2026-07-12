@@ -1,14 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { Tag } from "lucide-react";
 import type { Term } from "@astrocms/contracts";
 import { cms } from "../lib.ts";
 import { PageContainer } from "@/components/page-container.tsx";
+import { Alert, errMsg } from "@/components/ui/alert.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog.tsx";
+import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 
@@ -187,8 +191,6 @@ export function TermsManager({ taxonomyKey, title, subtitle, singular, plural, h
 
   const busy = addOne.isPending || addBulk.isPending;
 
-  const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Error inesperado");
-
   return (
     <PageContainer>
       <div className="flex items-center justify-between gap-4">
@@ -197,12 +199,20 @@ export function TermsManager({ taxonomyKey, title, subtitle, singular, plural, h
       </div>
       <p className="mt-1 text-muted-foreground">{subtitle}</p>
 
-      {query.isLoading && <p className="mt-4 text-muted-foreground">Cargando…</p>}
-      {query.isError && <p role="alert" className="mt-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(query.error)}</p>}
-      {(removeTerms.isError || saveEdits.isError) && (
-        <p role="alert" className="mt-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(removeTerms.error ?? saveEdits.error)}</p>
+      {query.isLoading && (
+        <div className="mt-4 space-y-3">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
       )}
-      {query.data?.terms.length === 0 && <p className="mt-4 text-muted-foreground">Aún no hay {plural}. Crea la primera con “+ Añadir {singular}”.</p>}
+      {query.isError && <Alert className="mt-4">{errMsg(query.error)}</Alert>}
+      {(removeTerms.isError || saveEdits.isError) && (
+        <Alert className="mt-4">{errMsg(removeTerms.error ?? saveEdits.error)}</Alert>
+      )}
+      {query.data?.terms.length === 0 && (
+        <EmptyState icon={Tag} className="mt-4" title={`Aún no hay ${plural}. Crea la primera con “+ Añadir ${singular}”.`} />
+      )}
 
       {rows.length > 0 && (
         <>
@@ -217,7 +227,7 @@ export function TermsManager({ taxonomyKey, title, subtitle, singular, plural, h
                 <SelectItem value="delete">Eliminar</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm" type="button" onClick={applyBulk} disabled={!bulkAction || selected.size === 0 || removeTerms.isPending}>
+            <Button variant="outline" size="sm" type="button" onClick={applyBulk} loading={removeTerms.isPending} disabled={!bulkAction || selected.size === 0}>
               {removeTerms.isPending ? "Aplicando…" : "Aplicar"}
             </Button>
             {selected.size > 0 && <span className="text-sm text-muted-foreground">{selected.size} seleccionada(s)</span>}
@@ -227,7 +237,7 @@ export function TermsManager({ taxonomyKey, title, subtitle, singular, plural, h
           {editingIds.length > 0 && (
             <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/20 bg-primary/5 p-3">
               <strong className="text-sm">Editando {editingIds.length} {editingIds.length === 1 ? singular : plural}</strong>
-              <Button size="sm" type="button" onClick={() => saveEdits.mutate()} disabled={saveEdits.isPending}>{saveEdits.isPending ? "Guardando…" : "Guardar cambios"}</Button>
+              <Button size="sm" type="button" onClick={() => saveEdits.mutate()} loading={saveEdits.isPending}>{saveEdits.isPending ? "Guardando…" : "Guardar cambios"}</Button>
               <Button variant="ghost" size="sm" type="button" onClick={() => setEditing({})} disabled={saveEdits.isPending}>Cancelar</Button>
             </div>
           )}
@@ -299,7 +309,7 @@ export function TermsManager({ taxonomyKey, title, subtitle, singular, plural, h
           </div>
 
           {(addOne.isError || addBulk.isError) && (
-            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errMsg(addOne.error ?? addBulk.error)}</p>
+            <Alert>{errMsg(addOne.error ?? addBulk.error)}</Alert>
           )}
 
           {mode === "one" ? (
@@ -344,14 +354,14 @@ export function TermsManager({ taxonomyKey, title, subtitle, singular, plural, h
                 <Button variant="outline" type="button" disabled={busy || !name.trim()} onClick={() => addOne.mutate({ closeAfter: false })}>
                   Añadir y otra
                 </Button>
-                <Button type="button" disabled={busy || !name.trim()} onClick={() => addOne.mutate({ closeAfter: true })}>
+                <Button type="button" loading={addOne.isPending} disabled={busy || !name.trim()} onClick={() => addOne.mutate({ closeAfter: true })}>
                   {addOne.isPending ? "Guardando…" : "Añadir"}
                 </Button>
               </>
             ) : (
               <>
                 <Button variant="ghost" type="button" onClick={() => setOpen(false)}>Cancelar</Button>
-                <Button type="button" disabled={busy || !bulkText.trim()} onClick={() => addBulk.mutate()}>
+                <Button type="button" loading={addBulk.isPending} disabled={busy || !bulkText.trim()} onClick={() => addBulk.mutate()}>
                   {addBulk.isPending ? "Añadiendo…" : "Añadir todas"}
                 </Button>
               </>

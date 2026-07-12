@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { LayoutList } from "lucide-react";
 import type { Menu, MenuItemInput } from "@astrocms/contracts";
 import { cms } from "../lib.ts";
 import { useEffect, useState } from "react";
@@ -7,7 +8,9 @@ import { MenuItemTree } from "@/components/menus/menu-item-tree.tsx";
 import type { EditableMenuItem } from "@/components/menus/menu-item-tree.tsx";
 import { indent, moveSibling, outdent, removeAt, updateAt } from "@/components/menus/tree.ts";
 import { PageContainer } from "@/components/page-container.tsx";
+import { Alert } from "@/components/ui/alert.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import {
@@ -21,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 
 const LOCATIONS = [
   { value: "primary", label: "Menú principal" },
@@ -176,16 +180,20 @@ export function MenusPage() {
         </span>
       </div>
 
-      {menu.isLoading && <p className="text-muted-foreground">Cargando…</p>}
+      {menu.isLoading && (
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      )}
       {(menu.isError || pages.isError || save.isError) && (
-        <p role="alert" className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {(menu.error ?? pages.error ?? save.error)?.message}
-        </p>
+        <Alert className="mb-3">{(menu.error ?? pages.error ?? save.error)?.message}</Alert>
       )}
 
       <div className="mb-6">
         {items.length === 0 && !menu.isLoading && (
-          <p className="text-muted-foreground">Este menú aún no tiene enlaces. Añade el primero abajo.</p>
+          <EmptyState icon={LayoutList} title="Este menú aún no tiene enlaces. Añade el primero abajo." />
         )}
         <MenuItemTree
           items={items}
@@ -233,7 +241,7 @@ export function MenusPage() {
       </div>
 
       <div className="mt-5 flex items-center gap-2">
-        <Button type="button" disabled={save.isPending} onClick={() => save.mutate()}>
+        <Button type="button" loading={save.isPending} onClick={() => save.mutate()}>
           {save.isPending ? "Guardando…" : "Guardar menú"}
         </Button>
         <Button type="button" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setConfirmDelete(true)}>
@@ -265,14 +273,10 @@ export function MenusPage() {
               puede deshacer.
             </DialogDescription>
           </DialogHeader>
-          {removeMenu.isError && (
-            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {removeMenu.error.message}
-            </p>
-          )}
+          {removeMenu.isError && <Alert>{removeMenu.error.message}</Alert>}
           <DialogFooter>
             <Button variant="ghost" type="button" onClick={() => setConfirmDelete(false)}>Cancelar</Button>
-            <Button variant="destructive" type="button" disabled={removeMenu.isPending} onClick={() => removeMenu.mutate()}>
+            <Button variant="destructive" type="button" loading={removeMenu.isPending} onClick={() => removeMenu.mutate()}>
               {removeMenu.isPending ? "Eliminando…" : "Eliminar menú"}
             </Button>
           </DialogFooter>

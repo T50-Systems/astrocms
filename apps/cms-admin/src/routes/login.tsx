@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { Rocket, Zap } from "lucide-react";
 import { loginRequestSchema, type LoginRequest } from "@astrocms/contracts";
 import { useDevLogin, useLogin, useSession } from "../auth.tsx";
+import { Alert, errMsg } from "@/components/ui/alert.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -13,11 +14,6 @@ import { Label } from "@/components/ui/label.tsx";
 // Bypass de desarrollo: sólo en builds de dev de Vite. VITE_DEV_AUTOLOGIN=true → entra solo.
 const DEV = import.meta.env.DEV;
 const AUTO = import.meta.env.VITE_DEV_AUTOLOGIN === "true";
-
-function ErrorText({ error }: { error: unknown }) {
-  const msg = error instanceof Error ? error.message : "Error inesperado";
-  return <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{msg}</p>;
-}
 
 export function LoginPage() {
   const nav = useNavigate();
@@ -54,7 +50,7 @@ export function LoginPage() {
           <CardTitle className="text-xl">Iniciar sesión</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {login.isError && <ErrorText error={login.error} />}
+          {login.isError && <Alert>{errMsg(login.error)}</Alert>}
           <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
             <div className="grid gap-1.5">
               <Label htmlFor="email">Email</Label>
@@ -71,7 +67,7 @@ export function LoginPage() {
 
           {DEV && (
             <div className="mt-2 flex flex-col gap-2 border-t border-dashed pt-4">
-              {devLogin.isError && <ErrorText error={devLogin.error} />}
+              {devLogin.isError && <Alert>{errMsg(devLogin.error)}</Alert>}
               <Button variant="outline" type="button" disabled={devLogin.isPending}
                 onClick={() => devLogin.mutate(undefined, { onSuccess: () => nav({ to: "/" }) })}>
                 <Rocket className="size-4" />
