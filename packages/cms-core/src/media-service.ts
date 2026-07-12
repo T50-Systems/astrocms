@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, isNotNull, or, sql } from "drizzle-orm";
 import sharp from "sharp";
-import type { MediaAsset, MediaQuery, MediaVariant, Paginated } from "@astrocms/contracts";
+import type { MediaAsset, MediaFolder, MediaQuery, MediaVariant, Paginated, UpdateMediaRequest } from "@astrocms/contracts";
 import { mediaAssets, mediaVariants } from "@astrocms/cms-database";
 import type { Database } from "@astrocms/cms-database";
 import type { StorageDriver } from "@astrocms/storage";
@@ -82,6 +82,7 @@ function toAsset(row: AssetRow, variants: VariantRow[], storage: StorageDriver):
     ...(row.height ? { height: row.height } : {}),
     ...(row.alt ? { alt: row.alt } : {}),
     ...(row.title ? { title: row.title } : {}),
+    ...(row.folder ? { folder: row.folder } : {}),
     url: storage.url(row.storageKey),
     variants: variants.map((variant) => toVariant(variant, storage)),
     createdAt: row.createdAt.toISOString(),
@@ -220,6 +221,28 @@ export function createMediaService(db: Database, storage: StorageDriver, clock: 
         rows.map(async (row) => toAsset(row, await variantsFor(row.id), storage)),
       );
       return { data, page: query.page, pageSize: query.pageSize, total };
+    },
+
+    async folders(siteId: string): Promise<MediaFolder[]> {
+      const rows = await db
+        .select({ name: mediaAssets.folder, count: sql<number>`count(*)::int` })
+        .from(mediaAssets)
+        .where(and(eq(mediaAssets.siteId, siteId), isNotNull(mediaAssets.folder)))
+        .groupBy(mediaAssets.folder)
+        .orderBy(mediaAssets.folder);
+      return rows
+        .filter((row): row is { name: string; count: number } => typeof row.name === "string")
+        .map((row) => ({ name: row.name, count: row.count }));
+    },
+
+    async update(id: string, patch: UpdateMediaRequest): Promise<MediaAsset> {
+      await loadAsset(id); // 404 si no existe
+      const set: Partial<AssetRow> = {};
+      if (patch.alt !== undefined) set.alt = patch.alt;
+      if (patch.title !== undefined) set.title = patch.title;
+      if (patch.folder !== undefined) set.folder = patch.folder; // null saca de la carpeta
+      if (Object.keys(set).length > 0) await db.update(mediaAssets).set(set).where(eq(mediaAssets.id, id));
+      return this.get(id);
     },
 
     async get(id: string): Promise<MediaAsset> {

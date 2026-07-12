@@ -6,6 +6,7 @@ export interface EntryRow {
   status: EntryStatus;
   editorType: EditorType;
   authorId: string;
+  authorName?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,6 +40,7 @@ export function toEntry(args: {
     currentVersionNo: version.versionNo,
     ...(publishedVersionNo ? { publishedVersionNo } : {}),
     authorId: entry.authorId,
+    ...(entry.authorName ? { authorName: entry.authorName } : {}),
     createdAt: entry.createdAt.toISOString(),
     updatedAt: entry.updatedAt.toISOString(),
   };

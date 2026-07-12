@@ -63,6 +63,8 @@ function TreeNode({ node, depth }: { node: BuilderNode; depth: number }) {
         >
           <button
             type="button"
+            data-testid="tree-node"
+            data-node-type={node.type}
             style={{ border: 0, background: "transparent", textAlign: "left", cursor: "pointer", fontSize: 13, color: colors.text }}
             onClick={() => engine.select(node.id)}
             {...attributes}

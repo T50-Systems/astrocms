@@ -1,0 +1,1 @@
+ALTER TABLE "menus" ADD COLUMN "auto_add_pages" boolean DEFAULT false NOT NULL;

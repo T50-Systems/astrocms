@@ -18,12 +18,21 @@ export async function pageRoutes(app: FastifyInstance): Promise<void> {
   const read = { preHandler: [requireAuth, requirePermission("pages.read")] };
   const write = { preHandler: [requireAuth, requirePermission("pages.write")] };
   const publish = { preHandler: [requireAuth, requirePermission("pages.publish")] };
+  const remove = { preHandler: [requireAuth, requirePermission("pages.delete")] };
 
   app.get("/pages", read, async (req, reply) => {
     try {
       const query = parse(listEntriesQuerySchema, req.query);
       const result = await app.core.entries.list({ siteId: app.siteId, contentTypeKey: CT, query });
       return reply.send(result);
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
+  app.get("/pages/counts", read, async (_req, reply) => {
+    try {
+      return reply.send(await app.core.entries.statusCounts({ siteId: app.siteId, contentTypeKey: CT }));
     } catch (err) {
       return sendError(reply, err);
     }
@@ -66,7 +75,7 @@ export async function pageRoutes(app: FastifyInstance): Promise<void> {
   app.post("/pages/:id/publish", publish, async (req, reply) => {
     try {
       const { id } = parse(idParam, req.params);
-      return reply.send(await app.core.entries.publish(id));
+      return reply.send(await app.core.entries.publish({ id, userId: req.session!.user.id }));
     } catch (err) {
       return sendError(reply, err);
     }
@@ -75,7 +84,17 @@ export async function pageRoutes(app: FastifyInstance): Promise<void> {
   app.post("/pages/:id/unpublish", publish, async (req, reply) => {
     try {
       const { id } = parse(idParam, req.params);
-      return reply.send(await app.core.entries.unpublish(id));
+      return reply.send(await app.core.entries.unpublish({ id, userId: req.session!.user.id }));
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
+  app.delete("/pages/:id", remove, async (req, reply) => {
+    try {
+      const { id } = parse(idParam, req.params);
+      await app.core.entries.remove({ id, userId: req.session!.user.id });
+      return reply.code(204).send();
     } catch (err) {
       return sendError(reply, err);
     }

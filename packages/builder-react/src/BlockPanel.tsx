@@ -23,6 +23,7 @@ export function BlockPanel() {
               <button
                 key={block.type}
                 type="button"
+                data-testid={`add-block-${block.type}`}
                 style={{ ...styles.button, textAlign: "left" }}
                 onClick={() => {
                   const parentId = insertionParentId(state.document, manifest, state.selectedNodeId, block.type);

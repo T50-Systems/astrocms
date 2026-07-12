@@ -9,6 +9,7 @@ import { createFilesystemStorageDriver, type StorageDriver } from "@astrocms/sto
 import { registerCsrf } from "./csrf.js";
 import type { Env } from "./env.js";
 import { authRoutes } from "./routes/auth.js";
+import { auditRoutes } from "./routes/audit.js";
 import { builderRoutes } from "./routes/builder.js";
 import { healthRoutes } from "./routes/health.js";
 import { mediaRoutes } from "./routes/media.js";
@@ -17,6 +18,7 @@ import { pageRoutes } from "./routes/pages.js";
 import { previewRoutes } from "./routes/preview.js";
 import { publicRoutes } from "./routes/public.js";
 import { settingsRoutes } from "./routes/settings.js";
+import { taxonomyRoutes } from "./routes/taxonomies.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 import "./types.js";
 
@@ -56,9 +58,11 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(
     async (api) => {
       await authRoutes(api); // el rate limit estricto se aplica por-ruta sólo en /auth/login
+      await auditRoutes(api);
       await pageRoutes(api);
       await mediaRoutes(api);
       await menuRoutes(api);
+      await taxonomyRoutes(api);
       await settingsRoutes(api);
       await webhookRoutes(api);
       await builderRoutes(api);

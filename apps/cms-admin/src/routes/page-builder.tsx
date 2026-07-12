@@ -5,7 +5,8 @@ import { createCmsBuilderAdapter } from "@astrocms/builder-adapters/cms";
 import { Builder, BuilderProvider } from "@astrocms/builder-react";
 import type { BuilderDocument, BuilderNode, Entry } from "@astrocms/contracts";
 import { cms } from "../lib.ts";
-import { ErrorBox, Loading } from "../ui.tsx";
+import { Alert, errMsg } from "@/components/ui/alert.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 
 const routeApi = getRouteApi("/pages/$pageId/builder");
 
@@ -24,16 +25,25 @@ export function BuilderPage() {
     queryFn: async () => cms.preview.createToken(document.data!.id),
   });
 
-  if (manifest.isLoading || document.isLoading || token.isLoading) return <Loading label="Cargando builder..." />;
+  if (manifest.isLoading || document.isLoading || token.isLoading) {
+    return (
+      <div aria-busy className="space-y-3 p-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
+  }
   const error = manifest.error ?? document.error ?? token.error;
   if (manifest.isError || document.isError || token.isError || !manifest.data || !document.data || !token.data) {
-    return <ErrorBox error={error ?? new Error("No se pudo cargar el builder")} />;
+    const err = error ?? new Error("No se pudo cargar el builder");
+    return <Alert className="m-6">{errMsg(err)}</Alert>;
   }
 
   return (
     <>
-      <div style={{ padding: "0.45rem 0.75rem", borderBottom: "1px solid #eee", fontFamily: "system-ui", fontSize: 13 }}>
-        <Link to="/pages/$pageId" params={{ pageId }}>Volver a edición</Link>
+      <div className="border-b px-3 py-2 text-sm">
+        <Link to="/pages/$pageId" params={{ pageId }} className="text-primary hover:underline">Volver a edición</Link>
       </div>
       <BuilderProvider
         document={document.data}

@@ -1,0 +1,33 @@
+<!-- @dsCard group="Components" -->
+<!doctype html><html><head><meta charset="utf-8"><title>Table + acciones de fila</title><style>
+*{box-sizing:border-box;margin:0}
+:root{--radius:.625rem;--foreground:oklch(.145 0 0);--muted-foreground:oklch(.556 0 0);--primary:oklch(.53 .12 250);--destructive:oklch(.577 .245 27.325);--border:oklch(.922 0 0);--muted:oklch(.97 0 0);--card:#fff}
+body{font-family:system-ui,sans-serif;color:var(--foreground);background:oklch(.97 0 0/.4);padding:24px}
+.wrap{border:1px solid var(--border);border-radius:var(--radius);background:var(--card);overflow:hidden;max-width:760px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{height:40px;padding:0 12px;text-align:left;font-weight:600;color:var(--muted-foreground);border-bottom:1px solid var(--border)}
+td{padding:12px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:oklch(.97 0 0/.5)}
+.t{font-weight:600;color:var(--primary)}
+.slug{font-size:12px;color:var(--muted-foreground);margin-top:2px}
+.acts{display:flex;gap:6px;font-size:12px;margin-top:4px;opacity:0;transition:opacity .1s}
+tr:hover .acts,tr:focus-within .acts{opacity:1}
+.acts a{color:var(--primary);text-decoration:none}
+.acts a:hover{text-decoration:underline}
+.acts .del{color:var(--destructive)}
+.acts .sep{color:var(--border)}
+.badge{display:inline-block;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:500}
+.ok{background:#d1fae5;color:#065f46}.dr{background:#fef3c7;color:#92400e}
+.box{width:16px;height:16px;border-radius:4px;border:1px solid var(--border);display:inline-block;background:#fff}
+.lbl{font-size:11px;color:var(--muted-foreground);font-family:ui-monospace,monospace;margin-top:10px;display:block;max-width:760px}
+</style></head><body>
+<div class="wrap"><table>
+<thead><tr><th style="width:40px"><span class="box"></span></th><th>Título</th><th style="width:150px">Autor</th><th style="width:170px">Fecha</th></tr></thead>
+<tbody>
+<tr><td><span class="box"></span></td><td><div class="t">Bienvenido</div><div class="slug">/</div><div class="acts"><a href="#">Editar</a><span class="sep">|</span><a href="#">Editar visual</a><span class="sep">|</span><a href="#">Duplicar</a><span class="sep">|</span><a href="#">Ver</a><span class="sep">|</span><a class="del" href="#">Eliminar</a></div></td><td>Admin</td><td>10 jul 2026 <span class="badge ok">Publicada</span></td></tr>
+<tr><td><span class="box"></span></td><td><div class="t">Demo Builder</div><div class="slug">/demo-builder</div><div class="acts"><a href="#">Editar</a><span class="sep">|</span><a href="#">Duplicar</a><span class="sep">|</span><a class="del" href="#">Eliminar</a></div></td><td>Admin</td><td>11 jul 2026 <span class="badge dr">Borrador</span></td></tr>
+<tr><td><span class="box"></span></td><td><div class="t">Sobre nosotros</div><div class="slug">/sobre-nosotros</div><div class="acts"><a href="#">Editar</a><span class="sep">|</span><a href="#">Duplicar</a><span class="sep">|</span><a class="del" href="#">Eliminar</a></div></td><td>Admin</td><td>9 jul 2026 <span class="badge ok">Publicada</span></td></tr>
+</tbody></table></div>
+<span class="lbl">Patrón WordPress: acciones de fila reveladas con hover/focus-within (opacity, no visibility — mantiene el foco por teclado). Tabla envuelta en rounded-lg border bg-card. Checkbox de cabecera = seleccionar todo → barra de acciones en lote.</span>
+</body></html>

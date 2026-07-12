@@ -105,6 +105,28 @@ export const sessions = pgTable("sessions", {
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
 });
 
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    siteId: uuid("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    action: text("action").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id").notNull(),
+    before: jsonb("before"),
+    after: jsonb("after"),
+    ip: text("ip"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    siteCreatedAt: index("audit_log_site_created_at_idx").on(t.siteId, t.createdAt),
+    entity: index("audit_log_entity_idx").on(t.entityType, t.entityId),
+  }),
+);
+
 export const contentTypes = pgTable(
   "content_types",
   {
@@ -203,6 +225,49 @@ export const builderDocumentVersions = pgTable(
   (t) => ({ versionPerDoc: unique("builder_doc_versions_no_uq").on(t.documentId, t.versionNo) }),
 );
 
+export const taxonomies = pgTable(
+  "taxonomies",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    siteId: uuid("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    hierarchical: boolean("hierarchical").notNull().default(false),
+  },
+  (t) => ({ keyPerSite: unique("taxonomies_site_key_uq").on(t.siteId, t.key) }),
+);
+
+export const terms = pgTable(
+  "terms",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    taxonomyId: uuid("taxonomy_id")
+      .notNull()
+      .references(() => taxonomies.id, { onDelete: "cascade" }),
+    parentId: uuid("parent_id").references((): AnyPgColumn => terms.id, { onDelete: "set null" }),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    position: integer("position").notNull().default(0),
+  },
+  (t) => ({ slugPerTaxonomy: unique("terms_taxonomy_slug_uq").on(t.taxonomyId, t.slug) }),
+);
+
+export const termRelationships = pgTable(
+  "term_relationships",
+  {
+    termId: uuid("term_id")
+      .notNull()
+      .references(() => terms.id, { onDelete: "cascade" }),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => entries.id, { onDelete: "cascade" }),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.termId, t.entryId] }) }),
+);
+
 export const mediaAssets = pgTable(
   "media_assets",
   {
@@ -252,6 +317,8 @@ export const menus = pgTable(
       .references(() => sites.id, { onDelete: "cascade" }),
     location: text("location").notNull(),
     name: text("name").notNull(),
+    // Estilo WordPress "Auto add pages": las páginas nuevas de nivel superior se añaden solas al publicarse.
+    autoAddPages: boolean("auto_add_pages").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -332,6 +399,23 @@ export const entryVersionsRelations = relations(entryVersions, ({ one }) => ({
   entry: one(entries, { fields: [entryVersions.entryId], references: [entries.id] }),
 }));
 
+export const taxonomiesRelations = relations(taxonomies, ({ one, many }) => ({
+  site: one(sites, { fields: [taxonomies.siteId], references: [sites.id] }),
+  terms: many(terms),
+}));
+
+export const termsRelations = relations(terms, ({ one, many }) => ({
+  taxonomy: one(taxonomies, { fields: [terms.taxonomyId], references: [taxonomies.id] }),
+  parent: one(terms, { fields: [terms.parentId], references: [terms.id] }),
+  children: many(terms),
+  relationships: many(termRelationships),
+}));
+
+export const termRelationshipsRelations = relations(termRelationships, ({ one }) => ({
+  term: one(terms, { fields: [termRelationships.termId], references: [terms.id] }),
+  entry: one(entries, { fields: [termRelationships.entryId], references: [entries.id] }),
+}));
+
 export const mediaAssetsRelations = relations(mediaAssets, ({ many, one }) => ({
   site: one(sites, { fields: [mediaAssets.siteId], references: [sites.id] }),
   variants: many(mediaVariants),
@@ -361,6 +445,11 @@ export const webhookDeliveriesRelations = relations(webhookDeliveries, ({ one })
   webhook: one(webhooks, { fields: [webhookDeliveries.webhookId], references: [webhooks.id] }),
 }));
 
+export const auditLogRelations = relations(auditLog, ({ one }) => ({
+  site: one(sites, { fields: [auditLog.siteId], references: [sites.id] }),
+  actor: one(users, { fields: [auditLog.actorUserId], references: [users.id] }),
+}));
+
 export const schema = {
   sites,
   users,
@@ -369,11 +458,15 @@ export const schema = {
   rolePermissions,
   userRoles,
   sessions,
+  auditLog,
   contentTypes,
   entries,
   entryVersions,
   builderDocuments,
   builderDocumentVersions,
+  taxonomies,
+  terms,
+  termRelationships,
   mediaAssets,
   mediaVariants,
   menus,
@@ -383,10 +476,14 @@ export const schema = {
   webhookDeliveries,
   entriesRelations,
   entryVersionsRelations,
+  taxonomiesRelations,
+  termsRelations,
+  termRelationshipsRelations,
   mediaAssetsRelations,
   mediaVariantsRelations,
   menusRelations,
   menuItemsRelations,
   webhooksRelations,
   webhookDeliveriesRelations,
+  auditLogRelations,
 };

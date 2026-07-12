@@ -1,5 +1,24 @@
 import { DEFAULT_TOKENS, buildManifest, defineBlock } from "./block.js";
-import { number, select, text, textarea } from "./fields.js";
+import { number, select, text, textarea, url } from "./fields.js";
+
+const contentParents = ["core/page", "core/section", "core/columns"];
+const heroContentParents = [...contentParents, "site/hero"];
+const broadChildren = [
+  "site/hero",
+  "core/section",
+  "core/columns",
+  "core/heading",
+  "core/paragraph",
+  "core/button",
+  "core/image",
+  "core/quote",
+  "core/list",
+  "core/divider",
+  "site/service-grid",
+  "site/testimonials",
+  "site/cta",
+  "site/faq",
+];
 
 export const demoBlocks = [
   defineBlock({
@@ -31,7 +50,7 @@ export const demoBlocks = [
     fields: {
       width: select({ label: "Ancho", options: ["content", "wide", "full"], default: "content" }),
     },
-    constraints: { allowedParents: ["core/page", "core/section"] },
+    constraints: { allowedParents: contentParents, allowedChildren: broadChildren },
     capabilities: { acceptsChildren: true },
   }),
   defineBlock({
@@ -45,7 +64,8 @@ export const demoBlocks = [
       text: text({ label: "Texto", required: true, maxLength: 140, default: "Nuevo titulo" }),
       level: number({ label: "Nivel", min: 1, max: 3, default: 2 }),
     },
-    constraints: { allowedParents: ["core/page", "core/section", "site/hero"] },
+    constraints: { allowedParents: heroContentParents },
+    capabilities: { acceptsChildren: false },
   }),
   defineBlock({
     type: "core/paragraph",
@@ -57,7 +77,8 @@ export const demoBlocks = [
     fields: {
       text: textarea({ label: "Texto", maxLength: 500, default: "Nuevo parrafo." }),
     },
-    constraints: { allowedParents: ["core/page", "core/section", "site/hero"] },
+    constraints: { allowedParents: heroContentParents },
+    capabilities: { acceptsChildren: false },
   }),
   defineBlock({
     type: "core/button",
@@ -70,7 +91,142 @@ export const demoBlocks = [
       label: text({ label: "Etiqueta", required: true, maxLength: 80, default: "Boton" }),
       href: text({ label: "URL", maxLength: 200, default: "#" }),
     },
-    constraints: { allowedParents: ["core/page", "core/section", "site/hero"] },
+    constraints: { allowedParents: heroContentParents },
+    capabilities: { acceptsChildren: false },
+  }),
+  defineBlock({
+    type: "core/image",
+    label: "Imagen",
+    category: "Contenido",
+    version: 1,
+    component: "src/components/builder/Image.astro",
+    icon: "I",
+    fields: {
+      src: url({ label: "URL", default: "https://example.com/image.jpg" }),
+      alt: text({ label: "Texto alternativo", maxLength: 160, default: "" }),
+    },
+    constraints: { allowedParents: contentParents },
+    capabilities: { acceptsChildren: false },
+  }),
+  defineBlock({
+    type: "core/quote",
+    label: "Cita",
+    category: "Contenido",
+    version: 1,
+    component: "src/components/builder/Quote.astro",
+    icon: "Q",
+    fields: {
+      text: textarea({ label: "Texto", maxLength: 500, default: "Una cita destacada." }),
+      author: text({ label: "Autor", maxLength: 120, default: "" }),
+    },
+    constraints: { allowedParents: contentParents },
+    capabilities: { acceptsChildren: false },
+  }),
+  defineBlock({
+    type: "core/list",
+    label: "Lista",
+    category: "Contenido",
+    version: 1,
+    component: "src/components/builder/List.astro",
+    icon: "L",
+    fields: {
+      items: textarea({ label: "Items", maxLength: 800, default: "Primer item\nSegundo item\nTercer item" }),
+    },
+    constraints: { allowedParents: contentParents },
+    capabilities: { acceptsChildren: false },
+  }),
+  defineBlock({
+    type: "core/divider",
+    label: "Divisor",
+    category: "Contenido",
+    version: 1,
+    component: "src/components/builder/Divider.astro",
+    icon: "D",
+    fields: {},
+    constraints: { allowedParents: contentParents },
+    capabilities: { acceptsChildren: false },
+  }),
+  defineBlock({
+    type: "core/columns",
+    label: "Columnas",
+    category: "Layout",
+    version: 1,
+    component: "src/components/builder/Columns.astro",
+    icon: "C",
+    fields: {
+      count: select({ label: "Columnas", options: ["2", "3", "4"], default: "2" }),
+    },
+    constraints: { allowedParents: contentParents, allowedChildren: broadChildren },
+    capabilities: { acceptsChildren: true },
+  }),
+  defineBlock({
+    type: "site/service-grid",
+    label: "Servicios",
+    category: "Marketing",
+    version: 1,
+    component: "src/components/builder/ServiceGrid.astro",
+    icon: "S",
+    fields: {
+      title: text({ label: "Titulo", maxLength: 120, default: "Servicios" }),
+      items: textarea({
+        label: "Items",
+        maxLength: 1200,
+        default: "Servicio 1|Descripcion breve\nServicio 2|Descripcion breve\nServicio 3|Descripcion breve",
+      }),
+    },
+    constraints: { allowedParents: contentParents },
+    capabilities: { acceptsChildren: false },
+  }),
+  defineBlock({
+    type: "site/testimonials",
+    label: "Testimonios",
+    category: "Marketing",
+    version: 1,
+    component: "src/components/builder/Testimonials.astro",
+    icon: "T",
+    fields: {
+      title: text({ label: "Titulo", maxLength: 120, default: "Testimonios" }),
+      quotes: textarea({
+        label: "Citas",
+        maxLength: 1200,
+        default: "Excelente servicio.|Cliente satisfecho\nMuy buena experiencia.|Paciente",
+      }),
+    },
+    constraints: { allowedParents: contentParents },
+    capabilities: { acceptsChildren: false },
+  }),
+  defineBlock({
+    type: "site/cta",
+    label: "CTA",
+    category: "Marketing",
+    version: 1,
+    component: "src/components/builder/Cta.astro",
+    icon: "A",
+    fields: {
+      title: text({ label: "Titulo", maxLength: 120, default: "Listo para empezar" }),
+      description: textarea({ label: "Descripcion", maxLength: 300, default: "Da el siguiente paso." }),
+      buttonLabel: text({ label: "Texto del boton", maxLength: 80, default: "Contactar" }),
+      buttonHref: url({ label: "URL del boton", default: "https://example.com" }),
+    },
+    constraints: { allowedParents: contentParents },
+    capabilities: { acceptsChildren: false },
+  }),
+  defineBlock({
+    type: "site/faq",
+    label: "FAQ",
+    category: "Marketing",
+    version: 1,
+    component: "src/components/builder/Faq.astro",
+    icon: "F",
+    fields: {
+      items: textarea({
+        label: "Preguntas",
+        maxLength: 1400,
+        default: "Pregunta frecuente|Respuesta breve\nOtra pregunta|Otra respuesta",
+      }),
+    },
+    constraints: { allowedParents: contentParents },
+    capabilities: { acceptsChildren: false },
   }),
 ];
 
