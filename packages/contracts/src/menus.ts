@@ -7,6 +7,19 @@ export type MenuItemLinkType = z.infer<typeof menuItemLinkTypeSchema>;
 export const menuItemTargetSchema = z.enum(["_self", "_blank"]);
 export type MenuItemTarget = z.infer<typeof menuItemTargetSchema>;
 
+/**
+ * URLs permitidas en items de menú (hardening): ruta relativa que empieza por
+ * "/" (pero no "//", que sería una URL externa relativa al protocolo) o
+ * absoluta http(s)://. Rechaza esquemas peligrosos como javascript: o data:
+ * que acabarían en el href del sitio público.
+ */
+export const menuItemUrlSchema = z
+  .string()
+  .min(1)
+  .refine((value) => /^\/(?!\/)/.test(value) || /^https?:\/\//i.test(value), {
+    message: "url inválida: usa una ruta relativa (/pagina) o una absoluta http(s)://",
+  });
+
 export interface MenuItemInput {
   id?: string | undefined;
   label: string;
@@ -26,7 +39,7 @@ export const menuItemInputSchema: z.ZodType<MenuItemInput> = z.object({
   label: z.string().min(1),
   linkType: menuItemLinkTypeSchema,
   entryId: idSchema.optional(),
-  url: z.string().optional(),
+  url: menuItemUrlSchema.optional(),
   target: menuItemTargetSchema.optional(),
   cssClasses: z.array(z.string()).optional(),
   titleAttr: z.string().optional(),

@@ -100,6 +100,39 @@ describe.skipIf(!DB)("API v1 — menús, ajustes y webhooks (integración)", () 
     expect((pub.json() as { items: unknown[] }).items).toHaveLength(1);
   });
 
+  it("rechaza urls de menú con esquemas peligrosos (400) y acepta relativas/http(s)", async () => {
+    const location = `sec-${randomUUID().slice(0, 8)}`;
+    const putBad = (url: string) =>
+      app.inject({
+        method: "PUT",
+        url: `/api/v1/menus/${location}`,
+        ...auth({ payload: { name: "Sec", items: [{ label: "X", linkType: "url", url, children: [] }] } }),
+      });
+
+    for (const url of ["javascript:alert(1)", "JaVaScRiPt:alert(1)", "data:text/html,x", "//evil.example"]) {
+      const res = await putBad(url);
+      expect(res.statusCode).toBe(400);
+      expect((res.json() as { error: { code: string } }).error.code).toBe("validation_error");
+    }
+
+    // Las válidas siguen funcionando (relativa y absoluta http/https), también anidadas.
+    const ok = await app.inject({
+      method: "PUT",
+      url: `/api/v1/menus/${location}`,
+      ...auth({
+        payload: {
+          name: "Sec",
+          items: [
+            { label: "Legal", linkType: "url", url: "/legal", children: [{ label: "Ext", linkType: "url", url: "https://example.com/x", children: [] }] },
+          ],
+        },
+      }),
+    });
+    expect(ok.statusCode).toBe(200);
+
+    await app.inject({ method: "DELETE", url: `/api/v1/menus/${location}`, ...auth() });
+  });
+
   it("auto-añade páginas de nivel superior al publicar (autoAddPages)", async () => {
     const location = `auto-${randomUUID().slice(0, 8)}`;
     const put = await app.inject({
