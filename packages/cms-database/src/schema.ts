@@ -317,6 +317,8 @@ export const menus = pgTable(
       .references(() => sites.id, { onDelete: "cascade" }),
     location: text("location").notNull(),
     name: text("name").notNull(),
+    // Estilo WordPress "Auto add pages": las páginas nuevas de nivel superior se añaden solas al publicarse.
+    autoAddPages: boolean("auto_add_pages").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

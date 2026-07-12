@@ -31,13 +31,18 @@ export function createCmsCore(opts: { db: Database; storage?: StorageDriver; clo
   const clock = opts.clock ?? systemClock;
   const audit = createAuditService(opts.db, clock);
   const webhooks = createWebhookService(opts.db, clock);
-  const dispatchPublished = (siteId: string, data: unknown) => webhooks.dispatch("entry.published", siteId, data);
+  const menus = createMenuService(opts.db, clock);
+  // Orden: auto-add antes del webhook para que el payload del webhook no cambie.
+  const dispatchPublished = async (siteId: string, data: unknown) => {
+    await menus.autoAddEntry(siteId, data as { id?: unknown; slug?: unknown; title?: unknown; contentTypeKey?: unknown });
+    await webhooks.dispatch("entry.published", siteId, data);
+  };
   return {
     auth: createAuthService(opts.db, clock, (input) => audit.record(input)),
     audit,
     entries: createEntryService(opts.db, clock, dispatchPublished, (input) => audit.record(input)),
     builder: createBuilderService(opts.db, clock, dispatchPublished),
-    menus: createMenuService(opts.db, clock),
+    menus,
     settings: createSettingsService(opts.db, clock),
     taxonomies: createTaxonomyService(opts.db),
     webhooks,

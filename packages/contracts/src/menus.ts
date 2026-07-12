@@ -74,12 +74,15 @@ export const menuItemSchema: z.ZodType<MenuItem> = z.object({
 export const menuSchema = z.object({
   location: z.string().min(1),
   name: z.string().min(1),
+  /** Estilo WordPress "Auto add pages": añade las páginas nuevas de nivel superior al publicarse. */
+  autoAddPages: z.boolean().default(false),
   items: z.array(menuItemSchema),
 });
 export type Menu = z.infer<typeof menuSchema>;
 
 export const upsertMenuRequestSchema = z.object({
   name: z.string().min(1),
+  autoAddPages: z.boolean().optional(),
   items: z.array(menuItemInputSchema).default([]),
 });
 export type UpsertMenuRequest = z.infer<typeof upsertMenuRequestSchema>;

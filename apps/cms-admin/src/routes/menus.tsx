@@ -9,6 +9,7 @@ import { indent, moveSibling, outdent, removeAt, updateAt } from "@/components/m
 import { PageContainer } from "@/components/page-container.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { Checkbox } from "@/components/ui/checkbox.tsx";
 import {
   Dialog,
   DialogContent,
@@ -74,7 +75,9 @@ export function MenusPage() {
         return await cms.menus.get(location);
       } catch (err) {
         // 404 = menú aún no creado para esta ubicación: editor vacío (el PUT lo crea).
-        if ((err as { status?: number }).status === 404) return { location, name: locationLabel(location), items: [] };
+        if ((err as { status?: number }).status === 404) {
+          return { location, name: locationLabel(location), autoAddPages: false, items: [] };
+        }
         throw err;
       }
     },
@@ -82,6 +85,7 @@ export function MenusPage() {
   const pages = useQuery({ queryKey: ["pages", "menu-options"], queryFn: () => cms.pages.list({ pageSize: 100 }) });
   const [items, setItems] = useState<EditableMenuItem[]>([]);
   const [menuName, setMenuName] = useState("");
+  const [autoAddPages, setAutoAddPages] = useState(false);
   const [label, setLabel] = useState("");
   const [url, setUrl] = useState("");
 
@@ -89,11 +93,13 @@ export function MenusPage() {
     if (menu.data) {
       setItems(toEditable(menu.data.items));
       setMenuName(menu.data.name);
+      setAutoAddPages(menu.data.autoAddPages ?? false);
     }
   }, [menu.data]);
 
   const save = useMutation({
-    mutationFn: () => cms.menus.upsert(location, { name: menuName.trim() || locationLabel(location), items: normalize(items) }),
+    mutationFn: () =>
+      cms.menus.upsert(location, { name: menuName.trim() || locationLabel(location), autoAddPages, items: normalize(items) }),
     onSuccess: (saved) => {
       setItems(toEditable(saved.items));
       setPreviewVersion((v) => v + 1); // recarga la vista previa
@@ -162,6 +168,12 @@ export function MenusPage() {
           <Input id="menu-name" className="w-56" value={menuName} onChange={(e) => setMenuName(e.target.value)} />
         </div>
         <p className="pb-2 text-xs text-muted-foreground">Cambiar de menú descarta los cambios no guardados.</p>
+        <span className="flex items-center gap-2 pb-2">
+          <Checkbox id="menu-autoadd" checked={autoAddPages} onCheckedChange={(c) => setAutoAddPages(c === true)} />
+          <Label htmlFor="menu-autoadd" className="text-xs font-normal text-muted-foreground">
+            Añadir automáticamente las páginas nuevas de nivel superior
+          </Label>
+        </span>
       </div>
 
       {menu.isLoading && <p className="text-muted-foreground">Cargando…</p>}

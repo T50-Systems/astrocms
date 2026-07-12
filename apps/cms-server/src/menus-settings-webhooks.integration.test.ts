@@ -100,6 +100,55 @@ describe.skipIf(!DB)("API v1 — menús, ajustes y webhooks (integración)", () 
     expect((pub.json() as { items: unknown[] }).items).toHaveLength(1);
   });
 
+  it("auto-añade páginas de nivel superior al publicar (autoAddPages)", async () => {
+    const location = `auto-${randomUUID().slice(0, 8)}`;
+    const put = await app.inject({
+      method: "PUT",
+      url: `/api/v1/menus/${location}`,
+      ...auth({ payload: { name: "Auto", autoAddPages: true, items: [] } }),
+    });
+    expect(put.statusCode).toBe(200);
+    expect((put.json() as { autoAddPages: boolean }).autoAddPages).toBe(true);
+
+    // Página top-level publicada → se añade al menú.
+    const slug = `/auto-${randomUUID().slice(0, 8)}`;
+    const page = await app.inject({
+      method: "POST",
+      url: "/api/v1/pages",
+      ...auth({ payload: { title: "Auto añadida", slug, editorType: "rich-text" } }),
+    });
+    const pageId = (page.json() as { id: string }).id;
+    const pub1 = await app.inject({ method: "POST", url: `/api/v1/pages/${pageId}/publish`, ...auth() });
+    expect(pub1.statusCode).toBe(200);
+
+    const menu1 = await app.inject({ method: "GET", url: `/api/v1/menus/${location}`, ...auth() });
+    const items1 = (menu1.json() as { items: Array<{ entryId?: string; label: string }> }).items;
+    expect(items1.some((i) => i.entryId === pageId && i.label === "Auto añadida")).toBe(true);
+
+    // Re-publicar no duplica.
+    await app.inject({ method: "POST", url: `/api/v1/pages/${pageId}/unpublish`, ...auth() });
+    await app.inject({ method: "POST", url: `/api/v1/pages/${pageId}/publish`, ...auth() });
+    const menu2 = await app.inject({ method: "GET", url: `/api/v1/menus/${location}`, ...auth() });
+    const items2 = (menu2.json() as { items: Array<{ entryId?: string }> }).items;
+    expect(items2.filter((i) => i.entryId === pageId)).toHaveLength(1);
+
+    // Página anidada NO se añade.
+    const nested = await app.inject({
+      method: "POST",
+      url: "/api/v1/pages",
+      ...auth({ payload: { title: "Anidada", slug: `${slug}/hija`, editorType: "rich-text" } }),
+    });
+    const nestedId = (nested.json() as { id: string }).id;
+    await app.inject({ method: "POST", url: `/api/v1/pages/${nestedId}/publish`, ...auth() });
+    const menu3 = await app.inject({ method: "GET", url: `/api/v1/menus/${location}`, ...auth() });
+    expect((menu3.json() as { items: Array<{ entryId?: string }> }).items.some((i) => i.entryId === nestedId)).toBe(false);
+
+    // limpieza
+    await app.inject({ method: "DELETE", url: `/api/v1/menus/${location}`, ...auth() });
+    await app.inject({ method: "DELETE", url: `/api/v1/pages/${pageId}`, ...auth() });
+    await app.inject({ method: "DELETE", url: `/api/v1/pages/${nestedId}`, ...auth() });
+  });
+
   it("persiste propiedades avanzadas del item (meta) en el round-trip", async () => {
     const location = `adv-${randomUUID().slice(0, 8)}`;
     const put = await app.inject({

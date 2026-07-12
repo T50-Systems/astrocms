@@ -101,7 +101,7 @@ export function createMenuService(db: Database, clock: Clock) {
       const found = await db.select({ id: entries.id, slug: entries.slug }).from(entries).where(inArray(entries.id, entryIds));
       for (const e of found) slugs.set(e.id, e.slug);
     }
-    return { location: row.location, name: row.name, items: buildTree(rows, null, slugs) };
+    return { location: row.location, name: row.name, autoAddPages: row.autoAddPages, items: buildTree(rows, null, slugs) };
   }
 
   return {
@@ -112,6 +112,51 @@ export function createMenuService(db: Database, clock: Clock) {
 
     async getByLocation(siteId: string, location: string): Promise<Menu> {
       return toMenu(await menuByLocation(siteId, location));
+    },
+
+    /**
+     * "Auto add pages" estilo WordPress: al publicarse una página de nivel
+     * superior (slug /algo, sin anidar, y no la home "/"), se añade como item
+     * raíz a todos los menús del site con autoAddPages=true.
+     * Dedupe por entryId: re-publicar no duplica (y si se quitó a mano, se
+     * re-añade solo tras unpublish+publish — comportamiento próximo a WP).
+     * Tolerante: nunca lanza (no debe romper la publicación ni el webhook).
+     */
+    async autoAddEntry(siteId: string, entry: { id?: unknown; slug?: unknown; title?: unknown; contentTypeKey?: unknown }): Promise<void> {
+      try {
+        if (typeof entry.id !== "string" || typeof entry.slug !== "string" || typeof entry.title !== "string") return;
+        if (entry.contentTypeKey !== "page") return;
+        if (!/^\/[^/]+$/.test(entry.slug)) return; // solo nivel superior (excluye "/" y anidadas)
+
+        const targets = await db
+          .select({ id: menus.id })
+          .from(menus)
+          .where(and(eq(menus.siteId, siteId), eq(menus.autoAddPages, true)));
+        for (const menu of targets) {
+          const dupe = (
+            await db
+              .select({ id: menuItems.id })
+              .from(menuItems)
+              .where(and(eq(menuItems.menuId, menu.id), eq(menuItems.entryId, entry.id)))
+              .limit(1)
+          )[0];
+          if (dupe) continue;
+          const count = await db.select({ id: menuItems.id }).from(menuItems).where(eq(menuItems.menuId, menu.id));
+          await db.insert(menuItems).values({
+            menuId: menu.id,
+            parentId: null,
+            position: count.length,
+            label: entry.title,
+            linkType: "entry",
+            entryId: entry.id,
+            url: null,
+            target: null,
+            meta: {},
+          });
+        }
+      } catch {
+        // nunca romper la publicación por el auto-add
+      }
     },
 
     async remove(siteId: string, location: string): Promise<void> {
@@ -133,11 +178,19 @@ export function createMenuService(db: Database, clock: Clock) {
           (
             await tx
               .insert(menus)
-              .values({ siteId, location, name: input.name, updatedAt: clock.now() })
+              .values({ siteId, location, name: input.name, autoAddPages: input.autoAddPages ?? false, updatedAt: clock.now() })
               .returning()
           )[0]!;
         if (existing) {
-          await tx.update(menus).set({ name: input.name, updatedAt: clock.now() }).where(eq(menus.id, row.id));
+          await tx
+            .update(menus)
+            .set({
+              name: input.name,
+              // Solo si viene definido: clientes viejos no resetean el flag.
+              ...(input.autoAddPages !== undefined ? { autoAddPages: input.autoAddPages } : {}),
+              updatedAt: clock.now(),
+            })
+            .where(eq(menus.id, row.id));
           await tx.delete(menuItems).where(eq(menuItems.menuId, row.id));
         }
         await insertItems(tx, row.id, null, input.items);
