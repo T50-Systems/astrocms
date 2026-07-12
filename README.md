@@ -1,5 +1,8 @@
 # AstroCMS
 
+> **Work in progress.** Proyecto en desarrollo activo: la API, el esquema de datos y el panel
+> pueden cambiar sin previo aviso. Aún no hay una versión estable ni release publicado.
+
 Plataforma de dos productos integrables para proyectos Astro:
 
 - **CMS para Astro** — núcleo autohospedable (como el core de WordPress): contenido, usuarios,

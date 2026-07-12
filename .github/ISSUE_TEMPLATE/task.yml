@@ -1,0 +1,26 @@
+name: Task
+description: Track maintenance, documentation, or internal work
+title: "chore: "
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What needs to be done and why?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What is included or explicitly out of scope?
+    validations:
+      required: false
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation
+      description: How will we know this is complete?
+      placeholder: Tests, docs, manual checks, release steps, etc.
+    validations:
+      required: false
