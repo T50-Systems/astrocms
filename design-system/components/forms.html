@@ -1,0 +1,38 @@
+<!-- @dsCard group="Components" -->
+<!doctype html><html><head><meta charset="utf-8"><title>Formularios</title><style>
+*{box-sizing:border-box;margin:0}
+:root{--radius:.625rem;--foreground:oklch(.145 0 0);--muted-foreground:oklch(.556 0 0);--primary:oklch(.53 .12 250);--destructive:oklch(.577 .245 27.325);--border:oklch(.922 0 0);--input:oklch(.922 0 0);--background:#fff}
+body{font-family:system-ui,sans-serif;color:var(--foreground);background:#fff;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:820px}
+label{display:block;font-size:14px;font-weight:500;margin-bottom:6px}
+.inp,textarea,.sel{display:block;width:100%;height:36px;border-radius:calc(var(--radius) - 2px);border:1px solid var(--input);background:var(--background);padding:4px 12px;font-size:14px;font-family:inherit;box-shadow:0 1px 2px rgb(0 0 0/.05)}
+textarea{height:auto;min-height:64px;padding:8px 12px;resize:vertical}
+.inp::placeholder{color:var(--muted-foreground)}
+.field{margin-bottom:16px}
+.err-inp{border-color:var(--destructive)}
+.err{font-size:12px;color:var(--destructive);margin-top:5px}
+.sel{display:flex;align-items:center;justify-content:space-between;color:var(--foreground)}
+.sel .ph{color:var(--muted-foreground)}
+.chev{color:var(--muted-foreground);opacity:.6}
+.cb{display:inline-flex;align-items:center;gap:8px;font-size:14px}
+.box{width:16px;height:16px;border-radius:4px;border:1px solid var(--input);display:grid;place-items:center;background:#fff}
+.box.on{background:var(--primary);border-color:var(--primary);color:#fff;font-size:11px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted-foreground);margin:0 0 12px}
+.note{grid-column:1/-1;font-size:11px;color:var(--muted-foreground);font-family:ui-monospace,monospace}
+</style></head><body>
+<div>
+  <h2>Input + Label (FormField)</h2>
+  <div class="field"><label for="a">Título del sitio</label><input id="a" class="inp" value="AstroCMS Demo"></div>
+  <div class="field"><label for="b">Con placeholder</label><input id="b" class="inp" placeholder="https://misitio.com"></div>
+  <div class="field"><label for="c">Con error (aria-invalid + aria-describedby)</label><input id="c" class="inp err-inp" value="no-es-url" aria-invalid="true" aria-describedby="c-err"><p id="c-err" class="err" role="alert">Debe ser una URL válida (https://…)</p></div>
+  <div class="field"><label for="d">Textarea</label><textarea id="d" rows="3" placeholder="Escribe el contenido…"></textarea></div>
+</div>
+<div>
+  <h2>Select (Radix) y Checkbox</h2>
+  <div class="field"><label>Idioma</label><div class="sel"><span>Español</span><span class="chev">▾</span></div></div>
+  <div class="field"><label>Con placeholder (value="")</label><div class="sel"><span class="ph">Selecciona una página</span><span class="chev">▾</span></div></div>
+  <div class="field cb"><span class="box on">✓</span> Checkbox marcado — onCheckedChange</div>
+  <div class="field cb"><span class="box"></span> Checkbox sin marcar</div>
+  <div class="field cb"><span class="box" style="opacity:.5"></span> <span style="opacity:.5">Deshabilitado</span></div>
+</div>
+<p class="note">Reglas: Radix SelectItem NUNCA con value="" (usar centinela "__none__"); selects con react-hook-form van con Controller; el error de campo lleva id="{campo}-error" + role="alert" y el input aria-invalid + aria-describedby.</p>
+</body></html>

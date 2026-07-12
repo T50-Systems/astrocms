@@ -1,0 +1,34 @@
+<!-- @dsCard group="Brand" -->
+<!doctype html><html><head><meta charset="utf-8"><title>Tokens DTCG — fuente de verdad</title><style>
+*{box-sizing:border-box;margin:0}
+:root{--foreground:oklch(.145 0 0);--muted-foreground:oklch(.556 0 0);--primary:oklch(.53 .12 250);--border:oklch(.922 0 0);--muted:oklch(.97 0 0);--card:#fff}
+body{font-family:system-ui,sans-serif;color:var(--foreground);background:#fff;padding:24px;max-width:760px}
+.flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 18px}
+.node{border:1px solid var(--border);border-radius:10px;padding:10px 14px;background:var(--muted);font-size:12px;text-align:center}
+.node b{display:block;font-size:13px}
+.arrow{color:var(--muted-foreground);font-size:18px}
+pre{background:oklch(.21 .02 260);color:#e6e6e6;border-radius:10px;padding:14px;font-size:12px;font-family:ui-monospace,monospace;line-height:1.5;overflow:auto}
+p{font-size:13px;line-height:1.55}
+.hl{color:var(--primary);font-weight:600}
+</style></head><body>
+<p><b>La marca vive en un solo JSON</b> — formato estándar <span class="hl">DTCG</span> (Design Tokens Community Group), editable en el panel (<i>Tokens</i>, vistas Tabla y JSON) y por IA vía SDK/MCP (grupo de settings <code>design-tokens</code>).</p>
+<div class="flow">
+  <div class="node"><b>Tokens DTCG</b>JSON (settings)</div><span class="arrow">→</span>
+  <div class="node"><b>Variables CSS</b>color.brand → --color-brand</div><span class="arrow">→</span>
+  <div class="node"><b>Sitio público</b>:root en astro-demo</div>
+</div>
+<div class="flow">
+  <div class="node"><b>DesignTokensBridge</b>panel admin</div><span class="arrow">→</span>
+  <div class="node"><b>Tema shadcn</b>color.brand → --primary, --sidebar-primary, --ring</div>
+</div>
+<pre>{
+  "color": {
+    "brand": { "$value": "#2271b1", "$type": "color" },
+    "text":  { "$value": "#1a1a1a", "$type": "color" }
+  },
+  "space": {
+    "sm": { "$value": "8px", "$type": "dimension" }
+  }
+}</pre>
+<p style="margin-top:12px;color:var(--muted-foreground);font-size:12px">Cambiar <code>color.brand</code> re-tematiza panel y web sin recompilar. Tipos soportados: color, dimension, fontFamily, fontWeight, number, duration, shadow.</p>
+</body></html>
