@@ -146,7 +146,7 @@ export function TokensPage() {
           {notice && (
             <span
               role="status"
-              className={cn("text-sm", notice.startsWith("Guardado") ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}
+              className={cn("text-sm", notice.startsWith("Guardado") ? "text-success-ink" : "text-muted-foreground")}
             >
               {notice}
             </span>

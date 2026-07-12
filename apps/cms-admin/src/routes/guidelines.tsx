@@ -116,7 +116,7 @@ export function GuidelinesPage() {
         <h1 className="text-2xl font-semibold">Guías de IA</h1>
         <div className="flex flex-wrap items-center gap-2">
           {notice && (
-            <span role="status" className={cn("text-sm", notice.startsWith("Guardado") ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+            <span role="status" className={cn("text-sm", notice.startsWith("Guardado") ? "text-success-ink" : "text-muted-foreground")}>
               {notice}
             </span>
           )}

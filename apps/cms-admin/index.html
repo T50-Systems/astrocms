@@ -4,11 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AstroCMS — Panel</title>
+    <script>try{const t=localStorage.getItem("astrocms-theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch{}</script>
     <style>
-      /* MVP: el panel usa un tema claro consistente (contraste accesible). */
-      :root { color-scheme: light; }
-      html, body { margin: 0; background: #ffffff; color: #1a1a1a; }
-      :focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+      /* El esquema de color sigue al tema activo (claro/oscuro). */
+      :root { color-scheme: light dark; }
+      html, body { margin: 0; }
+      :focus-visible { outline: 3px solid var(--ring, #2563eb); outline-offset: 2px; }
     </style>
   </head>
   <body>

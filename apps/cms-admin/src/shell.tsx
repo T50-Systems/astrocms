@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Bot, FileText, Image, LayoutList, LogOut, Palette, Plus, Settings, Tag, Tags, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
+import { ThemeToggle } from "@/components/theme-toggle.tsx";
 import { cn } from "@/lib/utils.ts";
 
 /** Layout tipo panel: barra superior + barra lateral fija + área de contenido. */
@@ -40,6 +41,7 @@ export function AppShell({ email, siteName, onLogout, children }: AppShellProps)
         </div>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-sidebar-foreground/70">Hola, {email}</span>
+          <ThemeToggle className="size-7 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground" />
           <Button variant="ghost" size="sm" onClick={onLogout} className="h-7 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground">
             <LogOut className="size-3.5" /> Salir
           </Button>

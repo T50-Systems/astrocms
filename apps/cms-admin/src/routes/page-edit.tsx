@@ -153,7 +153,7 @@ export function EditPage() {
             <ul className="divide-y">
               {revisions.data?.map((r) => (
                 <li key={r.versionNo} className="flex items-center justify-between py-1.5 text-sm">
-                  <span>v{r.versionNo} · {r.title}{r.isPublished && <em className="text-emerald-700"> (publicada)</em>}</span>
+                  <span>v{r.versionNo} · {r.title}{r.isPublished && <em className="text-success-ink"> (publicada)</em>}</span>
                   <button type="button" onClick={() => restore.mutate(r.versionNo)} disabled={restore.isPending} className="text-xs text-primary hover:underline">Restaurar</button>
                 </li>
               ))}

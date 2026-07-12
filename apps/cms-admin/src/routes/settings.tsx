@@ -128,7 +128,7 @@ export function SettingsPage() {
         <h1 className="text-2xl font-semibold">Ajustes</h1>
         <div className="flex flex-wrap items-center gap-2">
           {save.isSuccess && !save.isPending && (
-            <span role="status" className="text-sm text-emerald-600 dark:text-emerald-400">Guardado ✓</span>
+            <span role="status" className="text-sm text-success-ink">Guardado ✓</span>
           )}
           <ModeToggle
             value={mode}
