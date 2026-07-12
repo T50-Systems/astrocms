@@ -15,7 +15,7 @@ const visible = items.filter((item) => !item.invalid && item.url);
 {visible.length > 0 && (
   <ul class={root ? "nav-root" : "nav-sub"}>
     {visible.map((item) => (
-      <li>
+      <li class={item.children.length > 0 ? "has-children" : undefined}>
         <a
           href={item.url}
           target={item.target === "_blank" ? "_blank" : undefined}

@@ -42,36 +42,170 @@ const fullTitle = title === site.title ? title : `${title} · ${site.title}`;
     {ogImageUrl && <meta property="og:image" content={ogImageUrl} />}
 
     <style define:vars={{ brand: site.brandColor }}>
-      :root { color-scheme: light dark; }
-      body { font-family: system-ui, sans-serif; max-width: 42rem; margin: 0 auto; padding: 1rem; line-height: 1.6; }
-      a { color: var(--brand); }
-      .site-header { display: flex; align-items: center; gap: 1.25rem; padding: 1.25rem 0; border-bottom: 1px solid rgba(0,0,0,0.1); margin-bottom: 2rem; flex-wrap: wrap; }
-      /* Menú: raíz horizontal; submenús como lista vertical indentada (sin JS). */
-      .site-header :global(.nav-root) { display: flex; gap: 1rem; list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
-      .site-header :global(.nav-sub), footer :global(.nav-sub) { list-style: none; margin: 0.25rem 0 0; padding-left: 0.9rem; border-left: 2px solid rgba(0,0,0,0.1); font-size: 0.9em; }
-      footer :global(.nav-root) { display: flex; gap: 1rem; list-style: none; margin: 0 0 0.75rem; padding: 0; flex-wrap: wrap; }
-      .site-header img { height: 34px; width: auto; }
-      .site-header a { color: inherit; text-decoration: none; font-weight: 700; font-size: 1.1rem; }
-      main { min-height: 40vh; }
-      footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,0.1); font-size: 0.85rem; opacity: 0.6; }
+      /* --- Design system de AstroCMS (nombres nuevos para no chocar con las --color-* DTCG) --- */
+      :root {
+        color-scheme: light dark;
+        --bg: oklch(1 0 0);
+        --fg: oklch(.145 0 0);
+        --muted-fg: oklch(.556 0 0);
+        --surface: oklch(1 0 0);
+        --line: oklch(.922 0 0);
+        --shadow-md: 0 4px 12px oklch(0 0 0/.08), 0 2px 4px oklch(0 0 0/.04);
+        --ease: cubic-bezier(.2,0,0,1);
+        --dur: 150ms;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: oklch(.145 0 0);
+          --fg: oklch(.985 0 0);
+          --muted-fg: oklch(.708 0 0);
+          --surface: oklch(.205 0 0);
+          --line: oklch(1 0 0/10%);
+        }
+      }
+
+      body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--fg); margin: 0; line-height: 1.6; }
+      .container { max-width: 46rem; margin: 0 auto; padding: 0 1.25rem; }
+
+      /* Los enlaces del contenido conservan el color de marca. */
+      main a { color: var(--brand); }
+      main { padding: 40px 0; }
+
+      article h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; letter-spacing: -0.01em; margin: 0 0 16px; }
+
+      /* --- Header sticky --- */
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: color-mix(in oklch, var(--bg) 85%, transparent);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--line);
+      }
+      .site-header .container {
+        max-width: 64rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .brand { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--fg); text-decoration: none; font-weight: 700; font-size: 1.1rem; }
+      .brand img { height: 34px; width: auto; }
+
+      /* --- Nav raíz --- */
+      .site-header :global(.nav-root) {
+        display: flex;
+        gap: 4px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .site-header :global(.nav-root a) {
+        color: var(--fg);
+        text-decoration: none;
+        padding: 8px 10px;
+        border-radius: 8px;
+        transition: background var(--dur) var(--ease);
+      }
+      .site-header :global(.nav-root a:hover) { background: color-mix(in oklch, var(--fg) 7%, transparent); }
+
+      /* --- Submenús desplegables (CSS-only) --- */
+      .site-header :global(.nav-root > li.has-children) { position: relative; }
+      .site-header :global(.nav-root > li.has-children > a::after) {
+        content: "▾";
+        font-size: .7em;
+        opacity: .6;
+        margin-left: 4px;
+      }
+      .site-header :global(.nav-root > li > .nav-sub) {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        min-width: 200px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: var(--shadow-md);
+        padding: 6px;
+        margin: 4px 0 0;
+        list-style: none;
+        /* opacity + pointer-events (no visibility:hidden): los enlaces siguen siendo
+           enfocables por teclado y :focus-within puede revelar el submenú. */
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(4px);
+        transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+      }
+      .site-header :global(.nav-root > li:hover > .nav-sub),
+      .site-header :global(.nav-root > li:focus-within > .nav-sub) {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+      }
+      .site-header :global(.nav-sub a) { display: block; padding: 8px 10px; border-radius: 6px; }
+      /* Sub-submenús: estáticos, indentados (no popovers anidados). */
+      .site-header :global(.nav-sub .nav-sub) {
+        position: static;
+        opacity: 1;
+        pointer-events: auto;
+        transform: none;
+        border: 0;
+        box-shadow: none;
+        padding: 0 0 0 12px;
+        margin: 4px 0 0;
+        border-left: 2px solid var(--line);
+        border-radius: 0;
+        min-width: 0;
+      }
+
+      /* --- Footer --- */
+      footer { border-top: 1px solid var(--line); }
+      footer .container { max-width: 64rem; padding: 40px 1.25rem; }
+      footer :global(.nav-root) { display: flex; flex-wrap: wrap; gap: 1rem; list-style: none; margin: 0 0 0.75rem; padding: 0; }
+      footer :global(.nav-root a) { color: var(--muted-fg); text-decoration: none; }
+      footer :global(.nav-root a:hover) { color: var(--fg); }
+      footer :global(.nav-sub) { list-style: none; margin: 0.25rem 0 0; padding-left: 0.9rem; border-left: 2px solid var(--line); font-size: 0.9em; }
+      .footer-desc { color: var(--muted-fg); font-size: 13px; margin-top: 12px; }
+
+      /* --- Móvil --- */
+      @media (max-width: 720px) {
+        .site-header .container { flex-wrap: wrap; gap: 8px; }
+        .site-header :global(.nav-root) { flex-wrap: wrap; }
+        .site-header :global(.nav-root > li > .nav-sub) {
+          position: static;
+          opacity: 1;
+          pointer-events: auto;
+          transform: none;
+          border: 0;
+          box-shadow: none;
+          padding-left: 14px;
+          border-left: 2px solid var(--line);
+          border-radius: 0;
+        }
+      }
     </style>
   </head>
   <body>
     <header class="site-header">
-      <a href="/">
-        {site.logoUrl && <img src={site.logoUrl} alt={site.title} />}
-        <span>{site.title}</span>
-      </a>
-      {primaryNav && <nav aria-label="Navegación principal"><NavMenu items={primaryNav.items} /></nav>}
+      <div class="container">
+        <a class="brand" href="/">
+          {site.logoUrl && <img src={site.logoUrl} alt={site.title} />}
+          <span>{site.title}</span>
+        </a>
+        {primaryNav && <nav aria-label="Navegación principal"><NavMenu items={primaryNav.items} /></nav>}
+      </div>
     </header>
     <main>
-      <slot />
+      <div class="container">
+        <slot />
+      </div>
     </main>
     <footer>
-      {footerNav && footerNav.items.length > 0 && (
-        <nav aria-label="Pie de página"><NavMenu items={footerNav.items} /></nav>
-      )}
-      {site.description || "Renderizado por Astro (SSR) · AstroCMS"}
+      <div class="container">
+        {footerNav && footerNav.items.length > 0 && (
+          <nav aria-label="Pie de página"><NavMenu items={footerNav.items} /></nav>
+        )}
+        <p class="footer-desc">{site.description || "Renderizado por Astro (SSR) · AstroCMS"}</p>
+      </div>
     </footer>
   </body>
 </html>
