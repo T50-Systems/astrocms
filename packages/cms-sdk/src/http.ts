@@ -62,8 +62,10 @@ export function createHttp(opts: CmsClientOptions) {
       ...(opts.credentials ? { credentials: opts.credentials } : {}),
       ...(body !== undefined ? { body } : {}),
     });
-    if (res.status === 204) return undefined as T;
+    // Consumir siempre el body (aunque sea 204/vacío): si se deja sin leer, Chrome
+    // registra la petición como net::ERR_ABORTED en devtools y parece un fallo.
     const text = await res.text();
+    if (res.status === 204) return undefined as T;
     const json = text ? JSON.parse(text) : undefined;
     if (!res.ok) {
       const err = (json as ApiError | undefined)?.error;
