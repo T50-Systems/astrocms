@@ -17,7 +17,9 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-3 rounded-lg border border-dashed bg-card px-6 py-10 text-center",
+        // min-h-56 iguala la altura del skeleton de carga: al resolver la query
+        // la caja no "salta" de tamaño (skeleton y estado vacío ocupan lo mismo).
+        "flex min-h-56 flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-card px-6 py-10 text-center",
         className,
       )}
     >
