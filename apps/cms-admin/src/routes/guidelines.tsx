@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { FormSkeleton, PageHeaderSkeleton } from "@/components/skeletons.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { cn } from "@/lib/utils.ts";
 
@@ -111,11 +112,9 @@ export function GuidelinesPage() {
   if (settings.isLoading)
     return (
       <PageContainer>
-        <div className="space-y-3">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-        </div>
+        <PageHeaderSkeleton actions={4} />
+        <Skeleton className="mb-5 h-4 w-[32rem] max-w-full" />
+        <FormSkeleton sections={1} fields={4} />
       </PageContainer>
     );
 

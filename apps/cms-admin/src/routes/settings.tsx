@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field } from "@/components/ui/field.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
-import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { FormSkeleton, PageHeaderSkeleton } from "@/components/skeletons.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 
 const formSchema = z.object({
@@ -113,11 +113,8 @@ export function SettingsPage() {
   if (settings.isLoading)
     return (
       <PageContainer>
-        <div className="space-y-3">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-        </div>
+        <PageHeaderSkeleton actions={2} />
+        <FormSkeleton sections={2} fields={3} />
       </PageContainer>
     );
 

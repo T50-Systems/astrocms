@@ -26,11 +26,15 @@ export function BuilderPage() {
   });
 
   if (manifest.isLoading || document.isLoading || token.isLoading) {
+    // Silueta del builder: barra de acciones + lienzo grande.
     return (
-      <div aria-busy className="space-y-3 p-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-32 w-full" />
+      <div aria-busy className="flex h-full flex-col">
+        <div className="flex items-center gap-2 border-b px-3 py-2">
+          <Skeleton className="h-7 w-24 rounded-md" />
+          <Skeleton className="h-7 w-24 rounded-md" />
+          <Skeleton className="ml-auto h-7 w-20 rounded-md" />
+        </div>
+        <Skeleton className="m-6 min-h-96 flex-1 rounded-lg" />
       </div>
     );
   }
