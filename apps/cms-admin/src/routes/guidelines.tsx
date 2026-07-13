@@ -124,7 +124,7 @@ export function GuidelinesPage() {
   return (
     <PageContainer>
       <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Guías de IA</h1>
+        <h1 className="text-page-title font-semibold tracking-tight">Guías de IA</h1>
         <div className="flex flex-wrap items-center gap-2">
           {notice && (
             <span role="status" className={cn("text-sm", notice.startsWith("Guardado") ? "text-success-ink" : "text-muted-foreground")}>

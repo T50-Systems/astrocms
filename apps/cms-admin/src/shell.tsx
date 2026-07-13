@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Bot, FileText, Image, LayoutList, LogOut, Palette, Plus, Settings, Tag, Tags, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -27,8 +27,11 @@ export interface AppShellProps {
 }
 
 export function AppShell({ email, siteName, onLogout, children }: AppShellProps) {
+  // El pathname sirve de `key` al contenedor de la ruta: al navegar se remonta y
+  // vuelve a correr la animación de entrada. AppShell vive bajo RouterProvider.
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="min-h-screen min-w-[20rem] bg-canvas">
       <header className="fixed inset-x-0 top-0 z-20 flex h-12 items-center justify-between border-b border-white/10 bg-sidebar px-3 text-sidebar-foreground">
         <div className="flex items-center gap-4">
           <Link to="/" className="flex items-center gap-1.5 font-bold">
@@ -40,7 +43,7 @@ export function AppShell({ email, siteName, onLogout, children }: AppShellProps)
           </Link>
         </div>
         <div className="flex items-center gap-3 text-sm">
-          <span className="text-sidebar-foreground/70">Hola, {email}</span>
+          <span className="truncate max-w-[14rem] text-sidebar-foreground/70">Hola, {email}</span>
           <ThemeToggle className="size-7 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground" />
           <Button variant="ghost" size="sm" onClick={onLogout} className="h-7 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground">
             <LogOut className="size-3.5" /> Salir
@@ -53,7 +56,7 @@ export function AppShell({ email, siteName, onLogout, children }: AppShellProps)
           <Link
             key={item.to}
             to={item.to}
-            className={cn("relative flex items-center gap-2.5 px-4 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground")}
+            className={cn("relative flex items-center gap-2.5 px-4 py-2 text-sm text-sidebar-foreground/80 transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground")}
             activeProps={{ className: "relative flex items-center gap-2.5 px-4 py-2 text-sm font-medium bg-sidebar-accent text-sidebar-foreground before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-full before:bg-sidebar-primary" }}
             activeOptions={{ exact: item.to === "/" }}
           >
@@ -63,7 +66,11 @@ export function AppShell({ email, siteName, onLogout, children }: AppShellProps)
         ))}
       </nav>
 
-      <main className="ml-56 min-h-[calc(100vh-3rem)] pt-12">{children}</main>
+      <main className="ml-56 min-h-[calc(100vh-3rem)] pt-12">
+        <div key={pathname} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ease-standard fill-mode-both">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }

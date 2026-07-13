@@ -152,7 +152,7 @@ export function TokensPage() {
   return (
     <PageContainer>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Tokens de diseño</h1>
+        <h1 className="text-page-title font-semibold tracking-tight">Tokens de diseño</h1>
         <div className="flex flex-wrap items-center gap-2">
           {notice && (
             <span

@@ -126,7 +126,7 @@ export function SettingsPage() {
   return (
     <PageContainer>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Ajustes</h1>
+        <h1 className="text-page-title font-semibold tracking-tight">Ajustes</h1>
         <div className="flex flex-wrap items-center gap-2">
           {save.isSuccess && !save.isPending && (
             <span role="status" className="text-sm text-success-ink">Guardado ✓</span>
