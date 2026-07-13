@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
-import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { TableSkeleton } from "@/components/skeletons.tsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 
@@ -199,13 +199,7 @@ export function TermsManager({ taxonomyKey, title, subtitle, singular, plural, h
       </div>
       <p className="mt-1 text-muted-foreground">{subtitle}</p>
 
-      {query.isLoading && (
-        <div className="mt-4 space-y-3">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-        </div>
-      )}
+      {query.isLoading && <div className="mt-4"><TableSkeleton cols={5} /></div>}
       {query.isError && <Alert className="mt-4">{errMsg(query.error)}</Alert>}
       {(removeTerms.isError || saveEdits.isError) && (
         <Alert className="mt-4">{errMsg(removeTerms.error ?? saveEdits.error)}</Alert>

@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { PageEditSkeleton } from "@/components/skeletons.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 
 const routeApi = getRouteApi("/pages/$pageId");
@@ -81,11 +82,7 @@ export function EditPage() {
   if (page.isLoading)
     return (
       <PageContainer>
-        <div className="space-y-3">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-        </div>
+        <PageEditSkeleton />
       </PageContainer>
     );
   if (page.isError || !page.data)

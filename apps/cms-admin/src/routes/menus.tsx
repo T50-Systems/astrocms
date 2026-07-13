@@ -24,7 +24,7 @@ import {
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
-import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { TreeSkeleton } from "@/components/skeletons.tsx";
 
 const LOCATIONS = [
   { value: "primary", label: "Menú principal" },
@@ -180,13 +180,7 @@ export function MenusPage() {
         </span>
       </div>
 
-      {menu.isLoading && (
-        <div className="space-y-3">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-        </div>
-      )}
+      {menu.isLoading && <TreeSkeleton rows={4} />}
       {(menu.isError || pages.isError || save.isError) && (
         <Alert className="mb-3">{(menu.error ?? pages.error ?? save.error)?.message}</Alert>
       )}
