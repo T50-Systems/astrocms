@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { PageHeaderSkeleton, TableSkeleton } from "@/components/skeletons.tsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
 import { cn } from "@/lib/utils.ts";
 
@@ -139,11 +140,9 @@ export function TokensPage() {
   if (settings.isLoading)
     return (
       <PageContainer>
-        <div className="space-y-3">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-        </div>
+        <PageHeaderSkeleton actions={4} />
+        <Skeleton className="mb-5 h-4 w-96 max-w-full" />
+        <TableSkeleton cols={3} rows={8} />
       </PageContainer>
     );
 
