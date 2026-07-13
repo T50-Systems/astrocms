@@ -1,11 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Rocket, Zap } from "lucide-react";
 import { loginRequestSchema, type LoginRequest } from "@astrocms/contracts";
 import { CmsClientError } from "@astrocms/cms-sdk";
-import { useDevLogin, useLogin, useSession } from "../auth.tsx";
+import { useDevLogin, useLogin, useSession, wasExplicitLogout } from "../auth.tsx";
 import { Alert, errMsg } from "@/components/ui/alert.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
@@ -40,8 +40,12 @@ export function LoginPage() {
     if (session) nav({ to: "/" });
   }, [session, nav]);
 
+  // El ref evita el doble disparo de StrictMode (isIdle aún es true en el segundo efecto).
+  const autoProbeFired = useRef(false);
   useEffect(() => {
-    if (DEV && AUTO && !session && devLogin.isIdle) {
+    // Tras un "Salir" explícito no re-entramos solos: quedarse en el login es lo esperado.
+    if (DEV && AUTO && !session && devLogin.isIdle && !autoProbeFired.current && !wasExplicitLogout()) {
+      autoProbeFired.current = true;
       devLogin.mutate(undefined, { onSuccess: () => nav({ to: "/" }) });
     }
   }, [session, devLogin, nav]);
