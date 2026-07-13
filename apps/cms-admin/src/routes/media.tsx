@@ -262,13 +262,8 @@ export function MediaPage() {
             </form>
           </div>
 
-          {media.isLoading && (
-            <div className="space-y-3">
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-32 w-full" />
-              <Skeleton className="h-32 w-full" />
-            </div>
-          )}
+          {/* Misma altura que EmptyState (min-h-56): sin salto al resolver la query. */}
+          {media.isLoading && <Skeleton className="h-56 w-full rounded-lg" />}
           {media.isError && <Alert>{errMsg(media.error)}</Alert>}
           {media.data && items.length === 0 && (
             term ? (
