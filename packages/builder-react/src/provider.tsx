@@ -25,6 +25,10 @@ export interface BuilderProviderProps {
   channelId?: string | undefined;
   onSave?: ((document: BuilderDocument) => Promise<void> | void) | undefined;
   onPublish?: ((document: BuilderDocument) => Promise<void> | void) | undefined;
+  /** Título del documento a mostrar en la Toolbar (p.ej. el título de la página). */
+  documentTitle?: string | undefined;
+  /** Si se proporciona, la Toolbar muestra un botón "← Volver" que lo invoca. */
+  onExit?: (() => void) | undefined;
   children: ReactNode;
 }
 
@@ -39,6 +43,8 @@ export interface BuilderContextValue {
   channelId: string;
   onSave: (document: BuilderDocument) => Promise<void> | void;
   onPublish: (document: BuilderDocument) => Promise<void> | void;
+  documentTitle?: string | undefined;
+  onExit?: (() => void) | undefined;
 }
 
 const BuilderContext = createContext<Omit<BuilderContextValue, "state"> | null>(null);
@@ -64,8 +70,22 @@ export function BuilderProvider(props: BuilderProviderProps) {
       channelId,
       onSave: props.onSave ?? ((document) => props.adapter.saveDraft(document)),
       onPublish: props.onPublish ?? ((document) => props.adapter.publish(document.id)),
+      ...(props.documentTitle !== undefined ? { documentTitle: props.documentTitle } : {}),
+      ...(props.onExit ? { onExit: props.onExit } : {}),
     }),
-    [channelId, engine, props.adapter, props.cms, props.manifest, props.onPublish, props.onSave, props.previewOrigin, props.previewToken],
+    [
+      channelId,
+      engine,
+      props.adapter,
+      props.cms,
+      props.documentTitle,
+      props.manifest,
+      props.onExit,
+      props.onPublish,
+      props.onSave,
+      props.previewOrigin,
+      props.previewToken,
+    ],
   );
 
   return <BuilderContext.Provider value={value}>{props.children}</BuilderContext.Provider>;

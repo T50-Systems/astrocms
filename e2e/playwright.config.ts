@@ -29,7 +29,8 @@ export default defineConfig({
       url: `http://localhost:${ADMIN_PORT}/`,
       reuseExistingServer: true,
       timeout: 60_000,
-      env: { PORT: String(ADMIN_PORT) },
+      // Los e2e prueban el login real: desactiva el auto-login de desarrollo del admin.
+      env: { PORT: String(ADMIN_PORT), VITE_DEV_AUTOLOGIN: "false" },
     },
   ],
 });

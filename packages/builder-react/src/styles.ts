@@ -1,15 +1,24 @@
 import type { CSSProperties } from "react";
 
+// Paleta del builder: lee los tokens del host (apps/cms-admin/src/globals.css) con
+// fallback al valor original, para que el paquete funcione standalone sin Tailwind.
 export const colors = {
-  text: "#172033",
-  muted: "#667085",
-  border: "#d9dee8",
-  surface: "#ffffff",
-  subtle: "#f6f7f9",
-  selected: "#e7f0ff",
-  accent: "#1d4ed8",
-  danger: "#b42318",
+  text: "var(--foreground, #172033)",
+  muted: "var(--muted-foreground, #667085)",
+  border: "var(--border, #d9dee8)",
+  surface: "var(--card, #ffffff)",
+  subtle: "var(--muted, #f6f7f9)",
+  selected: "color-mix(in oklch, var(--primary, #1d4ed8) 12%, transparent)",
+  selectedBorder: "var(--primary, #93b7ff)",
+  accent: "var(--primary, #1d4ed8)",
+  accentForeground: "var(--primary-foreground, #ffffff)",
+  danger: "var(--destructive, #b42318)",
+  dangerBorder: "var(--destructive-soft, #f2b8b5)",
+  success: "var(--success-ink, #15803d)",
 };
+
+const colorTransition =
+  "color 150ms var(--ease-standard, ease), background-color 150ms var(--ease-standard, ease), border-color 150ms var(--ease-standard, ease)";
 
 export const styles = {
   shell: {
@@ -18,8 +27,8 @@ export const styles = {
     display: "grid",
     gridTemplateRows: "48px 1fr",
     color: colors.text,
-    background: "#eef1f5",
-    fontFamily: "system-ui, sans-serif",
+    background: "var(--canvas, #eef1f5)",
+    fontFamily: "inherit",
   },
   toolbar: {
     display: "flex",
@@ -58,24 +67,27 @@ export const styles = {
     padding: "7px 10px",
     fontSize: 13,
     cursor: "pointer",
+    transition: colorTransition,
   },
   primaryButton: {
-    border: "1px solid #123ea6",
+    border: `1px solid ${colors.accent}`,
     borderRadius: 6,
     background: colors.accent,
-    color: "#fff",
+    color: colors.accentForeground,
     padding: "7px 10px",
     fontSize: 13,
     cursor: "pointer",
+    transition: colorTransition,
   },
   dangerButton: {
-    border: "1px solid #f2b8b5",
+    border: `1px solid ${colors.dangerBorder}`,
     borderRadius: 6,
-    background: "#fff",
+    background: colors.surface,
     color: colors.danger,
     padding: "4px 7px",
     fontSize: 12,
     cursor: "pointer",
+    transition: colorTransition,
   },
   input: {
     width: "100%",
@@ -84,6 +96,7 @@ export const styles = {
     borderRadius: 6,
     padding: "7px 8px",
     fontSize: 13,
+    transition: colorTransition,
   },
   canvasWrap: { minWidth: 0, minHeight: 0, padding: 14, overflow: "auto" },
   iframe: {
@@ -91,8 +104,8 @@ export const styles = {
     height: "100%",
     minHeight: 560,
     border: `1px solid ${colors.border}`,
-    borderRadius: 8,
-    background: "#fff",
+    borderRadius: "var(--radius, 10px)",
+    background: colors.surface,
   },
 } satisfies Record<string, CSSProperties>;
 

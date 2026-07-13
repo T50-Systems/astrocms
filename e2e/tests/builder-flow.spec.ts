@@ -43,7 +43,6 @@ test("criterio de éxito (builder visual): crea hero, guarda, publica y queda di
   context,
 }) => {
   const suffix = Date.now().toString(36);
-  const slug = `/be-${suffix}`;
   const title = `Builder E2E ${suffix}`;
 
   await page.goto("/login");
@@ -53,14 +52,14 @@ test("criterio de éxito (builder visual): crea hero, guarda, publica y queda di
   await expect(page.getByRole("heading", { name: "Páginas" })).toBeVisible();
   await copyAdminCookiesToApiHost(context);
 
-  await page.getByRole("button", { name: "Nueva página" }).click();
-  await page.fill("#title", title);
-  await page.fill("#slug", slug);
+  // .first(): con la lista vacía el EmptyState muestra un segundo botón "Añadir nueva".
+  await page.getByRole("button", { name: "Añadir nueva" }).first().click();
+  await page.getByLabel("Título").fill(title);
+  // El slug se autogenera a partir del título (como WordPress); no se rellena.
   await page.getByRole("button", { name: "Crear borrador" }).click();
 
-  await expect(
-    page.getByRole("heading", { name: `Editar: ${title}` }),
-  ).toBeVisible();
+  await page.waitForURL(/\/pages\/[0-9a-f-]+$/);
+  await expect(page.getByLabel("Título")).toHaveValue(title);
   const pageId = new URL(page.url()).pathname.match(/\/pages\/([^/]+)/)?.[1];
   expect(pageId).toBeTruthy();
 
