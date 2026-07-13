@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
@@ -46,6 +46,9 @@ export function PagesListPage() {
     queryKey: ["pages", { status, search }],
     queryFn: () => cms.pages.list({ pageSize: 50, ...(status ? { status } : {}), ...(search ? { search } : {}) }),
     enabled: Boolean(session),
+    // Al cambiar filtro/búsqueda se sigue mostrando la lista anterior mientras
+    // llega la nueva (sin re-skeleton); isPlaceholderData permite atenuarla.
+    placeholderData: keepPreviousData,
   });
   const counts = useQuery({ queryKey: ["pages-counts"], queryFn: () => cms.pages.counts(), enabled: Boolean(session) });
 
@@ -155,11 +158,23 @@ export function PagesListPage() {
       {errors.map((e, i) => (
         <Alert key={i} className="mb-3">{e.message}</Alert>
       ))}
+      {/* Skeleton con la misma forma que la tabla real: el swap carga→datos no cambia la silueta. */}
       {pages.isLoading && (
-        <div className="space-y-3">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
+        <div className="rounded-lg border bg-card shadow-xs">
+          <div className="border-b px-4 py-3">
+            <Skeleton className="h-4 w-40" />
+          </div>
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="flex items-start gap-4 border-b px-4 py-4 last:border-b-0">
+              <Skeleton className="mt-0.5 size-4 rounded-sm" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 max-w-56" />
+                <Skeleton className="h-3 max-w-32" />
+              </div>
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          ))}
         </div>
       )}
       {pages.data && pages.data.data.length === 0 && (
@@ -175,7 +190,7 @@ export function PagesListPage() {
       )}
 
       {pages.data && pages.data.data.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border bg-card shadow-xs">
+        <div className={cn("overflow-x-auto rounded-lg border bg-card shadow-xs transition-opacity duration-150", pages.isPlaceholderData && "opacity-60")}>
           <Table>
             <TableHeader>
               <TableRow>
