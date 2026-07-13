@@ -64,14 +64,24 @@ const fullTitle = title === site.title ? title : `${title} · ${site.title}`;
         }
       }
 
-      body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--fg); margin: 0; line-height: 1.6; }
-      .container { max-width: 46rem; margin: 0 auto; padding: 0 1.25rem; }
+      body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--fg); margin: 0; line-height: 1.6; font-size: clamp(15px, 0.9rem + 0.3vw, 18px); }
+      .container { max-width: 46rem; margin: 0 auto; padding-inline: clamp(16px, 4vw, 32px); }
 
       /* Los enlaces del contenido conservan el color de marca. */
       main a { color: var(--brand); }
-      main { padding: 40px 0; }
+      /* Entrada de página SSR (CSS-only, sin JS): fade + rise sutil al pintar. */
+      main { padding: 40px 0; animation: page-enter 300ms var(--ease, ease-out) both; }
+      @keyframes page-enter {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        main { animation: none; }
+      }
 
       article h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; letter-spacing: -0.01em; margin: 0 0 16px; }
+      article h2 { font-size: clamp(20px, 3vw, 28px); }
+      article h3 { font-size: clamp(17px, 2.2vw, 22px); }
 
       /* --- Header sticky --- */
       .site-header {

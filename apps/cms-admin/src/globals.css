@@ -28,6 +28,7 @@
   --shadow-lg: 0 12px 32px oklch(0 0 0 / .14), 0 4px 8px oklch(0 0 0 / .06);
   --ease-standard: cubic-bezier(.2, 0, 0, 1); --ease-emphasized: cubic-bezier(.3, 0, 0, 1);
   --duration-fast: 150ms; --duration-medium: 250ms; --duration-slow: 400ms;
+  --text-page-title: clamp(1.375rem, 1.15rem + 0.9vw, 1.75rem);
 }
 
 .dark {
@@ -96,6 +97,10 @@
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
+  /* En @theme inline el namespace --ease-* genera las utilidades ease-standard / ease-emphasized.
+     Con `inline` la variable no se re-emite: el valor var(--ease-*) resuelve al :root de arriba. */
+  --ease-standard: var(--ease-standard);
+  --ease-emphasized: var(--ease-emphasized);
 }
 
 @layer base {
@@ -107,5 +112,24 @@
     color: var(--foreground);
     font-family: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
     font-feature-settings: "cv11", "ss01";
+  }
+}
+
+@layer utilities {
+  /* Título de página fluido: escala con el viewport y el zoom sin saltos bruscos. */
+  .text-page-title {
+    font-size: var(--text-page-title);
+    line-height: 1.2;
+  }
+}
+
+/* Seguridad global: respeta la preferencia de movimiento reducido del sistema. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -16,3 +16,16 @@ createRoot(root).render(
     </QueryClientProvider>
   </StrictMode>,
 );
+
+// Retira el splash tras el primer frame pintado (doble rAF ≈ primer paint real).
+queueMicrotask(() =>
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const s = document.getElementById("splash");
+      if (s) {
+        s.classList.add("done");
+        setTimeout(() => s.remove(), 250);
+      }
+    }),
+  ),
+);

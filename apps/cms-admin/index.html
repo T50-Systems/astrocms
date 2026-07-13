@@ -11,9 +11,41 @@
       :root.dark { color-scheme: dark; }
       html, body { margin: 0; }
       :focus-visible { outline: 3px solid var(--ring, #2563eb); outline-offset: 2px; }
+
+      /* Splash pre-JS: evita el flash vacío hasta que Vite hidrata el panel.
+         Usa colores literales del lienzo porque los tokens CSS aún no han cargado. */
+      #splash {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: oklch(0.985 0.002 250);
+        z-index: 9999;
+        transition: opacity 200ms ease;
+      }
+      :root.dark #splash { background: oklch(0.16 0.015 260); }
+      #splash svg {
+        width: 44px;
+        height: 44px;
+        color: oklch(0.6 0.02 260);
+        animation: splash-pulse 1s ease-in-out infinite alternate;
+      }
+      #splash.done { opacity: 0; pointer-events: none; }
+      @keyframes splash-pulse {
+        from { opacity: 0.5; }
+        to { opacity: 1; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash svg { animation: none; opacity: 1; }
+      }
     </style>
   </head>
   <body>
+    <div id="splash" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+        <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+      </svg>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

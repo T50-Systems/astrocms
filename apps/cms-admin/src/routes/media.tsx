@@ -144,7 +144,7 @@ export function MediaPage() {
   return (
     <PageContainer>
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Medios</h1>
+        <h1 className="text-page-title font-semibold tracking-tight">Medios</h1>
         <Button onClick={() => setShowUpload((s) => !s)} aria-expanded={showUpload}>Añadir archivo</Button>
       </div>
       <p className="mt-1 mb-4 text-muted-foreground">Sube y organiza las imágenes de tu sitio.</p>
