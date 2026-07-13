@@ -1,9 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Rocket, Zap } from "lucide-react";
 import { loginRequestSchema, type LoginRequest } from "@astrocms/contracts";
+import { CmsClientError } from "@astrocms/cms-sdk";
 import { useDevLogin, useLogin, useSession } from "../auth.tsx";
 import { Alert, errMsg } from "@/components/ui/alert.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -15,11 +16,21 @@ import { Label } from "@/components/ui/label.tsx";
 const DEV = import.meta.env.DEV;
 const AUTO = import.meta.env.VITE_DEV_AUTOLOGIN === "true";
 
+/** Mensaje legible para el fallo del acceso de desarrollador. */
+function devLoginErrMsg(error: unknown): string {
+  if (error instanceof CmsClientError && error.status >= 500) {
+    return "El acceso de desarrollador no está disponible en este servidor.";
+  }
+  return errMsg(error);
+}
+
 export function LoginPage() {
   const nav = useNavigate();
   const { data: session } = useSession();
   const login = useLogin();
   const devLogin = useDevLogin();
+  // Sólo mostramos el error de devLogin si vino de un click manual, no del auto-probe.
+  const [manualAttempt, setManualAttempt] = useState(false);
   const { register, handleSubmit, formState } = useForm<LoginRequest>({
     resolver: zodResolver(loginRequestSchema),
     defaultValues: { email: "", password: "" },
@@ -42,12 +53,12 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-sm">
+      <Card className="w-full max-w-sm shadow-md">
         <CardHeader className="items-center gap-2 text-center">
           <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Zap className="size-5" />
           </div>
-          <CardTitle className="text-xl">Iniciar sesión</CardTitle>
+          <CardTitle className="text-xl tracking-tight">Iniciar sesión</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {login.isError && <Alert>{errMsg(login.error)}</Alert>}
@@ -67,9 +78,9 @@ export function LoginPage() {
 
           {DEV && (
             <div className="mt-2 flex flex-col gap-2 border-t border-dashed pt-4">
-              {devLogin.isError && <Alert>{errMsg(devLogin.error)}</Alert>}
+              {manualAttempt && devLogin.isError && <Alert>{devLoginErrMsg(devLogin.error)}</Alert>}
               <Button variant="outline" type="button" disabled={devLogin.isPending}
-                onClick={() => devLogin.mutate(undefined, { onSuccess: () => nav({ to: "/" }) })}>
+                onClick={() => { setManualAttempt(true); devLogin.mutate(undefined, { onSuccess: () => nav({ to: "/" }) }); }}>
                 <Rocket className="size-4" />
                 {devLogin.isPending ? "Entrando…" : "Entrar como desarrollador"}
               </Button>

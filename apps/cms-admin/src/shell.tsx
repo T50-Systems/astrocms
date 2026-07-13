@@ -28,8 +28,8 @@ export interface AppShellProps {
 
 export function AppShell({ email, siteName, onLogout, children }: AppShellProps) {
   return (
-    <div className="min-h-screen bg-muted/40">
-      <header className="fixed inset-x-0 top-0 z-20 flex h-12 items-center justify-between bg-sidebar px-3 text-sidebar-foreground">
+    <div className="min-h-screen bg-canvas">
+      <header className="fixed inset-x-0 top-0 z-20 flex h-12 items-center justify-between border-b border-white/10 bg-sidebar px-3 text-sidebar-foreground">
         <div className="flex items-center gap-4">
           <Link to="/" className="flex items-center gap-1.5 font-bold">
             <Zap className="size-4 text-sidebar-primary-foreground" />
@@ -53,8 +53,8 @@ export function AppShell({ email, siteName, onLogout, children }: AppShellProps)
           <Link
             key={item.to}
             to={item.to}
-            className={cn("flex items-center gap-2.5 px-4 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground")}
-            activeProps={{ className: "flex items-center gap-2.5 px-4 py-2 text-sm bg-sidebar-primary text-sidebar-primary-foreground" }}
+            className={cn("relative flex items-center gap-2.5 px-4 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground")}
+            activeProps={{ className: "relative flex items-center gap-2.5 px-4 py-2 text-sm font-medium bg-sidebar-accent text-sidebar-foreground before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-full before:bg-sidebar-primary" }}
             activeOptions={{ exact: item.to === "/" }}
           >
             <item.icon className="size-4 shrink-0" />

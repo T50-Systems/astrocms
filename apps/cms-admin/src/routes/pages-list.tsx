@@ -103,7 +103,7 @@ export function PagesListPage() {
     <PageContainer>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold">Páginas</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Páginas</h1>
           <Button size="sm" onClick={() => nav({ to: "/pages/new" })}>Añadir nueva</Button>
         </div>
         <form onSubmit={submitSearch} role="search" className="flex items-center gap-2">
@@ -113,11 +113,9 @@ export function PagesListPage() {
         </form>
       </div>
 
-      <nav aria-label="Filtros de estado" className="mb-4 flex items-center gap-2 text-sm">
+      <nav aria-label="Filtros de estado" className="mb-4 flex gap-4 border-b border-border">
         <StatusFilter active={!status} label="Todas" count={counts.data?.all} onClick={() => setFilter(undefined)} />
-        <span className="text-muted-foreground">·</span>
         <StatusFilter active={status === "published"} label="Publicadas" count={counts.data?.published} onClick={() => setFilter("published")} />
-        <span className="text-muted-foreground">·</span>
         <StatusFilter active={status === "draft"} label="Borradores" count={counts.data?.draft} onClick={() => setFilter("draft")} />
       </nav>
 
@@ -177,7 +175,7 @@ export function PagesListPage() {
       )}
 
       {pages.data && pages.data.data.length > 0 && (
-        <div className="rounded-lg border bg-card">
+        <div className="rounded-lg border bg-card shadow-xs">
           <Table>
             <TableHeader>
               <TableRow>
@@ -192,32 +190,32 @@ export function PagesListPage() {
                 <TableRow key={page.id} className="group">
                   <TableCell className="align-top"><Checkbox aria-label={`Seleccionar ${page.title}`} checked={selected.has(page.id)} onCheckedChange={() => toggleOne(page.id)} /></TableCell>
                   <TableCell className="align-top">
-                    <Link to="/pages/$pageId" params={{ pageId: page.id }} className="font-semibold text-primary hover:underline">{page.title}</Link>
+                    <Link to="/pages/$pageId" params={{ pageId: page.id }} className="font-medium text-foreground hover:text-primary">{page.title}</Link>
                     <div className="mt-0.5 text-xs text-muted-foreground">{page.slug}</div>
                     <div className="mt-1 flex items-center gap-1.5 text-xs opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                      <Link to="/pages/$pageId" params={{ pageId: page.id }} className="text-primary hover:underline">Editar</Link>
+                      <Link to="/pages/$pageId" params={{ pageId: page.id }} className="text-muted-foreground hover:text-foreground">Editar</Link>
                       {page.editorType === "builder" && (
                         <>
                           <span className="text-border">|</span>
-                          <Link to="/pages/$pageId/builder" params={{ pageId: page.id }} className="text-primary hover:underline">Editar visual</Link>
+                          <Link to="/pages/$pageId/builder" params={{ pageId: page.id }} className="text-muted-foreground hover:text-foreground">Editar visual</Link>
                         </>
                       )}
                       <span className="text-border">|</span>
-                      <button type="button" className="text-primary hover:underline" onClick={() => duplicate.mutate(page)} disabled={duplicate.isPending}>Duplicar</button>
+                      <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => duplicate.mutate(page)} disabled={duplicate.isPending}>Duplicar</button>
                       {page.status === "published" && previewOrigin && (
                         <>
                           <span className="text-border">|</span>
-                          <a href={`${previewOrigin}${page.slug}`} target="_blank" rel="noreferrer" className="text-primary hover:underline">Ver</a>
+                          <a href={`${previewOrigin}${page.slug}`} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground">Ver</a>
                         </>
                       )}
                       <span className="text-border">|</span>
-                      <button type="button" className="text-destructive hover:underline" disabled={removeOne.isPending}
+                      <button type="button" className="text-muted-foreground hover:text-destructive-ink" disabled={removeOne.isPending}
                         onClick={() => { if (window.confirm(`¿Eliminar "${page.title}"?`)) removeOne.mutate(page.id); }}>Eliminar</button>
                     </div>
                   </TableCell>
                   <TableCell className="align-top text-sm">{page.authorName ?? "—"}</TableCell>
                   <TableCell className="align-top">
-                    <div className="text-sm">{formatDate(page.updatedAt)}</div>
+                    <div className="text-sm tabular-nums">{formatDate(page.updatedAt)}</div>
                     <Badge variant={page.status === "published" ? "success" : "warning"} className="mt-1">{page.status === "published" ? "Publicada" : "Borrador"}</Badge>
                   </TableCell>
                 </TableRow>
@@ -232,8 +230,16 @@ export function PagesListPage() {
 
 function StatusFilter({ active, label, count, onClick }: { active: boolean; label: string; count: number | undefined; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className={cn("text-primary hover:underline", active && "font-bold")}>
-      {label} ({count ?? 0})
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "-mb-px border-b-2 border-transparent pb-2 text-sm text-muted-foreground hover:text-foreground",
+        active && "border-primary font-medium text-foreground",
+      )}
+    >
+      {label} <span className="text-muted-foreground tabular-nums">({count ?? 0})</span>
     </button>
   );
 }
