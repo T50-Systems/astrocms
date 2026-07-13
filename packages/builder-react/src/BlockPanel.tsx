@@ -1,11 +1,17 @@
+import { useState } from "react";
 import { findNode } from "@astrocms/builder-core";
 import { useBuilder } from "./provider.js";
 import { childIndex, insertionParentId, newNode } from "./utils.js";
-import { styles } from "./styles.js";
+import { colors, styles } from "./styles.js";
 
 export function BlockPanel() {
   const { engine, manifest, state } = useBuilder();
-  const groups = manifest.blocks.reduce<Map<string, typeof manifest.blocks>>((acc, block) => {
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
+  const filteredBlocks = needle
+    ? manifest.blocks.filter((block) => block.label.toLowerCase().includes(needle) || block.type.toLowerCase().includes(needle))
+    : manifest.blocks;
+  const groups = filteredBlocks.reduce<Map<string, typeof manifest.blocks>>((acc, block) => {
     const blocks = acc.get(block.category) ?? [];
     blocks.push(block);
     acc.set(block.category, blocks);
@@ -15,6 +21,14 @@ export function BlockPanel() {
   return (
     <div style={styles.panel}>
       <h2 style={styles.title}>Bloques</h2>
+      <input
+        type="search"
+        style={{ ...styles.input, marginBottom: 8 }}
+        placeholder="Buscar bloques…"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+      />
+      {groups.size === 0 && <p style={{ color: colors.muted, fontSize: 13 }}>Sin resultados</p>}
       {[...groups.entries()].map(([category, blocks]) => (
         <section key={category}>
           <h3 style={styles.sectionTitle}>{category}</h3>

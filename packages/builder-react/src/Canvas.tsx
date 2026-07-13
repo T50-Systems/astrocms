@@ -57,11 +57,20 @@ export function BuilderCanvas() {
     if (ready) post({ type: "host/set-breakpoint", breakpoint: state.breakpoint });
   }, [ready, state.breakpoint]);
 
+  const chipStyle = {
+    background: colors.subtle,
+    border: `1px solid ${colors.border}`,
+    borderRadius: 999,
+    padding: "2px 8px",
+    fontSize: 12,
+    color: colors.muted,
+  };
+
   return (
     <div style={{ height: "100%", display: "grid", gridTemplateRows: "auto 1fr", gap: 8 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", color: colors.muted, fontSize: 12 }}>
-        <span>{ready ? "Preview conectado" : "Esperando preview..."}</span>
-        <span>{allNodeIds(state.document.root).length} nodos</span>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <span style={chipStyle}>{ready ? "Preview conectado" : "Esperando preview..."}</span>
+        <span style={chipStyle}>{allNodeIds(state.document.root).length} nodos</span>
       </div>
       <iframe ref={frameRef} title="Builder preview" src={src} style={styles.iframe} />
     </div>

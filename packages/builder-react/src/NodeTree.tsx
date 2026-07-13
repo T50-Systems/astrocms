@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -36,6 +37,12 @@ function TreeNode({ node, depth }: { node: BuilderNode; depth: number }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id, disabled: depth === 0 });
   const selected = state.selectedNodeId === node.id;
   const caps = block?.capabilities;
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+
+  // Hace visible el nodo seleccionado dentro del árbol (p.ej. tras seleccionarlo desde el canvas).
+  useEffect(() => {
+    if (selected) buttonRef.current?.scrollIntoView({ block: "nearest", behavior: "auto" });
+  }, [selected]);
 
   return (
     <div>
@@ -55,13 +62,14 @@ function TreeNode({ node, depth }: { node: BuilderNode; depth: number }) {
             gridTemplateColumns: "1fr auto",
             gap: 4,
             alignItems: "center",
-            border: `1px solid ${selected ? "#93b7ff" : colors.border}`,
-            background: selected ? colors.selected : node.hidden ? "#f8f8f8" : colors.surface,
+            border: `1px solid ${selected ? colors.selectedBorder : colors.border}`,
+            background: selected ? colors.selected : node.hidden ? colors.subtle : colors.surface,
             borderRadius: 6,
             padding: 5,
           }}
         >
           <button
+            ref={buttonRef}
             type="button"
             data-testid="tree-node"
             data-node-type={node.type}
