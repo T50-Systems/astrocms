@@ -144,21 +144,21 @@ export function MediaPage() {
   return (
     <PageContainer>
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Medios</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Medios</h1>
         <Button onClick={() => setShowUpload((s) => !s)} aria-expanded={showUpload}>Añadir archivo</Button>
       </div>
       <p className="mt-1 mb-4 text-muted-foreground">Sube y organiza las imágenes de tu sitio.</p>
 
       {/* Navegación tipo carpeta + área de contenido */}
       <div className="grid grid-cols-[210px_minmax(0,1fr)] items-start gap-5">
-        <nav aria-label="Carpetas" className="flex flex-col gap-0.5 rounded-lg border bg-card p-2">
+        <nav aria-label="Carpetas" className="flex flex-col gap-0.5 rounded-lg border bg-card p-2 shadow-xs">
           <button
             type="button"
             aria-current={folder === ALL}
             onClick={() => setFolder(ALL)}
             className={cn(
               "flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-2 text-left text-sm",
-              folder === ALL ? "bg-primary text-primary-foreground" : "hover:bg-accent",
+              folder === ALL ? "bg-accent font-medium text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >
             <span className="flex items-center gap-2 truncate"><Library className="size-4 shrink-0" /> Todos los medios</span>
@@ -171,11 +171,11 @@ export function MediaPage() {
               onClick={() => setFolder(f.name)}
               className={cn(
                 "flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-2 text-left text-sm",
-                folder === f.name ? "bg-primary text-primary-foreground" : "hover:bg-accent",
+                folder === f.name ? "bg-accent font-medium text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
             >
               <span className="flex items-center gap-2 truncate"><Folder className="size-4 shrink-0" /> {f.name}</span>
-              <span className="text-xs opacity-75">{f.count}</span>
+              <span className="text-xs tabular-nums opacity-75">{f.count}</span>
             </button>
           ))}
           <button
@@ -247,11 +247,11 @@ export function MediaPage() {
             <h2 className="m-0 text-lg font-semibold">{folder === ALL ? "Todos los medios" : folder}</h2>
             <div role="group" aria-label="Modo de vista" className="ml-2 flex">
               <Button type="button" size="icon" aria-pressed={view === "list"} title="Vista de lista"
-                variant={view === "list" ? "default" : "outline"} className="rounded-r-none" onClick={() => chooseView("list")}>
+                variant="outline" className={cn("rounded-r-none", view === "list" ? "bg-accent text-foreground" : "text-muted-foreground")} onClick={() => chooseView("list")}>
                 <List />
               </Button>
               <Button type="button" size="icon" aria-pressed={view === "grid"} title="Vista de cuadrícula"
-                variant={view === "grid" ? "default" : "outline"} className="-ml-px rounded-l-none" onClick={() => chooseView("grid")}>
+                variant="outline" className={cn("-ml-px rounded-l-none", view === "grid" ? "bg-accent text-foreground" : "text-muted-foreground")} onClick={() => chooseView("grid")}>
                 <LayoutGrid />
               </Button>
             </div>
@@ -315,7 +315,7 @@ export function MediaPage() {
           )}
 
           {media.data && items.length > 0 && view === "list" && (
-            <div className="rounded-lg border bg-card">
+            <div className="rounded-lg border bg-card shadow-xs">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -352,8 +352,8 @@ export function MediaPage() {
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell className="text-sm">{humanBytes(asset.bytes)}</TableCell>
-                      <TableCell className="text-sm">{fmtDate(asset.createdAt)}</TableCell>
+                      <TableCell className="text-sm tabular-nums">{humanBytes(asset.bytes)}</TableCell>
+                      <TableCell className="text-sm tabular-nums">{fmtDate(asset.createdAt)}</TableCell>
                       <TableCell>
                         <button type="button" disabled={remove.isPending}
                           onClick={() => { if (window.confirm(`¿Eliminar "${asset.filename}"?`)) remove.mutate(asset.id); }}

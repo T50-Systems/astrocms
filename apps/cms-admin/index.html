@@ -6,8 +6,9 @@
     <title>AstroCMS — Panel</title>
     <script>try{const t=localStorage.getItem("astrocms-theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch{}</script>
     <style>
-      /* El esquema de color sigue al tema activo (claro/oscuro). */
-      :root { color-scheme: light dark; }
+      /* El esquema de color sigue al tema activo (claro/oscuro), no al del SO. */
+      :root { color-scheme: light; }
+      :root.dark { color-scheme: dark; }
       html, body { margin: 0; }
       :focus-visible { outline: 3px solid var(--ring, #2563eb); outline-offset: 2px; }
     </style>
