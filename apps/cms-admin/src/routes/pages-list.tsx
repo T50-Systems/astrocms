@@ -103,7 +103,7 @@ export function PagesListPage() {
     <PageContainer>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">Páginas</h1>
+          <h1 className="text-page-title font-semibold tracking-tight">Páginas</h1>
           <Button size="sm" onClick={() => nav({ to: "/pages/new" })}>Añadir nueva</Button>
         </div>
         <form onSubmit={submitSearch} role="search" className="flex items-center gap-2">
@@ -175,7 +175,7 @@ export function PagesListPage() {
       )}
 
       {pages.data && pages.data.data.length > 0 && (
-        <div className="rounded-lg border bg-card shadow-xs">
+        <div className="overflow-x-auto rounded-lg border bg-card shadow-xs">
           <Table>
             <TableHeader>
               <TableRow>

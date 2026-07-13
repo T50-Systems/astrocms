@@ -138,7 +138,7 @@ export function MenusPage() {
     <PageContainer>
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">Menús</h1>
+          <h1 className="text-page-title font-semibold tracking-tight">Menús</h1>
           <p className="text-muted-foreground">
             Son los enlaces de navegación de tu sitio. Elige una ubicación, organiza los enlaces y pulsa{" "}
             <strong>Guardar menú</strong>.

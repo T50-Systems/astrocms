@@ -194,7 +194,7 @@ export function TermsManager({ taxonomyKey, title, subtitle, singular, plural, h
   return (
     <PageContainer>
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">{title}</h1>
+        <h1 className="text-page-title font-semibold tracking-tight">{title}</h1>
         <Button type="button" onClick={openModal}>+ Añadir {singular}</Button>
       </div>
       <p className="mt-1 text-muted-foreground">{subtitle}</p>
