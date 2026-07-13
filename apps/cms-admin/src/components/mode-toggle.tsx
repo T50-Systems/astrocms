@@ -18,10 +18,11 @@ export function ModeToggle<T extends string>({ value, options, onChange, ariaLab
             key={opt.value}
             type="button"
             size="sm"
-            variant={active ? "default" : "outline"}
+            variant="outline"
             aria-pressed={active}
             onClick={() => onChange(opt.value)}
             className={cn(
+              active ? "bg-accent text-foreground" : "text-muted-foreground",
               index === 0 && "rounded-r-none",
               index === options.length - 1 && "rounded-l-none -ml-px",
               index > 0 && index < options.length - 1 && "rounded-none -ml-px",

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@fontsource-variable/inter";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -20,6 +21,7 @@
   --destructive: oklch(.577 .245 27.325); --destructive-foreground: oklch(.985 0 0); --destructive-soft: oklch(.577 .245 27.325 / .1); --destructive-ink: oklch(.5 .2 27.325);
   --sidebar: oklch(.21 .02 260); --sidebar-foreground: oklch(.95 0 0); --sidebar-primary: oklch(.53 .12 250); --sidebar-primary-foreground: oklch(.985 0 0); --sidebar-accent: oklch(.31 .02 260); --sidebar-accent-foreground: oklch(.985 0 0); --sidebar-border: oklch(.31 .02 260);
   --overlay: oklch(.145 0 0 / .5);
+  --canvas: oklch(0.985 0.002 250);
   --shadow-xs: 0 1px 2px oklch(0 0 0 / .05);
   --shadow-sm: 0 1px 2px oklch(0 0 0 / .05);
   --shadow-md: 0 4px 12px oklch(0 0 0 / .08), 0 2px 4px oklch(0 0 0 / .04);
@@ -40,6 +42,7 @@
   --success: oklch(.68 .13 155); --success-soft: oklch(.68 .13 155 / .2); --success-ink: oklch(.8 .13 155);
   --warning: oklch(.8 .14 75); --warning-soft: oklch(.8 .14 75 / .22); --warning-ink: oklch(.85 .12 80);
   --destructive: oklch(.704 .191 22.216); --destructive-soft: oklch(.704 .191 22.216 / .2); --destructive-ink: oklch(.8 .15 22);
+  --canvas: oklch(0.16 0.015 260);
   --sidebar: oklch(.18 .02 260); --sidebar-foreground: oklch(.95 0 0); --sidebar-primary: oklch(.6 .13 250); --sidebar-primary-foreground: oklch(.985 0 0); --sidebar-accent: oklch(.31 .02 260); --sidebar-accent-foreground: oklch(.985 0 0); --sidebar-border: oklch(.27 .02 260);
   --overlay: oklch(0 0 0 / .6);
 }
@@ -78,6 +81,7 @@
   --color-destructive-soft: var(--destructive-soft);
   --color-destructive-ink: var(--destructive-ink);
   --color-overlay: var(--overlay);
+  --color-canvas: var(--canvas);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -101,6 +105,7 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-family: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-feature-settings: "cv11", "ss01";
   }
 }
