@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getRouteApi, Link } from "@tanstack/react-router";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { createCmsBuilderAdapter } from "@astrocms/builder-adapters/cms";
 import { Builder, BuilderProvider } from "@astrocms/builder-react";
 import type { BuilderDocument, BuilderNode, Entry } from "@astrocms/contracts";
@@ -13,6 +13,7 @@ const routeApi = getRouteApi("/pages/$pageId/builder");
 export function BuilderPage() {
   const { pageId } = routeApi.useParams();
   const qc = useQueryClient();
+  const nav = useNavigate();
   const adapter = useMemo(() => createCmsBuilderAdapter(cms), []);
   const manifest = useQuery({ queryKey: ["builder-manifest"], queryFn: () => cms.builder.manifest() });
   const document = useQuery({
@@ -24,6 +25,13 @@ export function BuilderPage() {
     enabled: Boolean(document.data?.id),
     queryFn: async () => cms.preview.createToken(document.data!.id),
   });
+  // El título del documento no vive en el BuilderDocument; se pide la page solo si hace falta.
+  const page = useQuery({
+    queryKey: ["page", pageId],
+    enabled: !document.data?.meta?.title,
+    queryFn: () => cms.pages.get(pageId),
+  });
+  const documentTitle = document.data?.meta?.title ?? page.data?.title;
 
   if (manifest.isLoading || document.isLoading || token.isLoading) {
     // Silueta del builder: barra de acciones + lienzo grande.
@@ -45,29 +53,26 @@ export function BuilderPage() {
   }
 
   return (
-    <>
-      <div className="border-b px-3 py-2 text-sm">
-        <Link to="/pages/$pageId" params={{ pageId }} className="text-primary hover:underline">Volver a edición</Link>
-      </div>
-      <BuilderProvider
-        document={document.data}
-        manifest={manifest.data}
-        adapter={adapter}
-        cms={cms}
-        previewOrigin={import.meta.env.VITE_PREVIEW_ORIGIN ?? window.location.origin.replace(":5173", ":4321")}
-        previewToken={token.data.token}
-        onSave={async (doc) => {
-          await adapter.saveDraft(doc);
-          await qc.invalidateQueries({ queryKey: ["builder-document", pageId] });
-        }}
-        onPublish={async (doc) => {
-          await adapter.saveDraft(doc);
-          await adapter.publish(doc.id);
-        }}
-      >
-        <Builder />
-      </BuilderProvider>
-    </>
+    <BuilderProvider
+      document={document.data}
+      manifest={manifest.data}
+      adapter={adapter}
+      cms={cms}
+      previewOrigin={import.meta.env.VITE_PREVIEW_ORIGIN ?? window.location.origin.replace(":5173", ":4321")}
+      previewToken={token.data.token}
+      {...(documentTitle ? { documentTitle } : {})}
+      onExit={() => nav({ to: "/pages/$pageId", params: { pageId } })}
+      onSave={async (doc) => {
+        await adapter.saveDraft(doc);
+        await qc.invalidateQueries({ queryKey: ["builder-document", pageId] });
+      }}
+      onPublish={async (doc) => {
+        await adapter.saveDraft(doc);
+        await adapter.publish(doc.id);
+      }}
+    >
+      <Builder />
+    </BuilderProvider>
   );
 }
 

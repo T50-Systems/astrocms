@@ -54,6 +54,8 @@ export default defineConfig({
       env: {
         PORT: String(ADMIN_PORT),
         VITE_PREVIEW_ORIGIN: `http://localhost:${PREVIEW_PORT}`,
+        // Los e2e prueban el login real: desactiva el auto-login de desarrollo del admin.
+        VITE_DEV_AUTOLOGIN: "false",
       },
     },
   ],
