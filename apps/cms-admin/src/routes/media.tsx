@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { Folder, FolderPlus, Image, LayoutGrid, Library, List, SearchX } from "lucide-react";
@@ -61,6 +61,8 @@ export function MediaPage() {
         page: 1,
         pageSize: 60,
       }),
+    // Cambiar carpeta/búsqueda mantiene la lista anterior visible (sin re-skeleton).
+    placeholderData: keepPreviousData,
   });
   const foldersQ = useQuery({ queryKey: ["media-folders"], queryFn: () => cms.media.folders() });
 
