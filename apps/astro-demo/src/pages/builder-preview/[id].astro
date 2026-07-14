@@ -44,6 +44,7 @@ const previewConfigJson = JSON.stringify({ adminOrigin, channelId, documentId: d
     type BuilderNode,
     type GuestMessage,
   } from "@astrocms/contracts";
+  import { REGISTERED_BLOCK_TYPES, type RegisteredBlockType } from "../../builder/block-types.ts";
 
   interface PreviewConfig {
     adminOrigin: string;
@@ -58,6 +59,9 @@ const previewConfigJson = JSON.stringify({ adminOrigin, channelId, documentId: d
 
   const selectedAttr = "data-builder-selected";
   const messageBase = { protocol: PROTOCOL_VERSION, channelId, source: "guest" as const };
+
+  let currentRenderToken = 0;
+  let blockVersions: Record<string, number> = {};
 
   function send(message: GuestMessage) {
     window.parent.postMessage({ ...messageBase, message }, adminOrigin);
@@ -93,6 +97,21 @@ const previewConfigJson = JSON.stringify({ adminOrigin, channelId, documentId: d
     for (const child of node.children || []) walk(child);
   }
 
+  function reportErrors(root: BuilderNode) {
+    const visit = (node: BuilderNode) => {
+      if (!REGISTERED_BLOCK_TYPES.includes(node.type as RegisteredBlockType)) {
+        send({ type: "guest/preview-error", nodeId: node.id, message: `Bloque no registrado: ${node.type}`, renderToken: currentRenderToken });
+      } else {
+        const expected = blockVersions[node.type];
+        if (expected !== undefined && expected !== node.version) {
+          send({ type: "guest/schema-mismatch", nodeId: node.id, blockType: node.type, expected, found: node.version, renderToken: currentRenderToken });
+        }
+      }
+      for (const child of node.children ?? []) visit(child);
+    };
+    visit(root);
+  }
+
   function selectNode(nodeId: string | null) {
     document.querySelectorAll(`[${selectedAttr}]`).forEach((el) => {
       el.removeAttribute(selectedAttr);
@@ -116,7 +135,12 @@ const previewConfigJson = JSON.stringify({ adminOrigin, channelId, documentId: d
     const parsed = hostMessageSchema.safeParse(envelope.data.message);
     if (!parsed.success) return;
     const message = parsed.data;
-    if (message.type === "host/document-updated") walk(message.document.root);
+    if (message.type === "host/ready") blockVersions = message.blockVersions;
+    if (message.type === "host/document-updated") {
+      currentRenderToken = message.renderToken;
+      walk(message.document.root);
+      reportErrors(message.document.root);
+    }
     if (message.type === "host/node-props-updated") {
       const el = nodeElement(message.nodeId);
       applyProps(message.nodeId, el?.dataset["builderType"] ?? "", message.props);

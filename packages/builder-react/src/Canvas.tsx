@@ -8,7 +8,8 @@ export function BuilderCanvas() {
   const { engine, manifest, previewOrigin, previewToken, channelId, state } = useBuilder();
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const [ready, setReady] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewErrors, setPreviewErrors] = useState<string[]>([]);
+  const renderTokenRef = useRef(0);
   const targetOrigin = useMemo(() => new URL(previewOrigin).origin, [previewOrigin]);
   const src = useMemo(() => {
     const url = new URL(`/builder-preview/${state.document.id}`, previewOrigin);
@@ -33,20 +34,23 @@ export function BuilderCanvas() {
       const message = guest.data;
       if (message.type === "guest/preview-ready") {
         setReady(true);
-        setPreviewError(null);
-        post({ type: "host/ready", manifestVersion: manifest.schemaVersion });
-        post({ type: "host/document-updated", document: state.document });
+        setPreviewErrors([]);
+        const blockVersions = Object.fromEntries(manifest.blocks.map((b) => [b.type, b.version]));
+        post({ type: "host/ready", manifestVersion: manifest.schemaVersion, blockVersions });
         post({ type: "host/select-node", nodeId: state.selectedNodeId });
       } else if (message.type === "guest/node-selected") {
         engine.select(message.nodeId);
       } else if (message.type === "guest/inline-edit") {
         engine.dispatch({ kind: "setProp", nodeId: message.nodeId, path: message.path, value: message.value });
       } else if (message.type === "guest/preview-error") {
-        setPreviewError(message.nodeId ? `${message.message} (nodo ${message.nodeId})` : message.message);
+        if (message.renderToken !== renderTokenRef.current) return; // error obsoleto
+        setPreviewErrors((prev) => [...prev, message.nodeId ? `${message.message} (nodo ${message.nodeId})` : message.message]);
       } else if (message.type === "guest/schema-mismatch") {
-        setPreviewError(
+        if (message.renderToken !== renderTokenRef.current) return; // error obsoleto
+        setPreviewErrors((prev) => [
+          ...prev,
           `Bloque "${message.blockType}": el preview espera la versión ${message.expected} del esquema pero encontró ${message.found} (nodo ${message.nodeId}). Vuelve a guardar la página para regenerar el preview.`,
-        );
+        ]);
       }
     }
     window.addEventListener("message", onMessage);
@@ -54,9 +58,10 @@ export function BuilderCanvas() {
   }, [channelId, engine, manifest.schemaVersion, state.document, state.selectedNodeId, targetOrigin]);
 
   useEffect(() => {
-    if (ready) post({ type: "host/document-updated", document: state.document });
-    // Limpieza optimista: los mensajes guest de error no llevan versión de documento, así que no se pueden correlacionar con el render actual. La corrección (token de versión en el contrato) va junto al emisor del guest, aún no implementado.
-    setPreviewError(null);
+    if (!ready) return;
+    renderTokenRef.current += 1;
+    post({ type: "host/document-updated", document: state.document, renderToken: renderTokenRef.current });
+    setPreviewErrors([]);
   }, [ready, state.document]);
 
   useEffect(() => {
@@ -78,9 +83,9 @@ export function BuilderCanvas() {
 
   const errorBannerStyle = {
     display: "flex",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 8,
+    flexDirection: "column" as const,
+    alignItems: "stretch",
+    gap: 4,
     background: "color-mix(in oklch, var(--destructive, #b42318) 12%, transparent)",
     border: "1px solid color-mix(in oklch, var(--destructive, #b42318) 40%, transparent)",
     color: colors.danger,
@@ -94,7 +99,7 @@ export function BuilderCanvas() {
       style={{
         height: "100%",
         display: "grid",
-        gridTemplateRows: previewError ? "auto auto 1fr" : "auto 1fr",
+        gridTemplateRows: previewErrors.length > 0 ? "auto auto 1fr" : "auto 1fr",
         gap: 8,
       }}
     >
@@ -102,17 +107,30 @@ export function BuilderCanvas() {
         <span style={chipStyle}>{ready ? "Preview conectado" : "Esperando preview..."}</span>
         <span style={chipStyle}>{allNodeIds(state.document.root).length} nodos</span>
       </div>
-      {previewError ? (
+      {previewErrors.length > 0 ? (
         <div role="alert" style={errorBannerStyle}>
-          <span style={{ whiteSpace: "normal" }}>{previewError}</span>
-          <button
-            type="button"
-            aria-label="Descartar error"
-            onClick={() => setPreviewError(null)}
-            style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}
-          >
-            ×
-          </button>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+            <span style={{ whiteSpace: "normal" }}>
+              {previewErrors.length > 1 ? `${previewErrors.length} problemas de preview:` : previewErrors[0]}
+            </span>
+            <button
+              type="button"
+              aria-label="Descartar error"
+              onClick={() => setPreviewErrors([])}
+              style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}
+            >
+              ×
+            </button>
+          </div>
+          {previewErrors.length > 1 ? (
+            <ul style={{ margin: 0, paddingLeft: 16 }}>
+              {previewErrors.map((error, index) => (
+                <li key={index} style={{ whiteSpace: "normal" }}>
+                  {error}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       ) : null}
       <iframe ref={frameRef} title="Builder preview" src={src} style={styles.iframe} />

@@ -1,3 +1,4 @@
+import type { RegisteredBlockType } from "./block-types.ts";
 import Button from "./blocks/Button.astro";
 import Columns from "./blocks/Columns.astro";
 import Cta from "./blocks/Cta.astro";
@@ -31,7 +32,7 @@ const blockComponents = {
   "site/testimonials": Testimonials,
   "site/cta": Cta,
   "site/faq": Faq,
-} satisfies Record<string, typeof Page>;
+} satisfies Record<RegisteredBlockType, typeof Page>;
 
 export function getBlockComponent(type: string): typeof Page | undefined {
   return (blockComponents as Record<string, typeof Page>)[type];
