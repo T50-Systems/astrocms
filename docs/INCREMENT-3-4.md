@@ -1,46 +1,46 @@
-# Incrementos 3 y 4 — Builder conectado al CMS y renderizado por Astro
+# Increments 3 and 4 — Builder connected to the CMS and rendered by Astro
 
-Conectan producto 1 (CMS) y producto 2 (builder), y hacen que **Astro renderice documentos del
-builder**. Verificado con integración (Postgres real) y SSR (curl).
+Connect product 1 (CMS) and product 2 (builder), and make **Astro render builder documents**.
+Verified with integration (real Postgres) and SSR (curl).
 
-## Incremento 3 — Persistencia del builder en el CMS
+## Increment 3 — Builder persistence in the CMS
 
-| Capa | Contenido |
+| Layer | Content |
 |------|-----------|
-| `cms-database` | Tablas `builder_documents` + `builder_document_versions` (migración `0001`) |
-| `cms-core` | `builder-service`: create, get, saveDraft (nueva versión), publish, revisions, restore, getPublished |
-| `cms-server` | `/api/v1/builder/documents` (POST/GET/PUT/publish/revisions/restore) con Zod + RBAC (`pages.*`) |
+| `cms-database` | `builder_documents` + `builder_document_versions` tables (migration `0001`) |
+| `cms-core` | `builder-service`: create, get, saveDraft (new version), publish, revisions, restore, getPublished |
+| `cms-server` | `/api/v1/builder/documents` (POST/GET/PUT/publish/revisions/restore) with Zod + RBAC (`pages.*`) |
 | `cms-sdk` | `cms.builder.*` (create/get/save/publish/revisions/restore) |
-| `builder-adapters` | `cmsBuilderAdapter(cms)` — `BuilderStorageAdapter` sobre el SDK |
+| `builder-adapters` | `cmsBuilderAdapter(cms)` — `BuilderStorageAdapter` over the SDK |
 
-**Test de integración end-to-end** (contra Postgres): `engine → cmsBuilderAdapter → cms-sdk →
-API → cms-core → DB`. Crea un documento, lo edita con el **engine** de `builder-core`, guarda draft
-(nueva versión), publica y restaura la v1. Prueba que el builder opera el CMS **sólo por contratos
-públicos**, nunca tocando sus tablas.
+**End-to-end integration test** (against Postgres): `engine → cmsBuilderAdapter → cms-sdk →
+API → cms-core → DB`. Creates a document, edits it with the `builder-core` **engine**, saves a draft
+(new version), publishes, and restores v1. Proves that the builder operates the CMS **only through public
+contracts**, never touching its tables directly.
 
-## Incremento 4 — Renderer de bloques en Astro
+## Increment 4 — Block renderer in Astro
 
-| Capa | Contenido |
+| Layer | Content |
 |------|-----------|
-| `astro-demo` | `BlockRenderer.astro` (recursivo), registro `registry.ts` (type→componente), bloques `Page/Hero/Heading/Paragraph/Section/Button` |
-| `cms-server` | `GET /api/v1/public/builder/documents/:id` (sólo publicado) |
+| `astro-demo` | `BlockRenderer.astro` (recursive), `registry.ts` (type→component), `Page/Hero/Heading/Paragraph/Section/Button` blocks |
+| `cms-server` | `GET /api/v1/public/builder/documents/:id` (published only) |
 | `cms-sdk` | `cms.public.getBuilderDocument(id)` |
-| Ruta | `/b/:id` — SSR que renderiza el árbol publicado |
+| Route | `/b/:id` — SSR that renders the published tree |
 
-**Verificación SSR:** creado un documento `core/page → [hero, paragraph]`, publicado y servido en
-`/b/:id`; Astro renderiza el `<h1>Hola Builder</h1>` + descripción + párrafo desde el JSON. Cadena
-completa **documento JSON → publicado → API pública → renderer recursivo → HTML**. En modo preview
-el renderer inyecta `data-builder-node-id/type` (base del protocolo iframe).
+**SSR verification:** created a `core/page → [hero, paragraph]` document, published it and served it at
+`/b/:id`; Astro renders `<h1>Hello Builder</h1>` + description + paragraph from the JSON. Full chain
+**JSON document → published → public API → recursive renderer → HTML**. In preview mode
+the renderer injects `data-builder-node-id/type` (foundation of the iframe protocol).
 
-## Estado global
+## Overall status
 
-- **35 tests verdes** (contracts 4, cms-auth 2, cms-core 4, cms-sdk 3, schemas 3, builder-core 8,
-  builder-adapters 3, cms-server 8) + typecheck estricto en 11 proyectos + verificación en navegador (panel) y SSR (Astro).
-- Ambos productos existen y están **conectados por contratos/SDK/adaptadores**, como exige el diseño.
+- **35 passing tests** (contracts 4, cms-auth 2, cms-core 4, cms-sdk 3, schemas 3, builder-core 8,
+  builder-adapters 3, cms-server 8) + strict typecheck across 11 projects + browser (panel) and SSR (Astro) verification.
+- Both products exist and are **connected via contracts/SDK/adapters**, as the design requires.
 
-## Pendiente para el criterio de éxito completo
+## Pending for the full success criterion
 
-`builder-react` (canvas + iframe + árbol + inspector + dnd + edición inline + undo/redo UI),
-ruta de preview con **token** + wiring `postMessage`, integración del builder como editor de una
-página (entry `editorType:'builder'` ↔ documento), media library (Sharp), menús/SEO/ajustes en el
-panel, webhooks, endpoint de manifiesto, CLI/MCP (AI-native), y el **e2e Playwright** de los 18 pasos.
+`builder-react` (canvas + iframe + tree + inspector + dnd + inline editing + undo/redo UI),
+preview route with **token** + `postMessage` wiring, integrating the builder as an editor for a
+page (entry `editorType:'builder'` ↔ document), media library (Sharp), menus/SEO/settings in the
+panel, webhooks, manifest endpoint, CLI/MCP (AI-native), and the **Playwright e2e** for the 18 steps.

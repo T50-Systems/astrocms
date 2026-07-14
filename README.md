@@ -1,27 +1,27 @@
 # AstroCMS
 
-> **Work in progress.** Proyecto en desarrollo activo: la API, el esquema de datos y el panel
-> pueden cambiar sin previo aviso. Aún no hay una versión estable ni release publicado.
+> **Work in progress.** Project under active development: the API, data schema, and admin panel
+> may change without notice. There is no stable version or published release yet.
 
-Plataforma de dos productos integrables para proyectos Astro:
+Two-product integrable platform for Astro projects:
 
-- **CMS para Astro** — núcleo autohospedable (como el core de WordPress): contenido, usuarios,
-  permisos, medios, páginas, revisiones, publicación, SEO, menús, API. Funciona **sin** el builder.
-- **Builder visual** — editor WYSIWYG de bloques Astro (como Elementor): edita la estructura
-  visual del documento (JSON), se integra con el CMS por **SDK y adaptadores** (nunca toca sus tablas).
+- **CMS for Astro** — self-hostable core (like WordPress core): content, users,
+  permissions, media, pages, revisions, publishing, SEO, menus, API. Works **without** the builder.
+- **Visual builder** — WYSIWYG editor for Astro blocks (like Elementor): edits the
+  visual structure of the document (JSON), integrates with the CMS via **SDK and adapters** (never touches its tables).
 
-El **proyecto Astro** es el tema/frontend público; los **componentes Astro registrados** son los
-bloques/widgets. El CMS es la fuente de verdad; Astro renderiza.
+The **Astro project** is the public theme/frontend; the **registered Astro components** are the
+blocks/widgets. The CMS is the source of truth; Astro renders.
 
-## Estado del proyecto
+## Project status
 
-- **Fase 0 — Definición: completa.** Ver [`docs/`](docs/README.md).
-- **Incremento vertical 1: completo y verificado.** Auth, páginas con revisiones, drafts,
-  publicación, API v1, panel React, render público en Astro (SSR). 20 tests verdes contra
-  Postgres real + verificación en navegador. Comandos y detalle en
+- **Phase 0 — Definition: complete.** See [`docs/`](docs/README.md).
+- **Vertical increment 1: complete and verified.** Auth, pages with revisions, drafts,
+  publishing, API v1, React admin panel, public rendering in Astro (SSR). 20 passing tests against
+  real Postgres + browser verification. Commands and details in
   [docs/INCREMENT-1.md](docs/INCREMENT-1.md).
 
-### Puesta en marcha rápida
+### Quick start
 
 ```bash
 cp .env.example .env
@@ -30,23 +30,23 @@ docker compose up -d postgres
 export DATABASE_URL="postgres://astrocms:astrocms@127.0.0.1:5433/astrocms"
 pnpm --filter @astrocms/cms-database db:migrate && pnpm --filter @astrocms/cms-database db:seed
 pnpm --filter @astrocms/cms-server start   # API :3000
-pnpm --filter @astrocms/cms-admin  dev     # panel :5173
+pnpm --filter @astrocms/cms-admin  dev     # admin panel :5173
 ```
-Login demo: `admin@astrocms.local` / `Admin!2345`. Detalle en [docs/INCREMENT-1.md](docs/INCREMENT-1.md).
+Demo login: `admin@astrocms.local` / `Admin!2345`. Details in [docs/INCREMENT-1.md](docs/INCREMENT-1.md).
 
 ## Stack
 
-TypeScript estricto de extremo a extremo. Monorepo pnpm + Turborepo. Frontend público **Astro**
-(SSR híbrido). Panel **React** (TanStack Router/Query, React Hook Form, Zod). Backend **Fastify**.
-ORM **Drizzle** sobre **PostgreSQL**. Rich text **Tiptap**. Drag-and-drop **dnd-kit**. Imágenes
-**Sharp**. Storage abstracto (fs/S3/R2/MinIO). Tests **Vitest** + **Playwright**. **Docker Compose**
-para el entorno local. Decisiones justificadas en los [ADRs](docs/README.md#adrs).
+Strict end-to-end TypeScript. pnpm + Turborepo monorepo. Public frontend **Astro**
+(hybrid SSR). **React** admin panel (TanStack Router/Query, React Hook Form, Zod). **Fastify** backend.
+**Drizzle** ORM on top of **PostgreSQL**. Rich text with **Tiptap**. Drag-and-drop with **dnd-kit**. Images via
+**Sharp**. Abstract storage (fs/S3/R2/MinIO). Tests with **Vitest** + **Playwright**. **Docker Compose**
+for the local environment. Decisions justified in the [ADRs](docs/README.md#adrs).
 
-## Estructura (objetivo)
+## Structure (target)
 
-Ver [docs/07-monorepo-structure.md](docs/07-monorepo-structure.md). Los paquetes se crean al
-implementarse — sin carpetas vacías.
+See [docs/07-monorepo-structure.md](docs/07-monorepo-structure.md). Packages are created as they
+are implemented — no empty folders.
 
-## Requisitos de entorno
+## Environment requirements
 
-Node ≥ 20, pnpm ≥ 9, Docker. Copia `.env.example` a `.env` antes de arrancar.
+Node ≥ 20, pnpm ≥ 9, Docker. Copy `.env.example` to `.env` before starting.

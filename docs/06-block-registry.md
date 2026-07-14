@@ -1,15 +1,15 @@
-# 06 — Registro de bloques Astro y sistema de campos
+# 06 — Astro block registry and field system
 
-## 1. Objetivo
+## 1. Goal
 
-El proyecto Astro registra sus bloques con **esquemas declarativos**. De ahí se genera un
-**manifiesto serializable** (esquema + metadatos) que consume el builder. El **código del
-componente `.astro` nunca se envía al panel** — Astro conserva el render.
+The Astro project registers its blocks with **declarative schemas**. From these a
+**serializable manifest** (schema + metadata) is generated, which the builder consumes. The
+**`.astro` component code is never sent to the panel** — Astro keeps the rendering.
 
-De cada definición de bloque se derivan automáticamente: tipos TS de props, esquema Zod de
-validación, formulario del inspector, validación de API, defaults y documentación.
+From each block definition the following are derived automatically: TS prop types, validation
+Zod schema, inspector form, API validation, defaults, and documentation.
 
-## 2. `defineBlock` y `defineBuilderConfig`
+## 2. `defineBlock` and `defineBuilderConfig`
 
 ```ts
 // astro-demo/src/builder/blocks/hero.ts
@@ -20,7 +20,7 @@ export const hero = defineBlock({
   label: "Hero",
   category: "Marketing",
   version: 1,
-  component: "./src/components/builder/Hero.astro",   // se queda en Astro
+  component: "./src/components/builder/Hero.astro",   // stays in Astro
   fields: {
     title: text({ label: "Título", required: true }),
     description: richText({ label: "Descripción" }),
@@ -28,7 +28,7 @@ export const hero = defineBlock({
     alignment: select({ label: "Alineación", options: ["left", "center", "right"], default: "center" }),
   },
   capabilities: { acceptsChildren: false, duplicable: true, removable: true, hideable: true },
-  // constraints, defaults y migrations son opcionales
+  // constraints, defaults, and migrations are optional
 });
 ```
 
@@ -43,52 +43,52 @@ export default defineBuilderConfig({
 });
 ```
 
-## 3. Sistema de campos (`packages/schemas`)
+## 3. Field system (`packages/schemas`)
 
-Cada tipo de campo es un **descriptor** que produce cuatro artefactos desde una sola definición:
+Each field type is a **descriptor** that produces four artifacts from a single definition:
 
 ```ts
 export interface FieldDescriptor<TConfig, TValue> {
   type: FieldType;
-  /** Zod para validar el VALOR (API + builder). */
+  /** Zod to validate the VALUE (API + builder). */
   toZod(config: TConfig): z.ZodType<TValue>;
-  /** Valor por defecto. */
+  /** Default value. */
   defaultValue(config: TConfig): TValue;
-  /** Metadatos serializables para el formulario del inspector (sin lógica). */
+  /** Serializable metadata for the inspector form (no logic). */
   serialize(config: TConfig): SerializedField;
-  /** (dev) fragmento de documentación. */
+  /** (dev) documentation snippet. */
   describe(config: TConfig): string;
 }
 
-// Helper con el que se declaran los campos en defineBlock:
+// Helper used to declare fields in defineBlock:
 export function text(config?: TextConfig): FieldSpec<string> { /* ... */ }
 export function media(config?: MediaConfig): FieldSpec<MediaRef> { /* ... */ }
 export function repeater<T>(config: RepeaterConfig<T>): FieldSpec<T[]> { /* ... */ }
 // ... etc
 ```
 
-Catálogo de campos del MVP (todos con Zod + TS + form + defaults):
+MVP field catalog (all with Zod + TS + form + defaults):
 
 `text`, `textarea`, `richText`, `number`, `boolean`, `select`, `multiSelect`, `date`,
 `dateTime`, `colorToken`, `spacingToken`, `url`, `slug`, `media`, `gallery`, `relation`,
-`taxonomy`, `object`, `repeater`, `blocks`, `json`, y `plugin:<name>` (campo de plugin).
+`taxonomy`, `object`, `repeater`, `blocks`, `json`, and `plugin:<name>` (plugin field).
 
-Reglas:
-- **`colorToken` / `spacingToken`** sólo aceptan valores del `ThemeTokens` (no hex/px libres) →
-  cumple "sin CSS arbitrario".
-- **`media` / `gallery`** almacenan `MediaRef { assetId }`, no URLs.
-- **`relation` / `taxonomy`** almacenan `EntityRef` / term ids.
-- **`richText`** guarda JSON de Tiptap (no HTML crudo); se sanea al renderizar.
-- Campos responsive: cualquier campo "tokenizado" puede envolverse en `Responsive<T>`:
+Rules:
+- **`colorToken` / `spacingToken`** only accept values from `ThemeTokens` (no free hex/px) →
+  satisfies "no arbitrary CSS".
+- **`media` / `gallery`** store `MediaRef { assetId }`, not URLs.
+- **`relation` / `taxonomy`** store `EntityRef` / term ids.
+- **`richText`** stores Tiptap JSON (not raw HTML); it is sanitized when rendered.
+- Responsive fields: any "tokenized" field can be wrapped in `Responsive<T>`:
 
 ```ts
 export type Responsive<T> = { [breakpoint: string]: T };   // { mobile:1, tablet:2, desktop:4 }
 ```
 
-## 4. Generación del manifiesto
+## 4. Manifest generation
 
-`builder-astro` recorre la config, y por cada bloque emite `BlockDefinitionSerialized`
-(ver [04-contracts-builder](04-contracts-builder.md) §2):
+`builder-astro` walks the config, and for each block emits a `BlockDefinitionSerialized`
+(see [04-contracts-builder](04-contracts-builder.md) §2):
 
 ```ts
 export function buildManifest(config: BuilderConfig, tokens: ThemeTokens): BlockManifest {
@@ -102,21 +102,21 @@ export function buildManifest(config: BuilderConfig, tokens: ThemeTokens): Block
       constraints: b.constraints ?? {},
       capabilities: withCapabilityDefaults(b.capabilities),
       hasPreviewComponent: Boolean(b.previewComponent),
-      // 'component' se OMITE deliberadamente
+      // 'component' is deliberately OMITTED
     })),
   };
 }
 ```
 
-El manifiesto se expone en `GET /api/v1/builder/manifest`. Se cachea por `schemaVersion` +
-hash de config. El servidor de Astro guarda un mapa `type → component` privado para renderizar.
+The manifest is exposed at `GET /api/v1/builder/manifest`. It is cached by `schemaVersion` +
+config hash. The Astro server keeps a private `type → component` map for rendering.
 
-## 5. Renderer recursivo en Astro (`builder-astro`)
+## 5. Recursive renderer in Astro (`builder-astro`)
 
 ```astro
 ---
 // BlockRenderer.astro
-import { blockComponents } from "../builder/registry.generated";  // type → componente .astro
+import { blockComponents } from "../builder/registry.generated";  // type → .astro component
 const { node } = Astro.props as { node: BuilderNode };
 if (node.hidden) return null;
 const Component = blockComponents[node.type];
@@ -131,30 +131,30 @@ const Component = blockComponents[node.type];
   </Component>
 ) : (
   <div data-builder-node-id={node.id} data-builder-unknown={node.type}>
-    <!-- bloque desconocido → emite schema-mismatch al host -->
+    <!-- unknown block → emits schema-mismatch to the host -->
   </div>
 )}
 ```
 
-Cada bloque renderizado incluye `data-builder-node-id` y `data-builder-type` para que el canvas
-mapee clicks/hover a nodos (protocolo del iframe). En producción pública, estos atributos se
-omiten (sólo se inyectan en la ruta de preview).
+Each rendered block includes `data-builder-node-id` and `data-builder-type` so the canvas can
+map clicks/hover to nodes (iframe protocol). In public production, these attributes are
+omitted (only injected on the preview route).
 
-## 6. Catálogo de bloques del MVP (≥10)
+## 6. MVP block catalog (≥10)
 
-**Contenido:** Heading, Paragraph, RichText, Image, Button, Quote, List, Divider.
+**Content:** Heading, Paragraph, RichText, Image, Button, Quote, List, Divider.
 **Layout:** Section, Container, Stack, Grid, Columns, Column.
-**Sitio:** Hero, ServiceGrid, Testimonials, CTA (+ más por proyecto).
+**Site:** Hero, ServiceGrid, Testimonials, CTA (+ more per project).
 
-Los 10 base del MVP se sirven desde `builder-default-blocks`; los específicos del sitio los
-registra cada proyecto Astro. Cada bloque declara: tipo, nombre, categoría, icono, versión,
-props, defaults, padres/hijos permitidos, min/max hijos, duplicable, removable, hideable,
-migraciones, componente Astro, preview opcional y permisos opcionales
-(ver `BlockDefinition` en [04-contracts-builder](04-contracts-builder.md)).
+The 10 MVP base blocks are served from `builder-default-blocks`; site-specific ones are
+registered by each Astro project. Each block declares: type, name, category, icon, version,
+props, defaults, allowed parents/children, min/max children, duplicable, removable, hideable,
+migrations, Astro component, optional preview, and optional permissions
+(see `BlockDefinition` in [04-contracts-builder](04-contracts-builder.md)).
 
-## 7. Por qué el código no viaja al panel
+## 7. Why the code doesn't travel to the panel
 
-- **Seguridad:** el panel nunca ejecuta código del proyecto; elimina una superficie de XSS/RCE.
-- **Desacoplo:** el builder funciona con cualquier backend/tema mientras exista un manifiesto.
-- **Actualización:** cambiar el render de un bloque (mismo esquema/version) no requiere tocar
-  documentos ni el panel.
+- **Security:** the panel never executes project code; this removes an XSS/RCE surface.
+- **Decoupling:** the builder works with any backend/theme as long as a manifest exists.
+- **Updates:** changing a block's rendering (same schema/version) doesn't require touching
+  documents or the panel.

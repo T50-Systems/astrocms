@@ -1,88 +1,88 @@
-# 00 — Resumen, supuestos y alcance
+# 00 — Overview, assumptions and scope
 
-> Plataforma: **AstroCMS** (nombre de trabajo). Dos productos conceptualmente separados —
-> un **CMS autohospedable para Astro** y un **builder visual WYSIWYG de bloques Astro**—
-> integrados por contratos públicos, SDK y adaptadores.
+> Platform: **AstroCMS** (working name). Two conceptually separate products —
+> a **self-hostable CMS for Astro** and a **WYSIWYG visual builder for Astro blocks** —
+> integrated via public contracts, SDK, and adapters.
 
-## 1. Resumen del problema
+## 1. Problem overview
 
-Construyo sitios con Astro y necesito entregar a cada cliente un panel cómodo (`/admin`)
-para administrar **páginas, contenido, imágenes, menús y SEO sin tocar código, Git ni terminal**.
+I build sites with Astro and need to give each client a comfortable panel (`/admin`)
+to manage **pages, content, images, menus, and SEO without touching code, Git, or a terminal**.
 
-No quiero un CMS headless genérico (tipo Strapi). Quiero una plataforma reutilizable que
-funcione como el **núcleo de WordPress** para proyectos Astro, con un **builder opcional**
-(equivalente a Elementor) para maquetar páginas visualmente con **componentes Astro registrados**.
+I don't want a generic headless CMS (like Strapi). I want a reusable platform that
+works like **WordPress core** for Astro projects, with an **optional builder**
+(equivalent to Elementor) to lay out pages visually using **registered Astro components**.
 
-Analogía rectora:
+Guiding analogy:
 
-| Pieza                        | Equivalente WordPress |
+| Piece                        | WordPress equivalent |
 |------------------------------|-----------------------|
-| CMS                          | Núcleo de WordPress   |
+| CMS                          | WordPress core   |
 | Builder                      | Elementor             |
-| Proyecto Astro               | Tema + frontend público |
-| Componentes Astro registrados| Widgets / bloques     |
+| Astro project               | Theme + public frontend |
+| Registered Astro components | Widgets / blocks     |
 
-## 2. Supuestos
+## 2. Assumptions
 
-- **S1.** Instalación **por cliente** (single-site). Se evitan decisiones que impidan multisite futuro, pero no se implementa multitenancy.
-- **S2.** El operador técnico (yo) despliega y configura; el cliente sólo edita contenido.
-- **S3.** Node.js ≥ 20 disponible en el entorno de despliegue (VPS, contenedor). No es entorno edge-only.
-- **S4.** PostgreSQL como base de producción; SQLite permitido en dev **sólo** si no diverge (ver ADR-0006).
-- **S5.** El proyecto Astro y el CMS se despliegan juntos o coordinados; comparten el `contracts`/`schemas`.
-- **S6.** El cliente confía en los bloques que yo registro; **no** puede introducir JS/CSS arbitrario.
-- **S7.** Volumen moderado: decenas de páginas, miles de assets, pocos editores concurrentes. Sin colaboración en tiempo real.
-- **S8.** El builder es **opcional**: el CMS es plenamente funcional sin él (editor rich-text / markdown / campos).
+- **S1.** Installation **per client** (single-site). Decisions that would block future multisite are avoided, but multitenancy is not implemented.
+- **S2.** The technical operator (me) deploys and configures; the client only edits content.
+- **S3.** Node.js ≥ 20 available in the deployment environment (VPS, container). Not an edge-only environment.
+- **S4.** PostgreSQL as the production database; SQLite allowed in dev **only** if it doesn't diverge (see ADR-0006).
+- **S5.** The Astro project and the CMS are deployed together or coordinated; they share `contracts`/`schemas`.
+- **S6.** The client trusts the blocks I register; they **cannot** introduce arbitrary JS/CSS.
+- **S7.** Moderate volume: dozens of pages, thousands of assets, few concurrent editors. No real-time collaboration.
+- **S8.** The builder is **optional**: the CMS is fully functional without it (rich-text / markdown editor / fields).
 
-## 3. Alcance (MVP)
+## 3. Scope (MVP)
 
-**CMS:** instalación, login, sesiones (cookie HTTP-only), usuarios, roles `admin`/`editor`,
-páginas, entradas, sistema básico de content types, campos personalizados, rich text (Tiptap),
-biblioteca de medios (Sharp + storage abstracto), menús, SEO básico, ajustes globales,
-drafts, publicación, revisiones persistentes, preview, API REST v1, webhooks, panel React,
-integración con Astro vía SDK.
+**CMS:** installation, login, sessions (HTTP-only cookie), users, `admin`/`editor` roles,
+pages, entries, basic content types system, custom fields, rich text (Tiptap),
+media library (Sharp + abstract storage), menus, basic SEO, global settings,
+drafts, publishing, persistent revisions, preview, REST API v1, webhooks, React admin panel,
+Astro integration via SDK.
 
-**Builder:** canvas con iframe del Astro real, panel de bloques, árbol de nodos, inspector,
-drag-and-drop, reordenar, duplicar, eliminar, ocultar/mostrar, edición inline de texto,
-undo/redo local, preview responsive por tokens, media picker (del CMS), guardar draft,
-publicar vía CMS, validación de documento, **10 bloques base** + bloques por proyecto.
+**Builder:** canvas with an iframe of the real Astro site, block panel, node tree, inspector,
+drag-and-drop, reorder, duplicate, delete, hide/show, inline text editing,
+local undo/redo, responsive preview via tokens, media picker (from the CMS), save draft,
+publish via CMS, document validation, **10 base blocks** + per-project blocks.
 
-**Astro:** renderer recursivo de documentos, ruta de preview (`/__builder/preview/:id`),
-registro de bloques, manifiesto serializable, integración CMS, tema demo, proyecto demo funcional.
+**Astro:** recursive document renderer, preview route (`/__builder/preview/:id`),
+block registry, serializable manifest, CMS integration, demo theme, working demo project.
 
-## 4. No alcance (explícito)
+## 4. Out of scope (explicit)
 
-Marketplace, e-commerce, multisite, multitenancy completo, comentarios, colaboración en
-tiempo real, instalación de plugins desde el panel, CSS libre, JavaScript personalizado,
-animaciones complejas, posicionamiento absoluto, breakpoints personalizados por el cliente,
-app móvil, GraphQL, múltiples frameworks de frontend, edición completa de temas en el navegador,
-hosting administrado, facturación, analíticas avanzadas.
+Marketplace, e-commerce, multisite, full multitenancy, comments, real-time
+collaboration, installing plugins from the panel, free-form CSS, custom JavaScript,
+complex animations, absolute positioning, client-customizable breakpoints,
+mobile app, GraphQL, multiple frontend frameworks, full theme editing in the browser,
+managed hosting, billing, advanced analytics.
 
-## 5. Principios de arquitectura (invariantes)
+## 5. Architecture principles (invariants)
 
-1. **Astro es el renderer** del frontend público. El CMS/builder nunca renderizan HTML final del sitio.
-2. **El CMS es la fuente de verdad**: contenido, usuarios, permisos, medios, páginas, revisiones, publicación.
-3. **El builder sólo administra la estructura visual del documento** (árbol JSON).
-4. **Contenido visual = JSON estructurado**, nunca HTML arbitrario.
-5. **Componentes Astro se registran por esquemas declarativos**; el código del componente **no** viaja al panel.
-6. El cliente **no** modifica JS/CSS arbitrario; sólo contenido, variantes, orden, visibilidad y props permitidas.
-7. **Bloques controlados** por encima de un page-builder totalmente libre.
-8. El CMS **funciona sin el builder**; el builder **funciona con otros backends** vía adaptadores.
-9. **APIs y documentos versionados**; los bloques soportan **migraciones de esquema**.
-10. **Tipado fuerte de extremo a extremo**; contratos compartidos, sin duplicar esquemas front/back.
-11. **Infra-agnóstico por puertos y adaptadores.** Todo lo que toca infraestructura (storage, caché,
-    cola, correo, secretos, observabilidad) pasa por una interfaz con un adaptador por defecto de
-    **cero dependencias externas**. El único servicio de respaldo obligatorio es **una base SQL
-    compatible con Postgres** (auto-hospedada o gestionada). Ver [ADR-0008](adr/0008-infrastructure-agnostic.md).
-12. **Diseñado para operarse con IA, seguro por construcción.** La herramienta es *legible y
-    manipulable por agentes de IA* (convenciones deterministas, esquemas declarativos, manifiestos y
-    OpenAPI machine-readable, CLI + codegen + servidor MCP, `AGENTS.md`). Toda IA —de build o de
-    edición— actúa por los **mismos contratos tipados, validados y versionados** que un humano;
-    **nunca** un camino privilegiado ni JS/CSS/HTML libre. Ver [ADR-0009](adr/0009-ai-native-safe-operations.md)
-    y [12-ai-native](12-ai-native.md).
+1. **Astro is the renderer** of the public frontend. The CMS/builder never render the site's final HTML.
+2. **The CMS is the source of truth**: content, users, permissions, media, pages, revisions, publishing.
+3. **The builder only manages the document's visual structure** (JSON tree).
+4. **Visual content = structured JSON**, never arbitrary HTML.
+5. **Astro components are registered via declarative schemas**; the component's code **never** travels to the panel.
+6. The client **does not** modify arbitrary JS/CSS; only content, variants, order, visibility, and allowed props.
+7. **Controlled blocks** over a fully free page builder.
+8. The CMS **works without the builder**; the builder **works with other backends** via adapters.
+9. **APIs and documents are versioned**; blocks support **schema migrations**.
+10. **Strong typing end-to-end**; shared contracts, no duplicated front/back schemas.
+11. **Infrastructure-agnostic via ports and adapters.** Everything touching infrastructure (storage, cache,
+    queue, mail, secrets, observability) goes through an interface with a default adapter that has
+    **zero external dependencies**. The only mandatory backing service is **a Postgres-compatible
+    SQL database** (self-hosted or managed). See [ADR-0008](adr/0008-infrastructure-agnostic.md).
+12. **Designed to be operated by AI, safe by construction.** The tool is *readable and
+    manipulable by AI agents* (deterministic conventions, declarative schemas, machine-readable
+    manifests and OpenAPI, CLI + codegen + MCP server, `AGENTS.md`). Any AI —whether build-time or
+    editing-time— acts through the **same typed, validated, and versioned contracts** as a human;
+    **never** a privileged path nor free-form JS/CSS/HTML. See [ADR-0009](adr/0009-ai-native-safe-operations.md)
+    and [12-ai-native](12-ai-native.md).
 
-## 6. Fronteras que nunca se cruzan
+## 6. Boundaries that are never crossed
 
-- El builder **no** implementa: usuarios, login, roles globales, base de datos propia, media propia,
-  publicación propia, gestión general de páginas, revisiones persistentes propias. Todo eso lo consume del CMS por SDK.
-- El panel/builder **nunca** recibe código de componentes Astro, sólo el **manifiesto** (esquema + metadatos).
-- El frontend público **nunca** sirve contenido no publicado sin token de preview autorizado.
+- The builder **does not** implement: users, login, global roles, its own database, its own media,
+  its own publishing, general page management, its own persistent revisions. All of that is consumed from the CMS via SDK.
+- The panel/builder **never** receives Astro component code, only the **manifest** (schema + metadata).
+- The public frontend **never** serves unpublished content without an authorized preview token.

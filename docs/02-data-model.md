@@ -1,17 +1,17 @@
-# 02 — Modelo de datos (PostgreSQL)
+# 02 — Data model (PostgreSQL)
 
-Diseñado single-site pero **multisite-ready**: casi todas las tablas de contenido llevan
-`site_id` (FK a `sites`) aunque en el MVP exista una sola fila en `sites`. Esto evita una
-migración destructiva futura sin implementar multitenancy real ahora
-(ver [ADR-0005](adr/0005-single-site-not-multitenant.md)).
+Designed single-site but **multisite-ready**: nearly all content tables carry a
+`site_id` (FK to `sites`) even though the MVP has only a single row in `sites`. This avoids a
+future destructive migration without implementing real multitenancy now
+(see [ADR-0005](adr/0005-single-site-not-multitenant.md)).
 
-Convenciones:
-- PK: `id uuid default gen_random_uuid()` (o `text` con ULID si se prefiere ordenable).
+Conventions:
+- PK: `id uuid default gen_random_uuid()` (or `text` with ULID if a sortable key is preferred).
 - `created_at timestamptz not null default now()`, `updated_at timestamptz`.
-- Datos principales en **columnas tipadas**; extensiones controladas en **JSONB** (no patrón `postmeta`).
-- Índices únicos por `(site_id, slug, ...)` donde aplica.
+- Core data in **typed columns**; controlled extensions in **JSONB** (not a `postmeta` pattern).
+- Unique indexes on `(site_id, slug, ...)` where applicable.
 
-## 1. Identidad, auth y permisos
+## 1. Identity, auth and permissions
 
 ```
 sites(id, name, primary_domain, locale_default, settings jsonb, created_at, updated_at)
@@ -23,20 +23,20 @@ users(id, site_id, email, password_hash, name, status['active','disabled'],
 roles(id, site_id, slug['admin','editor',...], name, is_system bool)
   UNIQUE(site_id, slug)
 
-permissions(id, key)               -- p.ej. 'pages.publish', 'media.delete' (catálogo global)
+permissions(id, key)               -- e.g. 'pages.publish', 'media.delete' (global catalog)
 role_permissions(role_id, permission_id)   PK(role_id, permission_id)
 
 user_roles(user_id, role_id)       PK(user_id, role_id)
 
 sessions(id, user_id, token_hash, ip, user_agent, expires_at, revoked_at, created_at)
-  INDEX(user_id), INDEX(token_hash)   -- cookie HTTP-only guarda id+secreto; se compara hash
+  INDEX(user_id), INDEX(token_hash)   -- HTTP-only cookie stores id+secret; compared by hash
 ```
 
-RBAC: permisos → roles → usuarios. Permisos son un catálogo estático (`packages/contracts`);
-`admin` tiene todos, `editor` un subconjunto (crear/editar/publicar contenido propio, media,
-sin gestión de usuarios/ajustes). Ver [10-acceptance-criteria](10-acceptance-criteria.md).
+RBAC: permissions → roles → users. Permissions are a static catalog (`packages/contracts`);
+`admin` has all of them, `editor` a subset (create/edit/publish own content, media,
+no user/settings management). See [10-acceptance-criteria](10-acceptance-criteria.md).
 
-## 2. Tipos de contenido y campos
+## 2. Content types and fields
 
 ```
 content_types(id, site_id, key, name, kind['page','post','custom'],
@@ -47,41 +47,41 @@ content_types(id, site_id, key, name, kind['page','post','custom'],
 field_definitions(id, content_type_id, key, type, label, config jsonb,
                   required bool, position int, created_at)
   UNIQUE(content_type_id, key)
-  -- 'type' ∈ el catálogo de campos (text, richText, media, repeater, ...). 'config' = opciones del campo.
+  -- 'type' ∈ the field catalog (text, richText, media, repeater, ...). 'config' = field options.
 ```
 
-`page` y `post` son content types de sistema pre-sembrados. `custom` cubre "custom content types".
-El **valor** de los campos vive en `entry_versions.data` (JSONB validado por el esquema derivado
-de `field_definitions`), no en tablas por-campo.
+`page` and `post` are pre-seeded system content types. `custom` covers "custom content types".
+The field **value** lives in `entry_versions.data` (JSONB validated by the schema derived
+from `field_definitions`), not in per-field tables.
 
-## 3. Entradas, versiones, publicación
+## 3. Entries, versions, publishing
 
-Separación estricta trabajo / publicado / historial (ver [08-roadmap](08-roadmap.md) §drafts):
+Strict separation of working / published / history (see [08-roadmap](08-roadmap.md) §drafts):
 
 ```
 entries(id, site_id, content_type_id, slug, status['draft','published','archived'],
         editor_type['rich-text','markdown','builder'],
-        current_version_id,          -- versión de trabajo (draft)
-        published_version_id,        -- versión publicada (nullable)
+        current_version_id,          -- working version (draft)
+        published_version_id,        -- published version (nullable)
         author_id, created_at, updated_at)
   UNIQUE(site_id, content_type_id, slug)
   INDEX(site_id, status)
 
-entry_versions(id, entry_id, version_no int, data jsonb,     -- campos estructurados del entry
-               title, seo jsonb, builder_document_id,        -- si editor_type='builder'
+entry_versions(id, entry_id, version_no int, data jsonb,     -- structured fields of the entry
+               title, seo jsonb, builder_document_id,        -- if editor_type='builder'
                created_by, created_at, note)
   UNIQUE(entry_id, version_no)
 ```
 
-- Editar = escribir una **nueva** `entry_versions` y apuntar `current_version_id` a ella.
-- Publicar = fijar `published_version_id = current_version_id` y `status='published'`.
-- Restaurar = crear una nueva versión copiando el `data` de una versión histórica → nuevo draft.
-- Comparación = diff entre dos `entry_versions.data` (y entre `builder_document_versions`).
+- Editing = writing a **new** `entry_versions` row and pointing `current_version_id` to it.
+- Publishing = setting `published_version_id = current_version_id` and `status='published'`.
+- Restoring = creating a new version by copying the `data` from a historical version → new draft.
+- Comparison = diff between two `entry_versions.data` (and between `builder_document_versions`).
 
-"Páginas" y "entradas" son `entries` con distinto `content_type`. No hay tabla `pages` aparte:
-el modelo es uniforme y extensible a custom types.
+"Pages" and "entries" are `entries` with different `content_type`. There is no separate `pages` table:
+the model is uniform and extensible to custom types.
 
-## 4. Taxonomías
+## 4. Taxonomies
 
 ```
 taxonomies(id, site_id, key, name, hierarchical bool)   UNIQUE(site_id, key)
@@ -90,7 +90,7 @@ terms(id, taxonomy_id, parent_id nullable, slug, name, position int)
 term_relationships(term_id, entry_id)   PK(term_id, entry_id)
 ```
 
-## 5. Medios
+## 5. Media
 
 ```
 media_assets(id, site_id, storage_key, filename, mime, bytes, width, height,
@@ -102,10 +102,10 @@ media_variants(id, asset_id, kind['thumb','sm','md','lg','webp',...],
   INDEX(asset_id)
 ```
 
-Originales + variantes generadas por Sharp. `storage_key` es opaco al driver
-(`packages/storage`). El builder referencia medios por `assetId` (nunca por URL directa).
+Originals + variants generated by Sharp. `storage_key` is opaque to the driver
+(`packages/storage`). The builder references media by `assetId` (never by direct URL).
 
-## 6. Menús y ajustes
+## 6. Menus and settings
 
 ```
 menus(id, site_id, location, name)                UNIQUE(site_id, location)
@@ -115,13 +115,13 @@ menu_items(id, menu_id, parent_id nullable, position int, label,
   INDEX(menu_id, position)
 
 settings(id, site_id, group, key, value jsonb, updated_at)
-  UNIQUE(site_id, group, key)      -- ajustes globales agrupados (site, seo, social, ...)
+  UNIQUE(site_id, group, key)      -- global settings grouped (site, seo, social, ...)
 ```
 
-## 7. Documentos del builder
+## 7. Builder documents
 
-El documento vive en su propia tabla (no dentro del entry) para que el CMS lo trate como un
-**recurso opaco versionado** y el builder sea intercambiable por adaptador.
+The document lives in its own table (not inside the entry) so the CMS can treat it as an
+**opaque, versioned resource** and the builder remains swappable via adapter.
 
 ```
 builder_documents(id, site_id, entry_id nullable, schema_version int,
@@ -129,16 +129,16 @@ builder_documents(id, site_id, entry_id nullable, schema_version int,
                   created_at, updated_at)
 
 builder_document_versions(id, document_id, version_no int,
-                          tree jsonb,          -- árbol de nodos (root/children/props)
+                          tree jsonb,          -- node tree (root/children/props)
                           schema_version int, created_by, created_at, note)
   UNIQUE(document_id, version_no)
 ```
 
-`tree` sigue el contrato `BuilderDocument` de [04-contracts-builder](04-contracts-builder.md).
-`schema_version` habilita **migraciones de bloques**: al cargar, si la versión del bloque en el
-árbol es menor que la registrada en el manifiesto, se aplican migraciones antes de renderizar/editar.
+`tree` follows the `BuilderDocument` contract from [04-contracts-builder](04-contracts-builder.md).
+`schema_version` enables **block migrations**: on load, if the block version in the
+tree is lower than the one registered in the manifest, migrations are applied before rendering/editing.
 
-## 8. Integraciones y auditoría
+## 8. Integrations and audit
 
 ```
 webhooks(id, site_id, event, target_url, secret, active bool, created_at)
@@ -151,7 +151,7 @@ audit_log(id, site_id, actor_user_id nullable, action, entity_type, entity_id,
   INDEX(site_id, created_at), INDEX(entity_type, entity_id)
 ```
 
-## 9. Diagrama entidad-relación (resumen)
+## 9. Entity-relationship diagram (summary)
 
 ```
 sites 1─┬─* users ─* user_roles *─ roles ─* role_permissions *─ permissions
@@ -166,12 +166,12 @@ sites 1─┬─* users ─* user_roles *─ roles ─* role_permissions *─ pe
         └─* audit_log
 ```
 
-## 10. Decisiones de modelado
+## 10. Modeling decisions
 
-- **Sin `postmeta`.** Los campos del entry viven como JSONB validado por esquema, no como filas
-  clave/valor. Consultas por campo puntual se resuelven con índices GIN sobre `data` cuando haga falta.
-- **Versión inmutable.** `entry_versions` y `builder_document_versions` no se sobrescriben; garantizan
-  historial, restauración, comparación y auditoría (requisito del enunciado).
-- **`site_id` en todo** → futuro multisite sin migración destructiva; MVP usa una sola fila.
-- **JSONB sólo para extensiones controladas** (`settings.value`, `data`, `tree`, `seo`, `config`),
-  nunca para datos que se consultan/joinean de forma relacional (usuarios, slugs, estados).
+- **No `postmeta`.** Entry fields live as schema-validated JSONB, not as key/value
+  rows. Point-in-time field queries are addressed with GIN indexes on `data` when needed.
+- **Immutable version.** `entry_versions` and `builder_document_versions` are never overwritten; they guarantee
+  history, restoration, comparison, and audit (a requirement from the brief).
+- **`site_id` everywhere** → future multisite without a destructive migration; MVP uses a single row.
+- **JSONB only for controlled extensions** (`settings.value`, `data`, `tree`, `seo`, `config`),
+  never for data that is queried/joined relationally (users, slugs, statuses).
