@@ -1,50 +1,50 @@
-# 11 — Riesgos técnicos, amenazas y mitigaciones
+# 11 — Technical risks, threats and mitigations
 
-## 1. Riesgos técnicos
+## 1. Technical risks
 
-| ID | Riesgo | Impacto | Prob. | Mitigación |
+| ID | Risk | Impact | Prob. | Mitigation |
 |----|--------|---------|-------|-----------|
-| R1 | **Fidelidad del preview**: el iframe re-renderiza vía Astro SSR en cada cambio estructural → latencia. | Alto | Media | Debounce + `host/node-props-updated` para cambios de prop (parche puntual); re-render completo sólo en cambios estructurales; parches incrementales en Fase 7. |
-| R2 | **Deriva de esquemas** entre bloques del proyecto y documentos guardados. | Alto | Media | `version` por nodo + migraciones obligatorias; `schema-mismatch` no rompe el resto; test que migra documentos de fixtures. |
-| R3 | **Acoplamiento builder→CMS** filtrándose fuera del adaptador. | Alto | Media | Regla de fronteras en CI (`dependency-cruiser`); el builder sólo conoce `BuilderStorageAdapter` + `BlockManifest`. |
-| R4 | **Complejidad del monorepo** ralentiza el arranque. | Medio | Media | Incrementos verticales; paquetes creados al implementarse; Turbo cache. |
-| R5 | **Divergencia SQLite/Postgres** si se usa SQLite en dev. | Medio | Media | Postgres por defecto en dev vía Docker; SQLite sólo para tests unitarios puros (ADR-0006). |
-| R6 | **Rendimiento del árbol grande** en el builder (documentos con muchos nodos). | Medio | Baja | Estructuras inmutables + selección por id; virtualización del árbol si hace falta. |
-| R7 | **Manifiesto desincronizado** entre Astro (build) y CMS (runtime). | Medio | Media | Manifiesto servido por el CMS pero generado en build de Astro y publicado al CMS; versionado + hash; validación al cargar el builder. |
-| R8 | **Undo/redo inconsistente** con edición colaborativa futura. | Bajo | Baja | MVP mono-editor; comandos serializables preparan un futuro OT/CRDT sin comprometer ahora. |
-| R9 | **Bloqueo del cliente** por errores de bloque en producción pública. | Alto | Baja | Renderer tolerante: bloque desconocido/erróneo se omite con placeholder; nunca tira la página entera. |
+| R1 | **Preview fidelity**: the iframe re-renders via Astro SSR on every structural change → latency. | High | Medium | Debounce + `host/node-props-updated` for prop changes (targeted patch); full re-render only on structural changes; incremental patches in Phase 7. |
+| R2 | **Schema drift** between the project's blocks and saved documents. | High | Medium | Per-node `version` + mandatory migrations; `schema-mismatch` doesn't break the rest; test that migrates fixture documents. |
+| R3 | **builder→CMS coupling** leaking outside the adapter. | High | Medium | Boundaries rule in CI (`dependency-cruiser`); the builder only knows about `BuilderStorageAdapter` + `BlockManifest`. |
+| R4 | **Monorepo complexity** slows down startup. | Medium | Medium | Vertical increments; packages created as they're implemented; Turbo cache. |
+| R5 | **SQLite/Postgres divergence** if SQLite is used in dev. | Medium | Medium | Postgres by default in dev via Docker; SQLite only for pure unit tests (ADR-0006). |
+| R6 | **Large-tree performance** in the builder (documents with many nodes). | Medium | Low | Immutable structures + selection by id; tree virtualization if needed. |
+| R7 | **Manifest out of sync** between Astro (build) and the CMS (runtime). | Medium | Medium | Manifest served by the CMS but generated at Astro build time and published to the CMS; versioning + hash; validation when the builder loads. |
+| R8 | **Undo/redo inconsistency** with future collaborative editing. | Low | Low | Single-editor MVP; serializable commands prepare for a future OT/CRDT without compromising now. |
+| R9 | **Client-side blocking** from block errors in public production. | High | Low | Tolerant renderer: an unknown/erroring block is skipped with a placeholder; the whole page never breaks. |
 
-## 2. Modelo de amenazas (STRIDE resumido)
+## 2. Threat model (STRIDE summary)
 
-**Superficies:** API admin, API pública, API preview, canal iframe `postMessage`, uploads,
-render de rich text, servido de archivos.
+**Surfaces:** admin API, public API, preview API, `postMessage` iframe channel, uploads,
+rich text rendering, file serving.
 
-| Amenaza | Vector | Mitigación |
+| Threat | Vector | Mitigation |
 |---------|--------|-----------|
-| **Spoofing** | Suplantar sesión / origen del iframe | Cookies HTTP-only + `SameSite`; validación de `origin` y `channelId` en postMessage; token de preview firmado con expiración. |
-| **Tampering** | Modificar payloads / documentos | Validación Zod estricta en toda entrada; HMAC en webhooks; versiones inmutables. |
-| **Repudiation** | Negar acciones | `audit_log` con actor, antes/después, IP. |
-| **Information disclosure** | Ver drafts/otros sitios | API pública sólo publicado; preview con token; `site_id` en queries; sin listar assets ajenos. |
-| **Denial of service** | Fuerza bruta / uploads enormes | Rate limit en auth; límites de tamaño/MIME; timeouts; paginación obligatoria. |
-| **Elevation of privilege** | Editor haciendo tareas de admin | RBAC por permiso en cada endpoint; sin confiar en el cliente; tests negativos. |
+| **Spoofing** | Impersonating a session / the iframe's origin | HTTP-only + `SameSite` cookies; `origin` and `channelId` validation in postMessage; signed preview token with expiration. |
+| **Tampering** | Modifying payloads / documents | Strict Zod validation on all input; HMAC on webhooks; immutable versions. |
+| **Repudiation** | Denying actions | `audit_log` with actor, before/after, IP. |
+| **Information disclosure** | Viewing drafts/other sites | Public API serves published content only; preview requires a token; `site_id` on queries; no listing of other sites' assets. |
+| **Denial of service** | Brute force / oversized uploads | Rate limiting on auth; size/MIME limits; timeouts; mandatory pagination. |
+| **Elevation of privilege** | Editor performing admin tasks | Per-permission RBAC on every endpoint; the client is never trusted; negative tests. |
 
-## 3. Controles de seguridad desde el día 1 (checklist)
+## 3. Security controls from day one (checklist)
 
-- [ ] Cookies `HttpOnly; Secure; SameSite=Lax`; sesión revocable en DB.
-- [ ] CSRF (double-submit token) en mutaciones de la API admin.
-- [ ] Rate limit en `/auth/*`.
-- [ ] Hashing de contraseñas con argon2id (o bcrypt cost≥12).
-- [ ] Validación de `origin` + `channelId` + `targetOrigin` explícito en el iframe.
-- [ ] Uploads: validación de **MIME real** (magic bytes), límite de tamaño, checksum, nombres saneados.
-- [ ] Rich text: almacenar JSON de Tiptap; sanear al renderizar (allowlist de nodos/marcas).
-- [ ] Prevención de path traversal en `storage` (claves opacas, sin rutas del cliente).
-- [ ] URLs firmadas para archivos privados cuando el driver lo requiera.
-- [ ] Separación estricta API pública / admin / preview.
-- [ ] **No** ejecutar código instalado desde el panel; **no** JS/CSS arbitrario; **no** imports dinámicos no confiables.
-- [ ] Sin secretos en el repo; `.env` fuera de control de versiones.
+- [ ] `HttpOnly; Secure; SameSite=Lax` cookies; DB-revocable sessions.
+- [ ] CSRF (double-submit token) on admin API mutations.
+- [ ] Rate limiting on `/auth/*`.
+- [ ] Password hashing with argon2id (or bcrypt cost≥12).
+- [ ] `origin` + `channelId` + explicit `targetOrigin` validation on the iframe.
+- [ ] Uploads: **real MIME** validation (magic bytes), size limit, checksum, sanitized filenames.
+- [ ] Rich text: store Tiptap JSON; sanitize on render (node/mark allowlist).
+- [ ] Path traversal prevention in `storage` (opaque keys, no client-supplied paths).
+- [ ] Signed URLs for private files when the driver requires them.
+- [ ] Strict separation of public / admin / preview APIs.
+- [ ] **No** executing code installed from the panel; **no** arbitrary JS/CSS; **no** untrusted dynamic imports.
+- [ ] No secrets in the repo; `.env` excluded from version control.
 
-## 4. Riesgos de producto / proceso
+## 4. Product / process risks
 
-- **Sobre-ingeniería temprana** → mitigado por "sin carpetas vacías / sin abstracciones sin uso" y por incrementos verticales.
-- **Alcance del builder creciendo** hacia page-builder libre → limitado por tokens/bloques controlados; CSS/JS libres explícitamente fuera del MVP.
-- **Actualizaciones del núcleo rompiendo proyectos** → API y documentos versionados; migraciones; contratos estables.
+- **Early over-engineering** → mitigated by "no empty folders / no unused abstractions" and by vertical increments.
+- **Builder scope creeping** toward a free-form page builder → limited by controlled tokens/blocks; free CSS/JS explicitly out of scope for the MVP.
+- **Core updates breaking projects** → versioned API and documents; migrations; stable contracts.

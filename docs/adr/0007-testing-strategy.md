@@ -1,37 +1,38 @@
-# ADR-0007 — Estrategia de pruebas
+# ADR-0007 — Testing strategy
 
-- **Estado:** Aceptado
-- **Fecha:** 2026-07-10
+- **Status:** Accepted
+- **Date:** 2026-07-10
 
-## Pirámide
+## Pyramid
 
-1. **Unitarias (Vitest)** — dominio puro: sistema de campos (Zod/defaults), `builder-core`
-   (comandos, undo/redo con **property-based tests**, migraciones), validación de documentos,
-   utilidades de storage. Rápidas, sin IO.
-2. **Integración (Vitest + Postgres real)** — repos Drizzle, casos de uso de `cms-core`, auth
-   (sesiones/CSRF/rate limit), API (Fastify `inject`), uploads con MinIO, webhooks (HMAC).
-   DB efímera vía Docker Compose/testcontainers; migraciones aplicadas antes de cada suite.
-3. **End-to-end (Playwright)** — el flujo del criterio de éxito (18 pasos), incluyendo el canal
-   `postMessage` del builder y el preview en iframe. Corre contra el stack de compose.
+1. **Unit (Vitest)** — pure domain: field system (Zod/defaults), `builder-core`
+   (commands, undo/redo with **property-based tests**, migrations), document validation,
+   storage utilities. Fast, no IO.
+2. **Integration (Vitest + real Postgres)** — Drizzle repos, `cms-core` use cases, auth
+   (sessions/CSRF/rate limit), API (Fastify `inject`), uploads with MinIO, webhooks (HMAC).
+   Ephemeral DB via Docker Compose/testcontainers; migrations applied before each suite.
+3. **End-to-end (Playwright)** — the success-criteria flow (18 steps), including the builder's
+   `postMessage` channel and the iframe preview. Runs against the compose stack.
 
-## Contratos y no-duplicación
+## Contracts and non-duplication
 
-- Round-trip de esquemas: cada tipo de `contracts` se valida con su Zod; test que asegura que
-  el `manifest` serializado **no** contiene `component`.
-- Tests de fronteras: `dependency-cruiser` en CI como "test" de arquitectura.
+- Schema round-trip: each `contracts` type is validated with its Zod schema; a test ensures
+  the serialized `manifest` does **not** contain `component`.
+- Boundary tests: `dependency-cruiser` in CI as an architecture "test."
 
-## Datos y entorno
+## Data and environment
 
-- **Seeds** deterministas para dev y e2e (site, admin, editor, content types, media de ejemplo).
-- **Fixtures** de documentos del builder (incluye uno desactualizado para probar migraciones).
-- Cada incremento vertical entrega sus tests (DoD en [10-acceptance-criteria]).
+- Deterministic **seeds** for dev and e2e (site, admin, editor, content types, sample media).
+- Builder document **fixtures** (including one out of date, to test migrations).
+- Every vertical increment ships its own tests (DoD in [10-acceptance-criteria]).
 
-## Seguridad como test
+## Security as a test
 
-- Tests negativos: draft no visible en API pública; preview sin token → 401; MIME falso rechazado;
-  origin inválido en postMessage descartado; editor sin `users.manage` → 403; rate limit → 429.
+- Negative tests: draft not visible in the public API; preview without token → 401; spoofed
+  MIME rejected; invalid postMessage origin discarded; editor without `users.manage` → 403;
+  rate limit → 429.
 
-## Cobertura objetivo
+## Target coverage
 
-- Dominio (`cms-core`, `builder-core`, `schemas`): alta (≥85%).
-- Capas HTTP/UI: cobertura por criterios de aceptación, no por porcentaje.
+- Domain (`cms-core`, `builder-core`, `schemas`): high (≥85%).
+- HTTP/UI layers: coverage by acceptance criteria, not by percentage.

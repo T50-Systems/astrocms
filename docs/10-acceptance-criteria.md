@@ -1,66 +1,66 @@
-# 10 — Criterios de aceptación del MVP
+# 10 — MVP acceptance criteria
 
-## 1. Criterio de éxito del primer release (flujo completo)
+## 1. Success criterion for the first release (full flow)
 
-Debe ser posible, extremo a extremo, sin tocar Git/terminal/código como cliente:
+It must be possible, end to end, without touching Git/terminal/code as a client:
 
-1. Crear un proyecto Astro de ejemplo. → `apps/astro-demo` arranca.
-2. Instalar el CMS. → `docker compose up` + `pnpm db:migrate && pnpm db:seed`.
-3. Iniciar sesión en `/admin`. → cookie de sesión HTTP-only emitida.
-4. Crear una página. → `entry` (kind page) en estado draft.
-5. Seleccionar el editor builder. → `editorType='builder'`, se crea `builder_document`.
-6. Insertar un Hero. → nodo `site/hero` en el árbol.
-7. Editar su título en el preview. → edición inline → `setProp props.title`.
-8. Elegir una imagen de la biblioteca. → `MediaRef { assetId }` en props.
-9. Agregar una sección de texto. → nodo de contenido añadido.
-10. Reordenar los bloques. → `moveNode` respeta constraints.
-11. Guardar un draft. → `PUT /builder/documents/:id` + nueva versión.
-12. Ver el preview. → iframe muestra el draft con token.
-13. Publicar. → `published_version_id` fijado, webhooks disparados.
-14. Abrir la URL pública. → Astro sirve la versión publicada.
-15. Ver la página renderizada por Astro. → HTML del árbol, sin `data-builder-*`.
-16. Restaurar una revisión anterior. → nueva versión desde histórico.
-17. Crear un usuario editor. → rol `editor`.
-18. Limitar sus permisos. → editor sin `users.manage`/`settings.write`.
-19. Reutilizar el mismo núcleo en un segundo proyecto Astro con componentes distintos. → sólo cambian bloques/tema.
+1. Create a sample Astro project. → `apps/astro-demo` starts.
+2. Install the CMS. → `docker compose up` + `pnpm db:migrate && pnpm db:seed`.
+3. Log in at `/admin`. → HTTP-only session cookie issued.
+4. Create a page. → `entry` (kind page) in draft state.
+5. Select the builder editor. → `editorType='builder'`, a `builder_document` is created.
+6. Insert a Hero. → `site/hero` node in the tree.
+7. Edit its title in the preview. → inline editing → `setProp props.title`.
+8. Choose an image from the library. → `MediaRef { assetId }` in props.
+9. Add a text section. → content node added.
+10. Reorder the blocks. → `moveNode` respects constraints.
+11. Save a draft. → `PUT /builder/documents/:id` + new version.
+12. View the preview. → the iframe shows the draft with a token.
+13. Publish. → `published_version_id` set, webhooks triggered.
+14. Open the public URL. → Astro serves the published version.
+15. See the page rendered by Astro. → tree HTML, no `data-builder-*`.
+16. Restore a previous revision. → new version created from history.
+17. Create an editor user. → `editor` role.
+18. Restrict their permissions. → editor without `users.manage`/`settings.write`.
+19. Reuse the same core in a second Astro project with different components. → only blocks/theme change.
 
-Cada paso tiene un test e2e (`#K3`) que lo cubre.
+Each step is covered by an e2e test (`#K3`).
 
-## 2. Criterios transversales (Definition of Done por incremento)
+## 2. Cross-cutting criteria (Definition of Done per increment)
 
-Un incremento se considera terminado sólo si incluye **todo** lo siguiente:
-- Código con **TS estricto**, sin `any` no justificado.
-- **Migración** DB reproducible (si toca datos) + seed actualizado.
-- **Tipos y validación** compartidos desde `contracts` (sin duplicar Zod front/back).
-- **Tests:** unitarios del dominio, integración con DB real (testcontainers/compose), y e2e si toca UI.
-- **Estados UI:** loading, error y empty cubiertos; formularios validados; a11y básica (labels, foco, roles).
-- **Errores explícitos:** nada de fallos silenciosos; respuestas `ApiError` tipadas.
-- **Logs estructurados** y `/healthz` verde.
-- **Docs** locales del incremento + **comandos para ejecutar** + **demo** reproducible.
-- **Sin secretos** en el repo.
+An increment is considered done only if it includes **all** of the following:
+- Code with **strict TS**, no unjustified `any`.
+- Reproducible DB **migration** (if it touches data) + updated seed.
+- **Types and validation** shared from `contracts` (no duplicated front/back Zod).
+- **Tests:** domain unit tests, integration with a real DB (testcontainers/compose), and e2e if it touches the UI.
+- **UI states:** loading, error and empty covered; validated forms; basic a11y (labels, focus, roles).
+- **Explicit errors:** no silent failures; typed `ApiError` responses.
+- **Structured logs** and a green `/healthz`.
+- Increment-local **docs** + **commands to run it** + reproducible **demo**.
+- **No secrets** in the repo.
 
-## 3. Criterios de aceptación por capacidad (muestras)
+## 3. Acceptance criteria by capability (samples)
 
 **Auth**
-- Login válido → 200 + cookie `Secure; HttpOnly; SameSite=Lax`. Inválido → 401 sin filtrar si el email existe.
-- 5 intentos fallidos/min desde una IP → 429 (rate limit).
-- Logout → sesión revocada; `/me` posterior → 401.
+- Valid login → 200 + `Secure; HttpOnly; SameSite=Lax` cookie. Invalid → 401 without revealing whether the email exists.
+- 5 failed attempts/min from one IP → 429 (rate limit).
+- Logout → session revoked; subsequent `/me` → 401.
 
-**Contenido y publicación**
-- Publicar no altera el draft de trabajo; `published_version` y `current_version` coexisten.
-- La API pública nunca devuelve entries no publicados (test negativo).
-- Restaurar la revisión N crea la versión N+1 (no sobrescribe historial).
+**Content and publishing**
+- Publishing does not alter the working draft; `published_version` and `current_version` coexist.
+- The public API never returns unpublished entries (negative test).
+- Restoring revision N creates version N+1 (history is not overwritten).
 
 **Builder**
-- Un documento con un bloque en `version` inferior migra al cargar; si no hay ruta → `schema-mismatch`, el resto sigue editable.
-- `undo` seguido de `redo` recupera exactamente el estado (property test).
-- Constraints: soltar un `Column` fuera de `Columns` se rechaza en el drop.
-- Edición inline nunca persiste HTML de `contenteditable`; sólo `{nodeId, path, value}`.
+- A document with a block at a lower `version` migrates on load; if there is no migration path → `schema-mismatch`, the rest remains editable.
+- `undo` followed by `redo` recovers the exact state (property test).
+- Constraints: dropping a `Column` outside `Columns` is rejected on drop.
+- Inline editing never persists `contenteditable` HTML; only `{nodeId, path, value}`.
 
-**Seguridad del canal iframe**
-- Mensaje con `origin` distinto de `PREVIEW_ORIGIN` → descartado (test).
-- Preview sin token válido → 401; token expirado → 401.
+**iframe channel security**
+- A message with an `origin` different from `PREVIEW_ORIGIN` → discarded (test).
+- Preview without a valid token → 401; expired token → 401.
 
-**Medios**
-- Archivo con extensión de imagen pero MIME real distinto → rechazado.
-- Se generan variantes Sharp declaradas; el original conserva checksum.
+**Media**
+- A file with an image extension but a different real MIME type → rejected.
+- Declared Sharp variants are generated; the original keeps its checksum.

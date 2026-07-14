@@ -1,28 +1,28 @@
-# ADR-0003 — Monolito modular con fronteras verificadas
+# ADR-0003 — Modular monolith with verified boundaries
 
-- **Estado:** Aceptado
-- **Fecha:** 2026-07-10
-- **Decisión:** Un único despliegue de servidor (monolito) organizado en paquetes con
-  dependencias unidireccionales verificadas en CI. Sin microservicios en el MVP.
+- **Status:** Accepted
+- **Date:** 2026-07-10
+- **Decision:** A single server deployment (monolith) organized into packages with
+  unidirectional dependencies verified in CI. No microservices in the MVP.
 
-## Contexto
+## Context
 
-El enunciado prohíbe microservicios en el MVP y exige "monolito modular con paquetes bien
-separados", manteniendo separados CMS, builder, contratos y adaptadores.
+The brief prohibits microservices in the MVP and requires a "modular monolith with well-
+separated packages," keeping CMS, builder, contracts, and adapters separate.
 
-## Decisión
+## Decision
 
-- `cms-server` es el único proceso backend; los demás son librerías o apps de frontend.
-- La separación de productos vive en **paquetes**, no en servicios.
-- **Regla de fronteras** (dependency-cruiser) en CI:
-  - `builder-*` **no** puede importar `cms-core`, `cms-database`, `cms-auth`.
-  - `cms-core` no importa de `apps/*` ni de Fastify (dominio sin HTTP).
-  - `contracts`/`schemas` no dependen de nada de dominio (hojas).
-- El builder se comunica con el CMS **sólo** por `cms-sdk` (runtime) y `contracts` (tipos).
+- `cms-server` is the only backend process; everything else is a library or frontend app.
+- Product separation lives in **packages**, not services.
+- **Boundary rule** (dependency-cruiser) in CI:
+  - `builder-*` **cannot** import `cms-core`, `cms-database`, `cms-auth`.
+  - `cms-core` doesn't import from `apps/*` or Fastify (HTTP-free domain).
+  - `contracts`/`schemas` don't depend on any domain code (leaves).
+- The builder communicates with the CMS **only** via `cms-sdk` (runtime) and `contracts` (types).
 
-## Consecuencias
+## Consequences
 
-- Extraer un servicio en el futuro (p.ej. procesado de imágenes) es viable porque el dominio ya
-  está aislado de HTTP y las fronteras están explícitas.
-- El coste operativo del MVP es mínimo (un backend, un Astro, Postgres, storage).
-- Las violaciones de acoplamiento fallan el pipeline, no se detectan en revisión manual.
+- Extracting a service in the future (e.g. image processing) is viable because the domain is
+  already isolated from HTTP and boundaries are explicit.
+- The operational cost of the MVP is minimal (one backend, one Astro, Postgres, storage).
+- Coupling violations fail the pipeline, rather than being caught in manual review.

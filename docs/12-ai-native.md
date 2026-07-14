@@ -1,91 +1,91 @@
-# 12 — Experiencia AI-native y facilidad de uso
+# 12 — AI-native experience and ease of use
 
-Tres audiencias, una sola regla de seguridad ([ADR-0009](adr/0009-ai-native-safe-operations.md)):
-la IA es **otro cliente de los mismos contratos** —tipados, validados, versionados—; nunca un
-canal privilegiado ni JS/CSS/HTML libre.
+Three audiences, one single security rule ([ADR-0009](adr/0009-ai-native-safe-operations.md)):
+AI is **just another client of the same contracts** — typed, validated, versioned — never a
+privileged channel or free-form JS/CSS/HTML.
 
 ```
-Dev + IA (build-time)      Cliente + IA (runtime)        Cliente sin IA
-  edita el CÓDIGO             edita el CONTENIDO            edita el CONTENIDO
-  CLI · codegen · MCP         asistente del panel          panel guiado
-  AGENTS.md · manifiesto      → comandos validados         plantillas · patrones
+Dev + AI (build-time)      Client + AI (runtime)         Client without AI
+  edits the CODE              edits the CONTENT             edits the CONTENT
+  CLI · codegen · MCP         panel assistant                guided panel
+  AGENTS.md · manifest        → validated commands           templates · patterns
         │                            │                            │
-        └──────────── mismos contratos + Zod + RBAC ──────────────┘
+        └──────────── same contracts + Zod + RBAC ──────────────┘
 ```
 
-## 1. Dev + IA — construir el sitio con un agente de código
+## 1. Dev + AI — building the site with a coding agent
 
-Objetivo: que un agente (Claude Code u otro) pueda incorporar el CMS a un proyecto Astro y
-registrar contenido/bloques **sin adivinar**, con retroalimentación inmediata.
+Goal: allow an agent (Claude Code or another) to add the CMS to an Astro project and
+register content/blocks **without guessing**, with immediate feedback.
 
-### 1.1 Convenciones deterministas
-Ubicaciones y formas fijas (el agente sabe dónde escribir):
+### 1.1 Deterministic conventions
+Fixed locations and shapes (the agent knows where to write):
 ```
-src/builder/blocks/<tipo>.ts        # defineBlock (esquema declarativo)
-src/builder/config.ts               # defineBuilderConfig (lista de bloques)
+src/builder/blocks/<type>.ts        # defineBlock (declarative schema)
+src/builder/config.ts               # defineBuilderConfig (block list)
 src/content-types/<key>.ts          # defineContentType
-src/components/builder/<Nombre>.astro  # componente que renderiza el bloque
-astrocms.config.ts                  # defineCmsConfig (editores, plugins, tema)
+src/components/builder/<Name>.astro  # component that renders the block
+astrocms.config.ts                  # defineCmsConfig (editors, plugins, theme)
 ```
 
-### 1.2 Esquemas declarativos → todo derivado
-Una definición produce tipos TS, Zod, formulario del inspector, defaults y docs. El agente escribe
-poco y de forma predecible; el compilador y Zod lo corrigen. (Ver [06-block-registry](06-block-registry.md).)
+### 1.2 Declarative schemas → everything derived
+One definition produces TS types, Zod, the inspector form, defaults, and docs. The agent writes
+little, in a predictable way; the compiler and Zod catch mistakes. (See [06-block-registry](06-block-registry.md).)
 
-### 1.3 CLI `astrocms` (idempotente, scriptable, salida JSON)
+### 1.3 `astrocms` CLI (idempotent, scriptable, JSON output)
 ```
-astrocms generate block <tipo> --category Marketing   # andamia .ts + .astro + registra
+astrocms generate block <type> --category Marketing   # scaffolds .ts + .astro + registers it
 astrocms add content-type <key> --kind custom
-astrocms generate types                               # tipos desde content types/manifiesto
-astrocms validate                                     # valida bloques, config y documentos
+astrocms generate types                               # types from content types/manifest
+astrocms validate                                     # validates blocks, config and documents
 astrocms db:migrate | db:seed
-astrocms manifest --json                              # imprime el BlockManifest
+astrocms manifest --json                              # prints the BlockManifest
 ```
-Cada comando: exit code claro, `--json` para consumo por IA, y mensajes de error accionables
-(`code`, `path`, sugerencia). Un agente puede encadenarlos y reaccionar al resultado.
+Every command: a clear exit code, `--json` for AI consumption, and actionable error messages
+(`code`, `path`, suggestion). An agent can chain them and react to the result.
 
-### 1.4 Servidor MCP (`@astrocms/mcp`)
-Expone el CMS/proyecto como **herramientas tipadas** para agentes (protocolo abierto, vendor-neutral):
+### 1.4 MCP server (`@astrocms/mcp`)
+Exposes the CMS/project as **typed tools** for agents (open, vendor-neutral protocol):
 
-| Herramienta MCP | Efecto |
+| MCP tool | Effect |
 |---|---|
-| `get_manifest` / `list_content_types` / `describe_field_types` | Introspección: la IA descubre el sistema |
-| `register_block` | Andamia y registra un bloque (equivale a la CLI) |
-| `create_page` / `update_entry` | Crea/edita contenido vía contratos (RBAC) |
-| `apply_document_ops` | Aplica `BuilderCommand[]` validados a un documento |
-| `validate_document` / `validate_entry` | Verifica antes de guardar |
-| `query_entries` / `list_media` | Lectura estructurada |
+| `get_manifest` / `list_content_types` / `describe_field_types` | Introspection: the AI discovers the system |
+| `register_block` | Scaffolds and registers a block (equivalent to the CLI) |
+| `create_page` / `update_entry` | Creates/edits content via contracts (RBAC) |
+| `apply_document_ops` | Applies validated `BuilderCommand[]` to a document |
+| `validate_document` / `validate_entry` | Verifies before saving |
+| `query_entries` / `list_media` | Structured reads |
 
-El MCP **no** ejecuta código arbitrario: cada herramienta valida contra Zod/manifiesto y respeta
-permisos. Es la vía "nativa" para que una IA opere la plataforma con seguridad.
+The MCP server does **not** execute arbitrary code: every tool validates against Zod/the manifest and
+respects permissions. It is the "native" way for an AI to operate the platform safely.
 
-### 1.5 Contratos auto-descriptivos
-- **OpenAPI** generado desde Zod (`/api/v1/openapi.json`).
-- **BlockManifest** serializable (`/api/v1/builder/manifest`).
-- **JSON Schemas** exportables de documento, entry y campos.
-Un agente puede leer el sistema entero sin documentación humana.
+### 1.5 Self-describing contracts
+- **OpenAPI** generated from Zod (`/api/v1/openapi.json`).
+- Serializable **BlockManifest** (`/api/v1/builder/manifest`).
+- Exportable **JSON Schemas** for the document, entry, and fields.
+An agent can read the entire system without human-written documentation.
 
 ### 1.6 `AGENTS.md`
-El instalador genera en la raíz del proyecto un `AGENTS.md` con: convenciones de ubicación,
-comandos de la CLI, qué está permitido/prohibido (nada de HTML/CSS/JS libre, sólo tokens),
-cómo registrar un bloque, cómo correr tests/migraciones. Escrito para que un agente lo siga literalmente.
+The installer generates an `AGENTS.md` at the project root with: location conventions,
+CLI commands, what's allowed/forbidden (no free HTML/CSS/JS, tokens only),
+how to register a block, how to run tests/migrations. Written so an agent can follow it literally.
 
-## 2. Cliente + IA — asistente del panel (opcional)
+## 2. Client + AI — panel assistant (optional)
 
-Plugin opcional (`aiAssistantPlugin()`); el CMS funciona sin él. Proveedor detrás del puerto
-`AiProvider` ([ADR-0008](adr/0008-infrastructure-agnostic.md)) → el operador elige modelo o lo desactiva.
+Optional plugin (`aiAssistantPlugin()`); the CMS works without it. A provider sits behind the
+`AiProvider` port ([ADR-0008](adr/0008-infrastructure-agnostic.md)) → the operator chooses a model or disables it.
 
-- **Construir/editar por lenguaje natural:** "añade un hero con este título y esta imagen" →
-  el asistente propone `BuilderCommand[]`; el usuario **ve el preview y confirma**; se aplica con
-  undo disponible. Las operaciones se validan contra el manifiesto: sólo bloques y props permitidos.
-- **Ayudas acotadas de contenido:** generar/mejorar texto de campos `text`/`richText`, sugerir
-  `SeoMeta` (title/description), generar `alt` de imágenes, proponer un slug. Siempre sobre campos
-  del esquema; nunca inventa props ni tokens fuera de catálogo.
-- **Límites duros:** no publica sin confirmación, no cambia permisos/usuarios, no toca ajustes
-  globales salvo permiso explícito, no introduce estilos/código libres.
+- **Build/edit via natural language:** "add a hero with this title and this image" →
+  the assistant proposes `BuilderCommand[]`; the user **sees the preview and confirms**; it's applied
+  with undo available. Operations are validated against the manifest: only allowed blocks and props.
+- **Scoped content assistance:** generate/improve text for `text`/`richText` fields, suggest
+  `SeoMeta` (title/description), generate image `alt` text, propose a slug. Always over schema
+  fields; it never invents props or out-of-catalog tokens.
+- **Hard limits:** it does not publish without confirmation, does not change permissions/users, does
+  not touch global settings except with explicit permission, does not introduce free-form styles/code.
 
 ```ts
-// forma conceptual del puerto (agnóstico de proveedor)
+// conceptual shape of the port (provider-agnostic)
 interface AiProvider {
   suggestDocumentOps(input: { prompt: string; manifest: BlockManifest; document: BuilderDocument })
     : Promise<{ ops: BuilderCommand[]; explanation: string }>;
@@ -95,24 +95,24 @@ interface AiProvider {
 }
 ```
 
-## 3. Cliente sin IA — que sea fácil igualmente
+## 3. Client without AI — still easy
 
-La simplicidad **no** depende de la IA (que es una comodidad encima):
+Simplicity does **not** depend on AI (which is a convenience layered on top):
 
-- **Plantillas de página** y **patrones reutilizables** → nunca se empieza en blanco.
-- **Defaults sensatos** en cada bloque; el inspector sólo muestra props permitidas, con controles
-  semánticos (tokens, no números crudos).
-- **Preview en vivo**, edición inline, **undo/redo**, revisiones y **publicar con confirmación**.
-- **Copy sin jerga**, estados vacíos con guía ("aún no hay páginas — crea la primera"), errores
-  en lenguaje llano.
-- **Accesibilidad** del panel (labels, foco, roles) como requisito, no opcional.
+- **Page templates** and **reusable patterns** → you never start from a blank page.
+- **Sensible defaults** on every block; the inspector only shows allowed props, with
+  semantic controls (tokens, not raw numbers).
+- **Live preview**, inline editing, **undo/redo**, revisions and **publish with confirmation**.
+- **Jargon-free copy**, guided empty states ("no pages yet — create the first one"), errors
+  in plain language.
+- Panel **accessibility** (labels, focus, roles) as a requirement, not optional.
 
-## 4. Cómo se conecta con lo ya diseñado
+## 4. How this connects to what's already designed
 
-- El **modelo de comandos + documento JSON + manifiesto** (ADR-0004) es, además del motor de
-  undo/redo, el **API seguro para la IA**: por eso una IA puede editar sin riesgo.
-- **RBAC** aplica igual a IA y humanos: el asistente actúa con la sesión de un usuario y sus permisos.
-- **Infra-agnóstico** (ADR-0008): el `AiProvider` es un puerto opcional; sin proveedor, el sistema
-  entero sigue funcionando.
-- **Versionado y migraciones:** la IA opera sobre contratos versionados; sus cambios entran en
-  revisiones y son reversibles como cualquier otro.
+- The **command model + JSON document + manifest** (ADR-0004) is, besides the
+  undo/redo engine, the **safe API for AI**: that's why an AI can edit without risk.
+- **RBAC** applies equally to AI and humans: the assistant acts under a user's session and permissions.
+- **Infrastructure-agnostic** (ADR-0008): the `AiProvider` is an optional port; without a provider,
+  the whole system keeps working.
+- **Versioning and migrations:** AI operates on versioned contracts; its changes go through
+  revisions and are reversible like any other.

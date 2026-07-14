@@ -1,27 +1,27 @@
-# 04 — Contratos TypeScript del builder
+# 04 — Builder TypeScript contracts
 
-Viven en `packages/contracts` (documento + manifiesto + adaptador) y `packages/builder-core`
-(comandos/estado, sin dependencia del CMS). El builder es agnóstico de backend: sólo conoce el
-`BuilderStorageAdapter` y el `BlockManifest`.
+They live in `packages/contracts` (document + manifest + adapter) and `packages/builder-core`
+(commands/state, with no dependency on the CMS). The builder is backend-agnostic: it only knows
+the `BuilderStorageAdapter` and the `BlockManifest`.
 
-## 1. Documento como árbol JSON
+## 1. Document as a JSON tree
 
 ```ts
 export interface BuilderDocument {
   id: ID;
-  schemaVersion: number;             // versión del formato de documento (no de bloques)
-  root: BuilderNode;                 // siempre type 'core/page'
+  schemaVersion: number;             // document format version (not the block version)
+  root: BuilderNode;                 // always type 'core/page'
   meta?: DocumentMeta;
 }
 
 export interface BuilderNode {
-  id: string;                        // único dentro del documento (nanoid)
+  id: string;                        // unique within the document (nanoid)
   type: string;                      // 'core/page' | 'site/hero' | ...
-  version: number;                   // versión del ESQUEMA DEL BLOQUE (para migraciones)
-  props: Record<string, unknown>;    // validado contra el schema del bloque en el manifiesto
+  version: number;                   // BLOCK SCHEMA version (for migrations)
+  props: Record<string, unknown>;    // validated against the block schema in the manifest
   children: BuilderNode[];
-  hidden?: boolean;                  // ocultar sin eliminar
-  locked?: boolean;                  // bloqueo estructural: no se mueve/borra
+  hidden?: boolean;                  // hide without deleting
+  locked?: boolean;                  // structural lock: cannot be moved/deleted
 }
 
 export interface DocumentMeta {
@@ -30,43 +30,43 @@ export interface DocumentMeta {
   title?: string;
 }
 
-// Referencias tipadas dentro de props (nunca URLs/HTML crudos):
+// Typed references inside props (never raw URLs/HTML):
 export interface MediaRef { kind: "media"; assetId: ID; }
 export interface EntityRef { kind: "entity"; contentTypeKey: string; entryId: ID; }
 ```
 
-Requisitos cubiertos: nodos, props, hijos, versiones, metadata, bloqueos estructurales
-(`locked`), refs a medios (`MediaRef`) y a entidades del CMS (`EntityRef`), validación,
-migraciones (`version` por nodo), clonado, undo/redo, comparación de revisiones.
+Requirements covered: nodes, props, children, versions, metadata, structural locks
+(`locked`), refs to media (`MediaRef`) and to CMS entities (`EntityRef`), validation,
+migrations (`version` per node), cloning, undo/redo, revision comparison.
 
-## 2. Manifiesto de bloques (lo único que ve el panel)
+## 2. Block manifest (the only thing the panel sees)
 
-El código Astro **no** viaja; el panel sólo recibe esquema + metadatos.
+The Astro code **does not** travel; the panel only receives schema + metadata.
 
 ```ts
 export interface BlockManifest {
   schemaVersion: number;
   blocks: BlockDefinitionSerialized[];
-  tokens: ThemeTokens;               // spacing/widths/columns/colors del tema
+  tokens: ThemeTokens;               // theme spacing/widths/columns/colors
 }
 
 export interface BlockDefinitionSerialized {
   type: string;                      // 'site/hero'
   label: string;
-  category: string;                  // 'Marketing' | 'Layout' | 'Contenido' | ...
-  icon?: string;                     // nombre de icono (no SVG arbitrario)
+  category: string;                  // 'Marketing' | 'Layout' | 'Content' | ...
+  icon?: string;                     // icon name (not arbitrary SVG)
   version: number;
-  fields: SerializedField[];         // derivado del schema de campos → formularios del inspector
+  fields: SerializedField[];         // derived from the field schema → inspector forms
   defaults: Record<string, unknown>;
   constraints: BlockConstraints;
   capabilities: BlockCapabilities;
   hasPreviewComponent: boolean;
-  // NOTA: sin 'component' — la ruta al .astro se queda en el proyecto Astro.
+  // NOTE: no 'component' — the path to the .astro file stays in the Astro project.
 }
 
 export interface BlockConstraints {
-  allowedParents?: string[];         // tipos permitidos como padre
-  allowedChildren?: string[];        // tipos permitidos como hijo (o '*')
+  allowedParents?: string[];         // allowed types as parent
+  allowedChildren?: string[];        // allowed types as child (or '*')
   minChildren?: number;
   maxChildren?: number;
 }
@@ -76,7 +76,7 @@ export interface BlockCapabilities {
   duplicable: boolean;
   removable: boolean;
   hideable: boolean;
-  permission?: PermissionKey;        // permiso opcional para usar el bloque
+  permission?: PermissionKey;        // optional permission to use the block
 }
 
 export interface SerializedField {
@@ -84,22 +84,22 @@ export interface SerializedField {
   type: FieldType;
   label: string;
   required: boolean;
-  config: Record<string, unknown>;   // opciones ya serializadas (options, min/max, etc.)
+  config: Record<string, unknown>;   // already-serialized options (options, min/max, etc.)
 }
 
 export interface ThemeTokens {
   spacing: string[];                 // ['none','xs','sm','md','lg','xl']
   widths: string[];                  // ['content','wide','full']
   columns: number[];                 // [1,2,3,4]
-  colors: string[];                  // tokens semánticos, no hex libres
-  breakpoints: string[];             // ['mobile','tablet','desktop'] (del tema)
+  colors: string[];                  // semantic tokens, not free hex
+  breakpoints: string[];             // ['mobile','tablet','desktop'] (from the theme)
 }
 ```
 
-## 3. Definición de bloque (lado Astro, `defineBlock`)
+## 3. Block definition (Astro side, `defineBlock`)
 
-Vive en el proyecto Astro / `builder-default-blocks`. `builder-astro` la serializa a
-`BlockDefinitionSerialized` para el manifiesto y conserva `component` sólo del lado servidor.
+Lives in the Astro project / `builder-default-blocks`. `builder-astro` serializes it to
+`BlockDefinitionSerialized` for the manifest and keeps `component` only on the server side.
 
 ```ts
 export interface BlockDefinition<TProps = Record<string, unknown>> {
@@ -108,9 +108,9 @@ export interface BlockDefinition<TProps = Record<string, unknown>> {
   category: string;
   icon?: string;
   version: number;
-  component: string;                 // ruta .astro — NUNCA se serializa al panel
-  previewComponent?: string;         // opcional
-  fields: FieldMap;                  // del sistema de campos (packages/schemas)
+  component: string;                 // .astro path — NEVER serialized to the panel
+  previewComponent?: string;         // optional
+  fields: FieldMap;                  // from the field system (packages/schemas)
   defaults?: Partial<TProps>;
   constraints?: BlockConstraints;
   capabilities?: Partial<BlockCapabilities>;
@@ -118,23 +118,23 @@ export interface BlockDefinition<TProps = Record<string, unknown>> {
 }
 
 export interface BlockMigration {
-  from: number;                      // version origen
-  to: number;                        // version destino
+  from: number;                      // source version
+  to: number;                        // target version
   migrate(props: Record<string, unknown>): Record<string, unknown>;
 }
 ```
 
-## 4. Estado y comandos (`builder-core`, framework-agnóstico)
+## 4. State and commands (`builder-core`, framework-agnostic)
 
-El core mantiene el documento + selección + historial. Toda mutación pasa por un **comando**
-reversible (patrón command → undo/redo determinista).
+The core holds the document + selection + history. Every mutation goes through a reversible
+**command** (command pattern → deterministic undo/redo).
 
 ```ts
 export interface BuilderState {
   document: BuilderDocument;
   selectedNodeId: string | null;
   hoveredNodeId: string | null;
-  breakpoint: string;                // token de breakpoint activo en el canvas
+  breakpoint: string;                // active breakpoint token in the canvas
 }
 
 export type BuilderCommand =
@@ -149,25 +149,26 @@ export type BuilderCommand =
 
 export interface BuilderEngine {
   getState(): BuilderState;
-  dispatch(cmd: BuilderCommand): void;      // aplica + apila en historial
+  dispatch(cmd: BuilderCommand): void;      // applies + pushes onto history
   undo(): void;
   redo(): void;
   canUndo(): boolean;
   canRedo(): boolean;
   select(nodeId: string | null): void;
-  clone(nodeId: string): BuilderNode;       // ids regenerados
-  validate(): ValidationResult;             // contra manifiesto (constraints + campos Zod)
+  clone(nodeId: string): BuilderNode;       // ids regenerated
+  validate(): ValidationResult;             // against the manifest (constraints + Zod fields)
   subscribe(listener: (s: BuilderState) => void): () => void;
 }
 ```
 
-`setProp` con `path` (p.ej. `"props.title"`, `"props.columns.desktop"`) es la unidad de cambio
-que también usan la edición inline y el inspector — un único camino de mutación.
+`setProp` with a `path` (e.g. `"props.title"`, `"props.columns.desktop"`) is the unit of change
+also used by inline editing and the inspector — a single mutation path.
 
-## 5. Migraciones de bloques
+## 5. Block migrations
 
-Al cargar un documento, para cada nodo cuyo `version < manifest.block.version` se aplican en
-orden las `migrations` (`from → to`) hasta alcanzar la versión actual; se registra el resultado.
+When loading a document, for every node whose `version < manifest.block.version` the
+`migrations` (`from → to`) are applied in order until the current version is reached; the
+result is recorded.
 
 ```ts
 export function migrateDocument(
@@ -177,12 +178,13 @@ export function migrateDocument(
 ): { document: BuilderDocument; applied: Array<{ nodeId: string; from: number; to: number }> };
 ```
 
-Si falta un tipo de bloque o no hay ruta de migración → evento `schema-mismatch` al panel
-(ver [05-iframe-protocol](05-iframe-protocol.md)) y el nodo se marca como no editable, sin romper el resto.
+If a block type is missing or there is no migration path → a `schema-mismatch` event is sent to
+the panel (see [05-iframe-protocol](05-iframe-protocol.md)) and the node is marked non-editable,
+without breaking the rest.
 
-## 6. Adaptador de almacenamiento (portabilidad del builder)
+## 6. Storage adapter (builder portability)
 
-Única interfaz entre el builder y cualquier backend. `cmsBuilderAdapter` la implementa sobre `cms-sdk`.
+The only interface between the builder and any backend. `cmsBuilderAdapter` implements it on top of `cms-sdk`.
 
 ```ts
 export interface BuilderStorageAdapter {
@@ -197,14 +199,14 @@ export interface BuilderStorageAdapter {
 }
 
 export interface BuilderRevision {
-  id: string;                        // versionNo o id
+  id: string;                        // versionNo or id
   createdAt: ISODateTime;
   createdBy: ID;
   note?: string;
   isPublished: boolean;
 }
 
-// Fábrica del cliente del builder (consume un adaptador):
+// Builder client factory (consumes an adapter):
 export function createBuilderClient(opts: { adapter: BuilderStorageAdapter }): {
   load(documentId: ID): Promise<{ engine: BuilderEngine; manifest: BlockManifest }>;
   save(): Promise<void>;
@@ -212,11 +214,11 @@ export function createBuilderClient(opts: { adapter: BuilderStorageAdapter }): {
 };
 ```
 
-Adaptadores del MVP: `cmsBuilderAdapter(cms)` (producción), `inMemoryAdapter()` (tests),
-`jsonFileAdapter(path)` (desarrollo local sin CMS). El builder **no** implementa usuarios,
-login, roles, DB, media propia ni publicación: todo llega por el adaptador.
+MVP adapters: `cmsBuilderAdapter(cms)` (production), `inMemoryAdapter()` (tests),
+`jsonFileAdapter(path)` (local development without a CMS). The builder does **not** implement
+users, login, roles, DB, its own media, or publishing: everything arrives through the adapter.
 
-## 7. Ejemplo de uso extremo a extremo
+## 7. End-to-end usage example
 
 ```ts
 const cms = createCmsClient({ baseUrl: "/api/v1", credentials: "include" });
@@ -231,5 +233,5 @@ engine.dispatch({
   index: 0,
   node: { id: nano(), type: "site/hero", version: 1, props: { title: "Bienvenido" }, children: [] },
 });
-await builder.save();      // saveDraft vía adaptador → PUT /builder/documents/:id
+await builder.save();      // saveDraft via adapter → PUT /builder/documents/:id
 ```

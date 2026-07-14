@@ -1,31 +1,31 @@
-# ADR-0006 — PostgreSQL primario; SQLite sólo para tests unitarios puros
+# ADR-0006 — PostgreSQL primary; SQLite only for pure unit tests
 
-- **Estado:** Aceptado
-- **Fecha:** 2026-07-10
-- **Decisión:** PostgreSQL es la base en dev, test de integración y producción. SQLite se permite
-  **únicamente** para tests unitarios que no dependan de features específicas de Postgres.
+- **Status:** Accepted
+- **Date:** 2026-07-10
+- **Decision:** PostgreSQL is the database in dev, integration testing, and production. SQLite is
+  allowed **only** for unit tests that don't depend on Postgres-specific features.
 
-## Contexto
+## Context
 
-El enunciado prefiere Postgres y permite SQLite en dev "sólo si no introduce divergencias graves".
-El modelo usa **JSONB**, `gen_random_uuid()`, índices GIN y `timestamptz`: features donde SQLite
-diverge de forma relevante.
+The brief prefers Postgres and allows SQLite in dev "only if it doesn't introduce serious
+divergence." The model uses **JSONB**, `gen_random_uuid()`, GIN indexes, and `timestamptz`:
+features where SQLite diverges significantly.
 
-## Decisión
+## Decision
 
-- **Dev y test de integración:** Postgres vía `docker-compose` (rápido de levantar).
-- **Producción:** Postgres.
-- **SQLite:** admisible para pruebas unitarias de lógica que no toque JSONB/índices/tipos Postgres,
-  para no pagar el arranque de un contenedor en tests triviales. No es una ruta de despliegue.
-- Drizzle se configura contra el dialecto Postgres; no se mantienen dos dialectos de esquema.
+- **Dev and integration testing:** Postgres via `docker-compose` (fast to spin up).
+- **Production:** Postgres.
+- **SQLite:** acceptable for unit tests of logic that doesn't touch JSONB/indexes/Postgres types,
+  to avoid paying the cost of starting a container for trivial tests. It is not a deployment path.
+- Drizzle is configured against the Postgres dialect; two schema dialects are not maintained.
 
-## Justificación
+## Rationale
 
-Mantener paridad dev/prod evita bugs "funciona en mi máquina". El uso intensivo de JSONB (data,
-tree, settings, seo) hace de SQLite una fuente de divergencia real, no cosmética. El pequeño coste
-de correr Postgres en dev se absorbe con Docker Compose.
+Keeping dev/prod parity avoids "works on my machine" bugs. Heavy use of JSONB (data,
+tree, settings, seo) makes SQLite a real source of divergence, not a cosmetic one. The small
+cost of running Postgres in dev is absorbed via Docker Compose.
 
-## Consecuencias
+## Consequences
 
-- `pnpm db:*` apunta a Postgres; los tests de integración usan una DB efímera (compose/testcontainers).
-- No se invierte en compatibilidad SQLite del esquema completo (evita trabajo sin uso real).
+- `pnpm db:*` points at Postgres; integration tests use an ephemeral DB (compose/testcontainers).
+- No investment is made in full-schema SQLite compatibility (avoids work with no real use).
