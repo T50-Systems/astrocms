@@ -1,55 +1,55 @@
-# ADR-0002 — Estrategia de renderizado de Astro: estático, SSR o híbrido
+# ADR-0002 — Astro rendering strategy: static, SSR, or hybrid
 
-- **Estado:** Aceptado
-- **Fecha:** 2026-07-10
-- **Decisión:** **Híbrido con SSR on-demand por defecto** (adaptador Node), y export estático
-  opcional por-proyecto para sitios de alto tráfico. La ruta de preview **siempre** es SSR.
+- **Status:** Accepted
+- **Date:** 2026-07-10
+- **Decision:** **Hybrid with on-demand SSR by default** (Node adapter), with optional per-project
+  static export for high-traffic sites. The preview route is **always** SSR.
 
-## Contexto
+## Context
 
-- El **cliente publica sin tocar Git/terminal**: al pulsar "Publicar", el contenido debe verse
-  ya, sin un rebuild manual.
-- Hay **drafts y preview** que exigen render por-petición con autorización (token de preview).
-- El CMS es la **fuente de verdad**; el contenido cambia con frecuencia editorial.
-- Se busca buen rendimiento público y seguridad (público nunca ve borradores).
+- The **client publishes without touching Git/terminal**: on clicking "Publish", the content must
+  already be visible, with no manual rebuild.
+- There are **drafts and preview** requiring per-request rendering with authorization (preview token).
+- The CMS is the **source of truth**; content changes frequently editorially.
+- Good public performance and security are required (the public never sees drafts).
 
-## Opciones
+## Options
 
-1. **Estático puro (SSG).** Máximo rendimiento y coste mínimo, pero **cada publicación requiere
-   un rebuild + redeploy**. Choca con "publicar sin tocar terminal" salvo que se automatice un
-   webhook→rebuild, que añade latencia (segundos-minutos) y complejidad de despliegue. El preview
-   de drafts no encaja en estático.
-2. **SSR on-demand (adaptador Node).** Cada request se renderiza contra la API pública del CMS.
-   Publicar es **instantáneo**. Soporta preview autorizado de forma natural. Requiere un proceso
-   Node vivo y una **capa de caché** para rendimiento. Encaja con autohospedaje (ya hay Node).
-3. **Híbrido.** Elegir por ruta: la mayoría SSR (o estático con revalidación), y forzar SSR donde
-   haga falta (preview, rutas dinámicas).
+1. **Pure static (SSG).** Maximum performance and minimal cost, but **every publish requires
+   a rebuild + redeploy**. This conflicts with "publish without touching a terminal" unless a
+   webhook→rebuild is automated, which adds latency (seconds-minutes) and deployment complexity.
+   Draft preview doesn't fit static.
+2. **On-demand SSR (Node adapter).** Each request is rendered against the CMS's public API.
+   Publishing is **instant**. Supports authorized preview naturally. Requires a live Node
+   process and a **caching layer** for performance. Fits self-hosting (Node is already there).
+3. **Hybrid.** Choose per route: most SSR (or static with revalidation), forcing SSR where
+   needed (preview, dynamic routes).
 
-## Decisión
+## Decision
 
-**Híbrido con SSR por defecto:**
-- `output: 'server'` con adaptador Node (`@astrojs/node`).
-- Páginas públicas: SSR contra `GET /api/v1/public/...`, con **caché HTTP** (Cache-Control +
-  posible cache en memoria/Redis opcional) e invalidación por webhook `entry.published`.
-- **Ruta de preview `/__builder/preview/:id`: SSR obligatorio**, `prerender = false`, autorizada
-  por token; nunca cacheada; renderiza el **draft real**.
-- Los assets del tema (CSS/JS del proyecto) se sirven estáticos/CDN normalmente.
-- **Escape hatch:** un proyecto de marketing muy estable puede activar export estático +
-  webhook→rebuild; el CMS y los contratos no cambian, sólo la config de despliegue de ese Astro.
+**Hybrid with SSR by default:**
+- `output: 'server'` with a Node adapter (`@astrojs/node`).
+- Public pages: SSR against `GET /api/v1/public/...`, with **HTTP caching** (Cache-Control +
+  optional in-memory/Redis cache) and invalidation via the `entry.published` webhook.
+- **Preview route `/__builder/preview/:id`: SSR mandatory**, `prerender = false`, authorized
+  by token; never cached; renders the **real draft**.
+- Theme assets (project CSS/JS) are served statically/via CDN as usual.
+- **Escape hatch:** a very stable marketing project can enable static export +
+  webhook→rebuild; the CMS and contracts don't change, only that Astro's deployment config.
 
-## Justificación
+## Rationale
 
-Publicar-al-instante y preview-de-drafts son requisitos duros del enunciado; ambos se satisfacen
-naturalmente con SSR y mal con SSG puro. El coste de SSR (proceso Node + caché) es aceptable
-porque el despliegue ya es autohospedado en Node y el volumen es moderado. El híbrido deja la
-puerta abierta a estático donde el rendimiento/coste lo justifique, sin acoplar esa decisión al
-núcleo.
+Instant publishing and draft preview are hard requirements of the brief; both are satisfied
+naturally with SSR and poorly with pure SSG. The cost of SSR (Node process + cache) is acceptable
+because the deployment is already self-hosted on Node and the volume is moderate. The hybrid
+approach leaves the door open to static where performance/cost justify it, without coupling that
+decision to the core.
 
-## Consecuencias
+## Consequences
 
-- `apps/astro-demo` usa `@astrojs/node` en modo `standalone` (contenedor en compose).
-- Se define una **capa de caché** con interfaz opcional (sin exigir Redis en el MVP: cache
-  en-memoria por defecto, driver Redis enchufable después).
-- La invalidación se ancla al webhook de publicación (ya existe en el modelo de datos).
-- Seguridad: el render público usa **sólo** la API pública (jamás credenciales de admin); el
-  preview usa token de vida corta.
+- `apps/astro-demo` uses `@astrojs/node` in `standalone` mode (container in compose).
+- A **caching layer** is defined with an optional interface (Redis not required in the MVP:
+  in-memory cache by default, pluggable Redis driver later).
+- Invalidation is anchored to the publish webhook (already present in the data model).
+- Security: public rendering uses **only** the public API (never admin credentials); the
+  preview uses a short-lived token.

@@ -1,46 +1,46 @@
-# ADR-0001 — Backend HTTP: Fastify vs Hono
+# ADR-0001 — HTTP backend: Fastify vs Hono
 
-- **Estado:** Aceptado
-- **Fecha:** 2026-07-10
-- **Decisión:** Usar **Fastify** para `apps/cms-server` en el MVP.
+- **Status:** Accepted
+- **Date:** 2026-07-10
+- **Decision:** Use **Fastify** for `apps/cms-server` in the MVP.
 
-## Contexto
+## Context
 
-El CMS es un **monolito modular Node con estado**: PostgreSQL (Drizzle), sesiones con cookies
-HTTP-only, subida y procesamiento de imágenes (multipart + Sharp), CSRF, rate limiting, RBAC,
-webhooks firmados, OpenAPI. No es una función edge ligera. Node ≥20 en VPS/contenedor (S3).
+The CMS is a **stateful Node modular monolith**: PostgreSQL (Drizzle), HTTP-only cookie
+sessions, image upload and processing (multipart + Sharp), CSRF, rate limiting, RBAC,
+signed webhooks, OpenAPI. It is not a lightweight edge function. Node ≥20 on a VPS/container (S3).
 
-## Opciones
+## Options
 
 **Fastify**
-- ➕ Ecosistema maduro y mantenido para justo lo que necesito: `@fastify/cookie`,
+- ➕ Mature, well-maintained ecosystem for exactly what's needed: `@fastify/cookie`,
   `@fastify/session`, `@fastify/csrf-protection`, `@fastify/rate-limit`, `@fastify/multipart`
-  (streaming de uploads grandes sin cargarlos en memoria), `@fastify/helmet`, `@fastify/cors`,
-  `@fastify/static` (servir el admin), `@fastify/swagger` (OpenAPI).
-- ➕ **Type provider de Zod** (`fastify-type-provider-zod`): validación y tipos desde los mismos
-  esquemas de `@astrocms/contracts` → sin duplicar esquemas front/back.
-- ➕ Hooks de ciclo de vida (`onRequest`, `preHandler`) ideales para auth/RBAC/CSRF por ruta.
-- ➕ Rendimiento sobrado para el volumen esperado; logging estructurado nativo (pino).
-- ➖ Atado a Node (no edge). Irrelevante: el MVP es autohospedado en Node.
+  (streaming large uploads without loading them into memory), `@fastify/helmet`, `@fastify/cors`,
+  `@fastify/static` (serving the admin), `@fastify/swagger` (OpenAPI).
+- ➕ **Zod type provider** (`fastify-type-provider-zod`): validation and types from the same
+  `@astrocms/contracts` schemas → no duplicated front/back schemas.
+- ➕ Lifecycle hooks (`onRequest`, `preHandler`) ideal for per-route auth/RBAC/CSRF.
+- ➕ Plenty of performance for the expected volume; native structured logging (pino).
+- ➖ Tied to Node (not edge). Irrelevant: the MVP is self-hosted on Node.
 
 **Hono**
-- ➕ Ultraligero, portable (edge/Node/Bun/Workers), excelente inferencia de tipos, RPC.
-- ➕ Buena elección si el objetivo fuese desplegar en el edge o multi-runtime.
-- ➖ Para uploads con streaming, sesiones con store en DB, CSRF, rate limit y OpenAPI hay que
-  ensamblar más middleware a mano o de terceros menos maduros.
-- ➖ La portabilidad edge es un valor que **este** producto no necesita (es stateful + Sharp + Postgres).
+- ➕ Ultra-lightweight, portable (edge/Node/Bun/Workers), excellent type inference, RPC.
+- ➕ A good choice if the goal were deploying to the edge or multi-runtime.
+- ➖ For streaming uploads, DB-backed sessions, CSRF, rate limiting and OpenAPI, you have to
+  assemble more middleware by hand or from less mature third parties.
+- ➖ Edge portability is a value **this** product doesn't need (it's stateful + Sharp + Postgres).
 
-## Decisión y justificación
+## Decision and rationale
 
-Gana **Fastify** porque el CMS es exactamente el caso de uso donde su ecosistema de plugins
-(uploads, sesiones, CSRF, rate limit, static, swagger) ahorra código propio y reduce superficie
-de error de seguridad, y su integración con Zod cumple el requisito de contratos compartidos.
-La principal ventaja de Hono —portabilidad al edge— no aporta valor a un monolito autohospedado
-con procesamiento de imágenes y base de datos relacional.
+**Fastify** wins because the CMS is exactly the use case where its plugin ecosystem
+(uploads, sessions, CSRF, rate limit, static, swagger) saves custom code and reduces the
+security error surface, and its Zod integration meets the shared-contracts requirement.
+Hono's main advantage — edge portability — doesn't add value to a self-hosted monolith
+with image processing and a relational database.
 
-## Consecuencias
+## Consequences
 
-- La capa HTTP queda fina: `cms-server` traduce HTTP ⇄ casos de uso de `cms-core` (que no conoce Fastify).
-- Si en el futuro se quiere una API edge (p.ej. sólo lectura pública en Workers), se puede exponer
-  un subconjunto con Hono **encima de los mismos casos de uso**, sin reescribir el dominio.
-- Se adopta `fastify-type-provider-zod` como puente de validación/tipos.
+- The HTTP layer stays thin: `cms-server` translates HTTP ⇄ `cms-core` use cases (which knows nothing about Fastify).
+- If an edge API is wanted in the future (e.g. public read-only on Workers), a subset can be
+  exposed with Hono **on top of the same use cases**, without rewriting the domain.
+- `fastify-type-provider-zod` is adopted as the validation/type bridge.

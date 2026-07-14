@@ -1,39 +1,39 @@
-# Incremento vertical 2 — Base del builder (producto 2)
+# Vertical increment 2 — Builder foundation (product 2)
 
-Fundamento del builder visual, **TS puro y framework-agnóstico**, verificado con tests unitarios
-(sin infra ni navegador). Cubre el Hito 4 del [roadmap](08-roadmap.md).
+Foundation of the visual builder, **pure TS and framework-agnostic**, verified with unit tests
+(no infra or browser). Covers Milestone 4 of the [roadmap](08-roadmap.md).
 
-## Qué incluye
+## What it includes
 
-| Paquete | Contenido | Tests |
+| Package | Content | Tests |
 |---------|-----------|-------|
-| `@astrocms/contracts` (+builder) | `BuilderDocument`/`BuilderNode`, `BlockManifest`, `BuilderCommand`, `ValidationResult`, y **protocolo iframe** (`Envelope` + Host/Guest messages) — todo con Zod | — |
-| `@astrocms/schemas` | Sistema de campos (text, textarea, richText, number, boolean, select, url, slug, media) → cada uno genera Zod + default + serialize; `defineBlock`, `serializeBlock`, `buildManifest`, `DEFAULT_TOKENS` | 3 |
-| `@astrocms/builder-core` | `createEngine`: dispatch de comandos reversibles, **undo/redo determinista** (snapshots), selección, `clone` (ids nuevos en profundidad), `validateDocument` (tipos/constraints/campos requeridos), `migrateDocument` (por versión de bloque), utilidades de árbol inmutables | 8 |
-| `@astrocms/builder-adapters` | `BuilderStorageAdapter` + `inMemory` (tests) y `jsonFile` (dev): load/saveDraft/publish/revisiones/restore — **intercambiables** | 3 |
+| `@astrocms/contracts` (+builder) | `BuilderDocument`/`BuilderNode`, `BlockManifest`, `BuilderCommand`, `ValidationResult`, and the **iframe protocol** (`Envelope` + Host/Guest messages) — all with Zod | — |
+| `@astrocms/schemas` | Field system (text, textarea, richText, number, boolean, select, url, slug, media) → each generates Zod + default + serialize; `defineBlock`, `serializeBlock`, `buildManifest`, `DEFAULT_TOKENS` | 3 |
+| `@astrocms/builder-core` | `createEngine`: dispatch of reversible commands, **deterministic undo/redo** (snapshots), selection, `clone` (new ids at depth), `validateDocument` (types/constraints/required fields), `migrateDocument` (per block version), immutable tree utilities | 8 |
+| `@astrocms/builder-adapters` | `BuilderStorageAdapter` + `inMemory` (tests) and `jsonFile` (dev): load/saveDraft/publish/revisions/restore — **interchangeable** | 3 |
 
-## Garantías verificadas
+## Verified guarantees
 
-- **El manifiesto NO contiene `component`** (el código Astro nunca viaja al panel) — test explícito.
-- **Undo→Redo round-trip exacto** (comparación de snapshot JSON).
-- **Clone/duplicate regeneran ids** en profundidad (sin colisiones con el original).
-- **Nodo `locked` no se borra/mueve**; bloqueo estructural respetado.
-- **Validación** detecta bloque desconocido, campo requerido vacío, hijos no permitidos, min/max, padre inválido.
-- **Migración** aplica cadenas `from→to` por versión; sin ruta → nodo intacto (el preview emitirá `schema-mismatch`).
-- **Adaptadores intercambiables**: misma interfaz, inMemory y jsonFile pasan el mismo round-trip.
+- **The manifest does NOT contain `component`** (Astro code never travels to the panel) — explicit test.
+- **Exact Undo→Redo round-trip** (JSON snapshot comparison).
+- **Clone/duplicate regenerate ids** at depth (no collisions with the original).
+- **A `locked` node cannot be deleted/moved**; structural locking respected.
+- **Validation** detects unknown block, empty required field, disallowed children, min/max, invalid parent.
+- **Migration** applies `from→to` chains per version; no route → node left intact (the preview will emit `schema-mismatch`).
+- **Interchangeable adapters**: same interface, inMemory and jsonFile pass the same round-trip.
 
-## Diseño (Architecture Advisor)
+## Design (Architecture Advisor)
 
-- **Comportamiento del documento:** árbol JSON + comandos reversibles; historial por snapshots
-  (simple y determinista; suficiente para mono-editor, sin CRDT/OT prematuro).
-- **El modelo de comandos es también el API seguro para IA** (ADR-0009): toda mutación —humana o IA—
-  pasa por `BuilderCommand` validado; no hay HTML/CSS/JS libre.
-- **Desacoplo:** `builder-core` no depende de React ni del CMS; sólo de `contracts`. Los adaptadores
-  aíslan el backend (portabilidad, ADR-0008). Las migraciones se inyectan por registro (no acopla a `schemas`).
+- **Document behavior:** JSON tree + reversible commands; history via snapshots
+  (simple and deterministic; sufficient for a single editor, no premature CRDT/OT).
+- **The command model is also the safe API for AI** (ADR-0009): every mutation — human or AI —
+  goes through a validated `BuilderCommand`; no free HTML/CSS/JS.
+- **Decoupling:** `builder-core` does not depend on React or the CMS; only on `contracts`. The adapters
+  isolate the backend (portability, ADR-0008). Migrations are injected via a registry (not coupled to `schemas`).
 
-## Pendiente del builder (siguientes incrementos)
+## Pending for the builder (upcoming increments)
 
-Persistencia de documentos en el CMS (tablas `builder_documents(_versions)` + API + `cms-sdk.builder`),
-`builder-react` (canvas/iframe/inspector/árbol/dnd), `builder-astro` (renderer + `defineBuilderConfig` +
-`data-builder-*`), ruta de preview con token, `builder-default-blocks` (10 bloques), y el e2e del
-criterio de éxito.
+Document persistence in the CMS (`builder_documents(_versions)` tables + API + `cms-sdk.builder`),
+`builder-react` (canvas/iframe/inspector/tree/dnd), `builder-astro` (renderer + `defineBuilderConfig` +
+`data-builder-*`), preview route with token, `builder-default-blocks` (10 blocks), and the e2e of the
+success criterion.

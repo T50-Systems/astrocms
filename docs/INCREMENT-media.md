@@ -1,38 +1,38 @@
-# Incremento — Biblioteca de medios (asistido por Codex)
+# Increment — Media library (Codex-assisted)
 
-Implementado por Codex (gpt-5.5) y **verificado/endurecido** por Claude. Cubre el bloque de medios
-del Hito 2. Verificado contra Postgres real.
+Implemented by Codex (gpt-5.5) and **verified/hardened** by Claude. Covers the media block
+of Milestone 2. Verified against real Postgres.
 
-## Qué incluye
+## What it includes
 
-| Capa | Contenido |
+| Layer | Content |
 |------|-----------|
-| `@astrocms/storage` (NUEVO) | `StorageDriver` (put/get/delete/exists/url) + driver **filesystem** con claves opacas (sin path traversal). Infra-agnóstico (ADR-0008). 8 tests. |
+| `@astrocms/storage` (NEW) | `StorageDriver` (put/get/delete/exists/url) + **filesystem** driver with opaque keys (no path traversal). Infrastructure-agnostic (ADR-0008). 8 tests. |
 | `contracts` | `MediaAsset`, `MediaVariant`, `MediaQuery` + Zod (`media.ts`) |
-| `cms-database` | Tablas `media_assets` + `media_variants` (migración `0002_media_library.sql`) |
-| `cms-core` | `media-service`: validación de **MIME real por magic bytes**, límite de tamaño, **checksum SHA-256**, variantes **Sharp** (`thumb` 200w, `md` 800w, `webp`), persistencia y borrado. Inyecta `StorageDriver` (puerto). |
-| `cms-server` | `POST/GET /media`, `GET /media/:id`, `DELETE /media/:id`, y `GET /media/file/:key` **público**. Uploads con **@fastify/multipart** (streaming, límite de tamaño). RBAC `media.read/write/delete`. |
+| `cms-database` | `media_assets` + `media_variants` tables (migration `0002_media_library.sql`) |
+| `cms-core` | `media-service`: **real MIME validation via magic bytes**, size limit, **SHA-256 checksum**, **Sharp** variants (`thumb` 200w, `md` 800w, `webp`), persistence and deletion. Injects `StorageDriver` (port). |
+| `cms-server` | `POST/GET /media`, `GET /media/:id`, `DELETE /media/:id`, and **public** `GET /media/file/:key`. Uploads with **@fastify/multipart** (streaming, size limit). RBAC `media.read/write/delete`. |
 | `cms-sdk` | `cms.media.list/get/upload(File\|Blob)/remove` |
 
-## Verificación
+## Verification
 
-- **45 tests verdes** en el workspace (storage 8; cms-server 10, incluidos 2 de media: upload con
-  variantes+checksum, y **rechazo de MIME falso**). Typecheck estricto en 12 proyectos.
-- Migración `0002` aplicada a Postgres; tablas + índices confirmados.
+- **45 passing tests** across the workspace (storage 8; cms-server 10, including 2 media tests: upload with
+  variants+checksum, and **rejection of spoofed MIME**). Strict typecheck across 12 projects.
+- Migration `0002` applied to Postgres; tables + indexes confirmed.
 
-## Correcciones de Claude sobre el entregable de Codex
+## Claude's fixes to Codex's deliverable
 
-- El sandbox de Codex **no tenía red**: dejó `node_modules` a medias y no pudo verificar. Reparado con
-  `pnpm install` (sharp compilado con prebuilds).
-- Añadido `drizzle-orm` a **devDependencies** de `cms-server` (el test de media consulta la DB) — el
-  borde de producción sigue sin importar drizzle.
-- **Sustituido el parser multipart casero** de Codex por **@fastify/multipart** (robustez + límite de
-  tamaño real en streaming); eliminado `apps/cms-server/src/multipart.ts`.
-- Servido de ficheros hecho **público** (clave opaca) para que las imágenes de páginas publicadas
-  carguen sin sesión. Media privada / URLs firmadas → endurecimiento (Fase 7).
+- Codex's sandbox **had no network access**: it left `node_modules` incomplete and could not verify. Fixed with
+  `pnpm install` (sharp compiled with prebuilds).
+- Added `drizzle-orm` to `cms-server`'s **devDependencies** (the media test queries the DB) — the
+  production edge still does not import drizzle.
+- **Replaced Codex's hand-rolled multipart parser** with **@fastify/multipart** (more robust + real
+  streaming size limit); removed `apps/cms-server/src/multipart.ts`.
+- File serving made **public** (opaque key) so images on published pages load without a session. Private
+  media / signed URLs → hardening (Phase 7).
 
-## Método (lean-on-Codex)
+## Method (lean-on-Codex)
 
-Codex implementó el grueso con gpt-5.5 en modo escritura (yolo); Claude reparó entorno, corrigió el
-typecheck, endureció seguridad (multipart, acceso público) y **verificó de verdad** (typecheck + tests
-contra Postgres) antes de dar por bueno el incremento. Patrón: *Codex escribe → Claude verifica y endurece*.
+Codex implemented the bulk of it with gpt-5.5 in write mode (yolo); Claude fixed the environment, corrected
+the typecheck, hardened security (multipart, public access) and **actually verified** it (typecheck + tests
+against Postgres) before signing off on the increment. Pattern: *Codex writes → Claude verifies and hardens*.

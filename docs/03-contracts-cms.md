@@ -1,13 +1,13 @@
-# 03 — Contratos TypeScript del CMS
+# 03 — CMS TypeScript contracts
 
-Estos tipos viven en `packages/contracts` (con sus esquemas Zod paralelos). Son la **fuente
-única de verdad**: el servidor valida con los Zod, el `cms-sdk` los reexporta, el panel los
-consume. No se duplican en front/back.
+These types live in `packages/contracts` (with their parallel Zod schemas). They are the **single
+source of truth**: the server validates with the Zod schemas, `cms-sdk` re-exports them, the panel
+consumes them. No duplication in front/back.
 
-Convención: por cada tipo `Foo` existe `FooSchema` (Zod) y `type Foo = z.infer<typeof FooSchema>`.
-Aquí se muestran los `type` por brevedad; los `*Schema` se generan/definen junto a ellos.
+Convention: for every type `Foo` there is a `FooSchema` (Zod) and `type Foo = z.infer<typeof FooSchema>`.
+Here only the `type`s are shown for brevity; the `*Schema`s are generated/defined alongside them.
 
-## 1. Primitivos y envoltorios
+## 1. Primitives and wrappers
 
 ```ts
 export type ID = string;                 // uuid/ulid
@@ -27,15 +27,15 @@ export type ApiError = {
   error: {
     code: string;            // 'unauthorized', 'validation_error', 'not_found', ...
     message: string;
-    details?: unknown;       // p.ej. issues de Zod
+    details?: unknown;       // e.g. Zod issues
   };
 };
 
-// Versionado de API: prefijo /api/v1 + header opcional 'X-Api-Version'.
+// API versioning: /api/v1 prefix + optional 'X-Api-Version' header.
 export const API_VERSION = "v1" as const;
 ```
 
-## 2. Identidad y sesión
+## 2. Identity and session
 
 ```ts
 export interface User {
@@ -47,7 +47,7 @@ export interface User {
   createdAt: ISODateTime;
 }
 
-export type RoleSlug = "admin" | "editor" | (string & {});   // extensible por plugins
+export type RoleSlug = "admin" | "editor" | (string & {});   // extensible by plugins
 
 export interface Session {
   user: User;
@@ -62,10 +62,10 @@ export type PermissionKey =
   | (string & {});
 
 export interface LoginRequest { email: string; password: string; }
-export interface LoginResponse { user: User; }     // la sesión va en cookie HTTP-only
+export interface LoginResponse { user: User; }     // the session is set via an HTTP-only cookie
 ```
 
-## 3. Content types y campos
+## 3. Content types and fields
 
 ```ts
 export type ContentTypeKind = "page" | "post" | "custom";
@@ -79,13 +79,13 @@ export interface ContentType {
   fields: FieldDefinition[];
 }
 
-// El sistema de campos vive en `packages/schemas`; aquí sólo la forma serializable.
+// The field system lives in `packages/schemas`; only the serializable shape is shown here.
 export interface FieldDefinition {
   key: string;
   type: FieldType;                   // 'text' | 'richText' | 'media' | 'repeater' | ...
   label: string;
   required: boolean;
-  config: Record<string, unknown>;   // validado por el descriptor del tipo de campo
+  config: Record<string, unknown>;   // validated by the field type descriptor
   position: number;
 }
 
@@ -95,12 +95,12 @@ export type FieldType =
   | "colorToken" | "spacingToken" | "url" | "slug"
   | "media" | "gallery" | "relation" | "taxonomy"
   | "object" | "repeater" | "blocks" | "json"
-  | (string & {});                   // 'plugin:*' para campos de plugin
+  | (string & {});                   // 'plugin:*' for plugin fields
 ```
 
-## 4. Entradas / páginas
+## 4. Entries / pages
 
-`Page` es azúcar sobre `Entry` con `contentType.kind === 'page'`.
+`Page` is sugar over `Entry` with `contentType.kind === 'page'`.
 
 ```ts
 export interface Entry {
@@ -110,9 +110,9 @@ export interface Entry {
   slug: string;
   status: EntryStatus;
   editorType: EditorType;
-  data: Record<string, unknown>;     // valores de los campos (validados por el content type)
+  data: Record<string, unknown>;     // field values (validated by the content type)
   seo: SeoMeta;
-  builderDocumentId?: ID;            // sólo si editorType === 'builder'
+  builderDocumentId?: ID;            // only if editorType === 'builder'
   publishedVersionNo?: number;
   currentVersionNo: number;
   authorId: ID;
@@ -132,7 +132,7 @@ export interface SeoMeta {
 export interface CreateEntryRequest {
   contentTypeKey: string;
   title: string;
-  slug?: string;                     // autogenerado si falta
+  slug?: string;                     // auto-generated if missing
   editorType: EditorType;
   data?: Record<string, unknown>;
 }
@@ -151,7 +151,7 @@ export interface EntryRevision {
 }
 ```
 
-## 5. Medios
+## 5. Media
 
 ```ts
 export interface MediaAsset {
@@ -163,7 +163,7 @@ export interface MediaAsset {
   height?: number;
   alt?: string;
   title?: string;
-  url: string;                       // URL servida (firmada si el driver lo requiere)
+  url: string;                       // served URL (signed if the driver requires it)
   variants: MediaVariant[];
   createdAt: ISODateTime;
 }
@@ -177,14 +177,14 @@ export interface MediaVariant {
 
 export interface MediaQuery {
   search?: string;
-  mime?: string;                     // prefijo, p.ej. 'image/'
+  mime?: string;                     // prefix, e.g. 'image/'
   folder?: string;
   page?: number;
   pageSize?: number;
 }
 ```
 
-## 6. Menús y ajustes
+## 6. Menus and settings
 
 ```ts
 export interface Menu {
@@ -227,13 +227,13 @@ export interface WebhookPayload<T = unknown> {
   siteId: ID;
   data: T;
   deliveredAt: ISODateTime;
-  signature: string;                 // HMAC-SHA256 del cuerpo con el secreto del webhook
+  signature: string;                 // HMAC-SHA256 of the body using the webhook secret
 }
 ```
 
-## 8. Superficie del SDK del CMS (`packages/cms-sdk`)
+## 8. CMS SDK surface (`packages/cms-sdk`)
 
-Cliente tipado; el builder sólo conoce esto del CMS, jamás la base de datos.
+Typed client; the builder only knows this much of the CMS, never the database.
 
 ```ts
 export interface CmsClient {
@@ -242,7 +242,7 @@ export interface CmsClient {
     logout(): Promise<void>;
     me(): Promise<Session>;
   };
-  pages: EntryResource;              // azúcar: contentTypeKey='page'
+  pages: EntryResource;              // sugar: contentTypeKey='page'
   entries(contentTypeKey: string): EntryResource;
   media: {
     list(q?: MediaQuery): Promise<Paginated<MediaAsset>>;
@@ -279,14 +279,14 @@ export interface ValidationResult {
 
 export function createCmsClient(opts: {
   baseUrl: string;                   // '/api/v1'
-  fetch?: typeof fetch;              // inyectable para SSR/tests
-  credentials?: RequestCredentials;  // 'include' para cookies
+  fetch?: typeof fetch;              // injectable for SSR/tests
+  credentials?: RequestCredentials;  // 'include' for cookies
 }): CmsClient;
 ```
 
-## 9. Mapa API REST v1 → contratos
+## 9. REST API v1 map → contracts
 
-| Método/Ruta | Request | Response |
+| Method/Route | Request | Response |
 |---|---|---|
 | `POST /auth/login` | `LoginRequest` | `LoginResponse` |
 | `POST /auth/logout` | — | `204` |
@@ -309,6 +309,6 @@ export function createCmsClient(opts: {
 | `GET /builder/manifest` | — | `BlockManifest` |
 | `GET /menus`, `GET /settings` | — | `Menu[]`, `SettingsGroup` |
 
-Separación de superficies (ver [01-architecture](01-architecture.md)):
-`/admin/*` (sesión+RBAC), `/public/*` (sólo publicado, sin auth), `/preview/*` (token/sesión).
-El mapa de arriba usa rutas cortas; en el servidor cuelgan de `/api/v1/admin` salvo las públicas.
+Surface separation (see [01-architecture](01-architecture.md)):
+`/admin/*` (session+RBAC), `/public/*` (published only, no auth), `/preview/*` (token/session).
+The map above uses short routes; on the server they hang off `/api/v1/admin` except for the public ones.

@@ -1,38 +1,38 @@
 # AGENTS.md
 
-## Convenciones
+## Conventions
 
-- Bloques: `src/builder/blocks/<tipo>.ts` con `defineBlock`.
-- Componentes Astro de bloques: `src/components/builder/<Nombre>.astro`.
+- Blocks: `src/builder/blocks/<type>.ts` with `defineBlock`.
+- Astro components for blocks: `src/components/builder/<Name>.astro`.
 - Content types: `src/content-types/<key>.ts`.
-- Config del builder: `src/builder/config.ts`.
-- Config CMS: `astrocms.config.ts`.
+- Builder config: `src/builder/config.ts`.
+- CMS config: `astrocms.config.ts`.
 
 ## CLI
 
-- `astrocms manifest --json`: imprime el `BlockManifest` activo.
-- `astrocms validate`: valida manifiesto/bloques demo y sale distinto de 0 si hay errores.
-- `astrocms generate block <tipo> --category <cat> [--dir <ruta>]`: crea descriptor `.ts` y componente `.astro` de forma idempotente.
-- `astrocms db:migrate`: ejecuta migraciones con `DATABASE_URL`.
-- `astrocms db:seed`: crea datos demo idempotentes con `DATABASE_URL`.
+- `astrocms manifest --json`: prints the active `BlockManifest`.
+- `astrocms validate`: validates the manifest/demo blocks and exits non-zero on errors.
+- `astrocms generate block <type> --category <cat> [--dir <path>]`: idempotently creates a `.ts` descriptor and `.astro` component.
+- `astrocms db:migrate`: runs migrations using `DATABASE_URL`.
+- `astrocms db:seed`: idempotently creates demo data using `DATABASE_URL`.
 
-## Limites Duros
+## Hard Limits
 
-- No introducir HTML/CSS/JS libre como superficie de edicion por IA.
-- La IA solo puede operar con campos, tokens, content types, `BuilderCommand[]` y documentos validados por Zod.
-- `apply_document_ops` solo acepta el union `BuilderCommand`; comandos invalidos se rechazan antes de guardar.
-- No publicar, cambiar permisos ni tocar configuracion global fuera de herramientas/contratos explicitos.
-- No exponer secretos en logs, errores, snapshots ni fixtures.
+- Do not introduce free-form HTML/CSS/JS as an AI editing surface.
+- AI may only operate on fields, tokens, content types, `BuilderCommand[]`, and Zod-validated documents.
+- `apply_document_ops` only accepts the `BuilderCommand` union; invalid commands are rejected before saving.
+- Do not publish, change permissions, or touch global configuration outside of explicit tools/contracts.
+- Do not expose secrets in logs, errors, snapshots, or fixtures.
 
-## Tests Y DB Local
+## Tests and Local DB
 
-Postgres local esperado:
+Expected local Postgres:
 
 ```powershell
 $env:DATABASE_URL="postgres://astrocms:astrocms@127.0.0.1:5434/astrocms"
 ```
 
-Verificacion principal:
+Main verification:
 
 ```powershell
 pnpm -r typecheck
@@ -40,7 +40,7 @@ pnpm --filter @astrocms/cli test
 pnpm --filter @astrocms/mcp test
 ```
 
-Migraciones y seed:
+Migrations and seed:
 
 ```powershell
 pnpm --filter @astrocms/cli exec astrocms db:migrate

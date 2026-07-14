@@ -1,73 +1,75 @@
-# ADR-0009 — Operabilidad por IA, segura por construcción
+# ADR-0009 — AI-operable, safe by construction
 
-- **Estado:** Aceptado
-- **Fecha:** 2026-07-10
-- **Decisión:** La plataforma está diseñada para ser operada tanto por personas como por agentes de
-  IA. **Toda** acción de IA —construir el sitio (dev) o editar contenido (cliente)— pasa por los
-  **mismos contratos tipados, validados y versionados** que un humano. La IA **no** tiene un canal
-  privilegiado ni puede introducir JS/CSS/HTML libre.
+- **Status:** Accepted
+- **Date:** 2026-07-10
+- **Decision:** The platform is designed to be operated by both people and AI agents. **Every**
+  AI action — building the site (dev) or editing content (client) — goes through the **same
+  typed, validated, versioned contracts** a human uses. AI has **no** privileged channel and
+  cannot inject free-form JS/CSS/HTML.
 
-## Contexto
+## Context
 
-Dos usos de IA, con la misma regla de seguridad:
+Two AI use cases, with the same security rule:
 
-1. **Dev + IA (build-time):** yo construyo el sitio Astro con ayuda de un agente de código (p.ej.
-   Claude Code). El agente debe poder registrar content types y bloques, andamiar componentes,
-   introspeccionar el sistema y no equivocarse por convenciones ambiguas.
-2. **Cliente + IA (runtime):** un asistente opcional dentro de `/admin` ayuda a un cliente no
-   técnico ("añade un hero con este texto", "mejora el SEO", "genera el alt de esta imagen").
+1. **Dev + AI (build-time):** I build the Astro site with the help of a coding agent (e.g.
+   Claude Code). The agent must be able to register content types and blocks, scaffold
+   components, introspect the system, and not make mistakes due to ambiguous conventions.
+2. **Client + AI (runtime):** an optional assistant inside `/admin` helps a non-technical
+   client ("add a hero with this text," "improve the SEO," "generate the alt text for this image").
 
-El riesgo: que la IA se convierta en una vía para inyectar contenido inseguro o inconsistente.
-La mitigación ya existe en el diseño: **documento JSON + comandos + manifiesto + Zod**. Este ADR la
-declara como principio y define las superficies.
+The risk: AI becoming a vector for injecting unsafe or inconsistent content.
+The mitigation already exists in the design: **JSON document + commands + manifest + Zod**. This
+ADR declares it as a principle and defines the surfaces.
 
-## Decisión
+## Decision
 
-### Principio único
-La IA es **otro cliente de los mismos contratos**. Produce:
-- `BuilderCommand` / `setProp {nodeId, path, value}` validados contra el `BlockManifest`
-  (constraints de padres/hijos, tipos de campo Zod, tokens permitidos), **nunca** HTML.
-- `CreateEntryRequest` / `UpdateEntryRequest` validados por el content type.
-- Operaciones que respetan **RBAC** (la IA actúa con la sesión/permiso de un usuario real).
-Toda salida inválida se rechaza igual que la de un humano; la IA recibe el error tipado y reintenta.
+### Single principle
+AI is **just another client of the same contracts**. It produces:
+- `BuilderCommand` / `setProp {nodeId, path, value}` validated against the `BlockManifest`
+  (parent/child constraints, Zod field types, allowed tokens), **never** HTML.
+- `CreateEntryRequest` / `UpdateEntryRequest` validated by the content type.
+- Operations that respect **RBAC** (AI acts with a real user's session/permissions).
+Any invalid output is rejected exactly like a human's; the AI receives the typed error and retries.
 
-### Superficie para Dev + IA (legibilidad y control del código)
-- **Convenciones deterministas:** ubicación y forma fijas de bloques (`src/builder/blocks/*.ts`),
-  content types y config, para que un agente sepa dónde escribir sin adivinar.
-- **Esquemas declarativos** (`defineBlock`, `defineContentType`): una sola definición → tipos, Zod,
-  formulario, defaults, docs (ver [06-block-registry](../06-block-registry.md)).
+### Surface for Dev + AI (code readability and control)
+- **Deterministic conventions:** fixed location and shape for blocks (`src/builder/blocks/*.ts`),
+  content types, and config, so an agent knows where to write without guessing.
+- **Declarative schemas** (`defineBlock`, `defineContentType`): a single definition → types, Zod,
+  form, defaults, docs (see [06-block-registry](../06-block-registry.md)).
 - **CLI + codegen** (`astrocms`): `generate block`, `add content-type`, `generate types`,
-  `db:migrate`, `validate` — comandos idempotentes y scriptables que un agente invoca con salida
-  estructurada (JSON) y códigos de salida claros.
-- **Servidor MCP** (`@astrocms/mcp`): expone herramientas tipadas de introspección y operación
+  `db:migrate`, `validate` — idempotent, scriptable commands an agent invokes with structured
+  output (JSON) and clear exit codes.
+- **MCP server** (`@astrocms/mcp`): exposes typed introspection and operation tools
   (`get_manifest`, `list_content_types`, `register_block`, `create_page`, `apply_document_ops`,
-  `query_entries`, `validate_document`) para que un agente opere el CMS/proyecto de forma nativa.
-- **Contratos machine-readable:** OpenAPI generado desde Zod, `BlockManifest` serializable, y JSON
-  Schemas exportables → el sistema es **auto-descriptivo**.
-- **`AGENTS.md`** en la raíz del proyecto generado: reglas, convenciones, comandos y límites,
-  escrito para que un agente los siga.
-- **Errores accionables:** mensajes con `code`, `path` y sugerencia → la IA se autocorrige.
+  `query_entries`, `validate_document`) so an agent can operate the CMS/project natively.
+- **Machine-readable contracts:** OpenAPI generated from Zod, a serializable `BlockManifest`, and
+  exportable JSON Schemas → the system is **self-describing**.
+- **`AGENTS.md`** at the root of the generated project: rules, conventions, commands, and limits,
+  written for an agent to follow.
+- **Actionable errors:** messages with `code`, `path`, and a suggestion → the AI self-corrects.
 
-### Superficie para Cliente + IA (asistente del panel, opcional)
-- Es un **plugin** opcional (`aiAssistantPlugin()`), desactivable. El CMS funciona sin él.
-- Traduce lenguaje natural a **operaciones de documento validadas** (mismos comandos del builder);
-  el usuario **previsualiza y confirma** antes de aplicar/publicar. Undo disponible.
-- Ayudas de contenido acotadas: generar/mejorar textos de campos `text`/`richText`, sugerir
-  `SeoMeta`, generar `alt` de imágenes. Nunca crea props fuera del esquema ni tokens no permitidos.
-- **Proveedor de IA agnóstico:** detrás de un puerto `AiProvider` (ver [ADR-0008](0008-infrastructure-agnostic.md));
-  el cliente elige modelo/proveedor o lo desactiva. Sin proveedor cableado.
+### Surface for Client + AI (optional panel assistant)
+- It's an optional **plugin** (`aiAssistantPlugin()`), disableable. The CMS works without it.
+- It translates natural language into **validated document operations** (the same builder
+  commands); the user **previews and confirms** before applying/publishing. Undo is available.
+- Bounded content assistance: generating/improving `text`/`richText` field content, suggesting
+  `SeoMeta`, generating image `alt` text. It never creates props outside the schema or
+  disallowed tokens.
+- **Provider-agnostic AI:** behind an `AiProvider` port (see [ADR-0008](0008-infrastructure-agnostic.md));
+  the client chooses the model/provider or disables it. No provider wired in by default.
 
-### Cliente no técnico (sin IA)
-La facilidad no depende de la IA: plantillas de página, patrones reutilizables, defaults sensatos,
-copy sin jerga, preview en vivo, publicación con confirmación y undo/revisiones. La IA es una
-comodidad **encima** de un panel que ya es simple.
+### Non-technical client (without AI)
+Ease of use doesn't depend on AI: page templates, reusable patterns, sensible defaults,
+jargon-free copy, live preview, publishing with confirmation, and undo/revisions. AI is a
+convenience **on top of** an already-simple panel.
 
-## Consecuencias
+## Consequences
 
-- El modelo de comandos/documento no era sólo para undo/redo: es el **API seguro para la IA**.
-  Refuerza la decisión de [ADR-0004](0004-document-json-model.md).
-- Nuevo paquete `@astrocms/mcp` y una CLI `astrocms` entran al roadmap (Hito 3–7, no bloquean el MVP core).
-- El asistente del panel y el `AiProvider` son opcionales y agnósticos → no comprometen el
-  infra-agnosticismo ni el criterio "el CMS funciona sin extras".
-- Se añade a la estrategia de pruebas: un agente/IA que emite operaciones inválidas debe ser
-  rechazado exactamente como un cliente humano (tests de contrato).
+- The command/document model wasn't just for undo/redo: it's the **safe API for AI**.
+  Reinforces the decision in [ADR-0004](0004-document-json-model.md).
+- A new `@astrocms/mcp` package and an `astrocms` CLI join the roadmap (Milestones 3–7, not
+  blocking the core MVP).
+- The panel assistant and the `AiProvider` are optional and agnostic → they don't compromise
+  infrastructure-agnosticism or the "the CMS works without extras" criterion.
+- Added to the testing strategy: an AI/agent that emits invalid operations must be rejected
+  exactly like a human client (contract tests).
