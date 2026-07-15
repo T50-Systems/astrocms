@@ -138,7 +138,7 @@ export function PagesListPage() {
         <form onSubmit={submitSearch} role="search" className="flex items-center gap-2">
           <label htmlFor="page-search" className="sr-only">Buscar páginas</label>
           <Input id="page-search" value={searchInput} onChange={(e) => setSearchInput(e.currentTarget.value)} placeholder="Buscar páginas" className="w-56" />
-          <Button type="submit" variant="outline" size="icon"><Search /></Button>
+          <Button type="submit" variant="outline" size="icon" aria-label="Buscar"><Search /></Button>
         </form>
       </div>
 
@@ -150,7 +150,7 @@ export function PagesListPage() {
 
       <div className="mb-3 flex items-center gap-2">
         <Select value={bulkAction} onValueChange={setBulkAction}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="Acciones en lote" /></SelectTrigger>
+          <SelectTrigger className="w-48" aria-label="Acciones en lote"><SelectValue placeholder="Acciones en lote" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="edit">Editar</SelectItem>
             <SelectItem value="delete">Eliminar</SelectItem>
@@ -168,7 +168,7 @@ export function PagesListPage() {
             <strong className="text-sm">Edición masiva · {selected.size} página(s)</strong>
             <span className="text-sm">Estado:</span>
             <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as "published" | "draft")}>
-              <SelectTrigger className="w-48"><SelectValue placeholder="— Sin cambios —" /></SelectTrigger>
+              <SelectTrigger className="w-48" aria-label="Cambiar estado"><SelectValue placeholder="— Sin cambios —" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="published">Publicar</SelectItem>
                 <SelectItem value="draft">Pasar a borrador</SelectItem>

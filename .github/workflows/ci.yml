@@ -80,3 +80,8 @@ jobs:
         run: |
           cp .env.example .env
           pnpm e2e:builder
+
+      - name: Run accessibility tests
+        env:
+          SESSION_SECRET: e2e-secret-of-32-characters-min!!
+        run: pnpm e2e:a11y
