@@ -380,14 +380,13 @@ describe.skipIf(!DB)("API v1 — menús, ajustes y webhooks (integración)", () 
       // Entry completo y otro malformado {builderDocumentId, entryId}). Debe ser UNO solo,
       // con el Entry completo (id/slug), porque publicar el builder document es parte de
       // la misma transacción atómica y no debe re-disparar el webhook.
-      expect(captures).toHaveLength(1);
-      const payload = JSON.parse(captures[0]!.body) as { event: string; data?: { id?: string; slug?: string } };
-      expect(payload.event).toBe("entry.published");
-      expect(payload.data?.id).toBe(pageId);
-      expect(payload.data?.slug).toBe(slug);
-
+      // Contamos por `webhookId` (único de este test) en la tabla de deliveries, no sobre
+      // el receiver: webhooks activos de tests previos podrían entregar a un puerto reusado.
       const deliveries = await db.select().from(webhookDeliveries).where(eq(webhookDeliveries.webhookId, webhookId));
       expect(deliveries).toHaveLength(1);
+      const payload = deliveries[0]!.payload as { data?: { id?: string; slug?: string } };
+      expect(payload.data?.id).toBe(pageId);
+      expect(payload.data?.slug).toBe(slug);
     } finally {
       await new Promise<void>((resolve, reject) => receiver.close((err) => (err ? reject(err) : resolve())));
     }
