@@ -27,7 +27,11 @@ export default defineConfig({
       command: "pnpm --filter @astrocms/cms-server start",
       url: `http://127.0.0.1:${CMS_PORT}/healthz`,
       reuseExistingServer: true,
-      timeout: 60_000,
+      // En CI (runner en frío, 2 núcleos, tres dev servers arrancando a la vez)
+      // el arranque puede superar los 60s; 120s da margen sin ocultar cuelgues reales.
+      timeout: 120_000,
+      stdout: "pipe",
+      stderr: "pipe",
       env: {
         DATABASE_URL,
         SESSION_SECRET,
@@ -39,7 +43,9 @@ export default defineConfig({
       command: "pnpm --filter @astrocms/astro-demo dev",
       url: `http://localhost:${PREVIEW_PORT}/`,
       reuseExistingServer: false,
-      timeout: 60_000,
+      timeout: 120_000,
+      stdout: "pipe",
+      stderr: "pipe",
       env: {
         CMS_API_URL: `http://127.0.0.1:${CMS_PORT}/api/v1`,
         ADMIN_ORIGIN: `http://localhost:${ADMIN_PORT}`,
@@ -50,7 +56,9 @@ export default defineConfig({
       command: "pnpm --filter @astrocms/cms-admin dev",
       url: `http://localhost:${ADMIN_PORT}/`,
       reuseExistingServer: false,
-      timeout: 60_000,
+      timeout: 120_000,
+      stdout: "pipe",
+      stderr: "pipe",
       env: {
         PORT: String(ADMIN_PORT),
         VITE_PREVIEW_ORIGIN: `http://localhost:${PREVIEW_PORT}`,
