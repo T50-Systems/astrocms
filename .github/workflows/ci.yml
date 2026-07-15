@@ -51,6 +51,12 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Lint
+        run: pnpm lint
+
+      - name: Check architecture boundaries
+        run: pnpm depcruise
+
       # Los tests de integración del cms-server y el e2e requieren el esquema y
       # los datos demo (admin@astrocms.local). Migrar+seed ANTES de correr tests.
       - name: Migrate and seed database

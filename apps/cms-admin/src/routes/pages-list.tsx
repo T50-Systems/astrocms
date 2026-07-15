@@ -89,7 +89,7 @@ export function PagesListPage() {
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setSearch(searchInput.trim()); setSelected(new Set()); };
   const toggleAll = () => setSelected((cur) => (pageIds.length > 0 && pageIds.every((id) => cur.has(id)) ? new Set() : new Set(pageIds)));
-  const toggleOne = (id: string) => setSelected((cur) => { const next = new Set(cur); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const toggleOne = (id: string) => setSelected((cur) => { const next = new Set(cur); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const applyBulk = () => {
     const ids = Array.from(selected);
     if (ids.length === 0) return;

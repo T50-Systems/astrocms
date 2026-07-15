@@ -14,7 +14,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/seed.ts",
-    "lint": "echo \"(lint pendiente)\""
+    "lint": "eslint src --max-warnings=-1"
   },
   "dependencies": {
     "@astrocms/contracts": "workspace:*",
