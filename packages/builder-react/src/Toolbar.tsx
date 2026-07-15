@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { findNode } from "@astrocms/builder-core";
 import { useBuilder } from "./provider.js";
 import { colors, disabledStyle, styles } from "./styles.js";
+import { getBlock } from "./utils.js";
 
 type Phase = "idle" | "saving" | "saved" | "publishing" | "published" | "error";
 
@@ -43,14 +45,15 @@ export function Toolbar() {
   saveRef.current = save;
   const busyRef = useRef(busy);
   busyRef.current = busy;
+  const ctxRef = useRef({ state, manifest });
+  ctxRef.current = { state, manifest };
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const mod = event.ctrlKey || event.metaKey;
-      if (!mod) return;
       const key = event.key.toLowerCase();
 
-      if (key === "s") {
+      if (mod && key === "s") {
         event.preventDefault();
         if (!busyRef.current) void saveRef.current();
         return;
@@ -65,15 +68,46 @@ export function Toolbar() {
           target.isContentEditable);
       if (isEditableTarget) return;
 
-      if (key === "z" && event.shiftKey) {
+      if (mod && key === "z" && event.shiftKey) {
         event.preventDefault();
         engine.redo();
-      } else if (key === "y") {
+        return;
+      }
+      if (mod && key === "y") {
         event.preventDefault();
         engine.redo();
-      } else if (key === "z") {
+        return;
+      }
+      if (mod && key === "z") {
         event.preventDefault();
         engine.undo();
+        return;
+      }
+
+      const { state, manifest } = ctxRef.current;
+      const selectedId = state.selectedNodeId;
+      const selectedNode = selectedId ? findNode(state.document.root, selectedId) : undefined;
+      const caps = selectedNode ? getBlock(manifest, selectedNode.type)?.capabilities : undefined;
+
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        if (selectedNode && caps?.removable && !selectedNode.locked) {
+          engine.dispatch({ kind: "removeNode", nodeId: selectedNode.id });
+          engine.select(null);
+        }
+        return;
+      }
+
+      if (mod && key === "d") {
+        event.preventDefault();
+        if (selectedNode && caps?.duplicable) {
+          engine.dispatch({ kind: "duplicateNode", nodeId: selectedNode.id });
+        }
+        return;
+      }
+
+      if (event.key === "Escape") {
+        if (selectedId) engine.select(null);
       }
     }
     window.addEventListener("keydown", onKeyDown);
