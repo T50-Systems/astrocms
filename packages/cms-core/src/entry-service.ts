@@ -298,15 +298,50 @@ export function createEntryService(
       assertTransition(entry.status, "published");
       if (!entry.currentVersionId) throw conflict("sin versión que publicar");
       const before = await loadContract(entry.id);
-      await db
-        .update(entries)
-        .set({ status: "published", publishedVersionId: entry.currentVersionId, updatedAt: clock.now() })
-        .where(eq(entries.id, args.id));
+      let publishedBuilderDocumentId: string | undefined;
+      await db.transaction(async (tx) => {
+        if (entry.editorType === "builder") {
+          const currentVersion = (
+            await tx
+              .select({ builderDocumentId: entryVersions.builderDocumentId })
+              .from(entryVersions)
+              .where(eq(entryVersions.id, entry.currentVersionId!))
+              .limit(1)
+          )[0];
+          if (currentVersion?.builderDocumentId) {
+            const document = (
+              await tx
+                .select({ currentVersionId: builderDocuments.currentVersionId })
+                .from(builderDocuments)
+                .where(eq(builderDocuments.id, currentVersion.builderDocumentId))
+                .limit(1)
+            )[0];
+            if (document?.currentVersionId) {
+              await tx
+                .update(builderDocuments)
+                .set({ publishedVersionId: document.currentVersionId, updatedAt: clock.now() })
+                .where(eq(builderDocuments.id, currentVersion.builderDocumentId));
+              publishedBuilderDocumentId = currentVersion.builderDocumentId;
+            }
+          }
+        }
+        await tx
+          .update(entries)
+          .set({ status: "published", publishedVersionId: entry.currentVersionId, updatedAt: clock.now() })
+          .where(eq(entries.id, args.id));
+      });
       const published = await this.get(args.id);
       try {
         await onPublished?.(entry.siteId, published);
       } catch {
         // Los webhooks no deben romper la publicación.
+      }
+      if (publishedBuilderDocumentId) {
+        try {
+          await onPublished?.(entry.siteId, { builderDocumentId: publishedBuilderDocumentId, entryId: entry.id });
+        } catch {
+          // Los webhooks no deben romper la publicación.
+        }
       }
       await recordAuditSafe({
         siteId: entry.siteId,
