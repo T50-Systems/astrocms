@@ -137,3 +137,49 @@ test("el preview refleja los cambios estructurales al guardar (recarga del ifram
   await page.getByRole("button", { name: "Guardar", exact: true }).click();
   await expect(heroInPreview).toBeVisible({ timeout: 10_000 });
 });
+
+test("atajos de teclado de nodo: Supr elimina, Ctrl+D duplica, Escape deselecciona", async ({
+  page,
+}) => {
+  const suffix = Date.now().toString(36);
+  const title = `Atajos E2E ${suffix}`;
+
+  await page.goto("/login");
+  await page.fill("#email", ADMIN.email);
+  await page.fill("#password", ADMIN.password);
+  await page.click('button[type="submit"]');
+  await expect(page.getByRole("heading", { name: "Páginas" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Añadir nueva" }).first().click();
+  await page.getByLabel("Título").fill(title);
+  await page.getByRole("button", { name: "Crear borrador" }).click();
+  await page.waitForURL(/\/pages\/[0-9a-f-]+$/);
+  const pageId = new URL(page.url()).pathname.match(/\/pages\/([^/]+)/)?.[1];
+
+  await page.goto(`/pages/${pageId}/builder`);
+  await expect(page.getByText("Preview conectado")).toBeVisible();
+
+  const selectHero = async () =>
+    // dispatchEvent('click') dispara el onClick de React (engine.select) sin que dnd-kit lo intercepte.
+    page.locator('[data-testid="tree-node"][data-node-type="site/hero"]').first().dispatchEvent("click");
+
+  // Insertar hero → 2 nodos (root + hero).
+  await page.getByTestId("add-block-site/hero").click();
+  await expect(page.getByText("2 nodos")).toBeVisible();
+
+  // Seleccionar el hero y duplicarlo con Ctrl+D → 3 nodos.
+  await selectHero();
+  await page.keyboard.press("Control+d");
+  await expect(page.getByText("3 nodos")).toBeVisible();
+
+  // Seleccionar un hero y eliminarlo con Supr → 2 nodos.
+  await selectHero();
+  await page.keyboard.press("Delete");
+  await expect(page.getByText("2 nodos")).toBeVisible();
+
+  // Escape deselecciona (el inspector vuelve a su estado sin selección).
+  await selectHero();
+  await expect(page.getByText("site/hero")).toBeVisible(); // inspector muestra el tipo del nodo seleccionado
+  await page.keyboard.press("Escape");
+  await expect(page.getByText("Selecciona un nodo para editar sus propiedades.")).toBeVisible();
+});
