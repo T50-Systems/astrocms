@@ -67,11 +67,14 @@ export function BuilderPage() {
       }}
       onSave={async (doc) => {
         await adapter.saveDraft(doc);
-        await qc.invalidateQueries({ queryKey: ["builder-document", pageId] });
       }}
       onPublish={async (doc) => {
         await adapter.saveDraft(doc);
         await adapter.publish(doc.id);
+        // Publicar el documento del builder no basta: la página (entry) debe pasar
+        // a "published" para que la API pública (/public/pages) la sirva por slug.
+        await cms.pages.publish(pageId);
+        await qc.invalidateQueries({ queryKey: ["page", pageId] });
       }}
     >
       <Builder />
