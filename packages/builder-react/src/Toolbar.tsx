@@ -5,7 +5,7 @@ import { colors, disabledStyle, styles } from "./styles.js";
 type Phase = "idle" | "saving" | "saved" | "publishing" | "published" | "error";
 
 export function Toolbar() {
-  const { engine, manifest, state, onSave, onPublish, documentTitle, onExit } = useBuilder();
+  const { engine, manifest, state, onSave, onPublish, documentTitle, onExit, requestPreviewReload } = useBuilder();
   const savedDocumentRef = useRef(state.document);
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -18,11 +18,12 @@ export function Toolbar() {
       await onSave(state.document);
       savedDocumentRef.current = state.document;
       setPhase("saved");
+      requestPreviewReload();
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Error inesperado al guardar");
       setPhase("error");
     }
-  }, [onSave, state.document]);
+  }, [onSave, requestPreviewReload, state.document]);
 
   const publish = useCallback(async () => {
     setPhase("publishing");
@@ -30,11 +31,12 @@ export function Toolbar() {
       await onPublish(state.document);
       savedDocumentRef.current = state.document;
       setPhase("published");
+      requestPreviewReload();
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Error inesperado al publicar");
       setPhase("error");
     }
-  }, [onPublish, state.document]);
+  }, [onPublish, requestPreviewReload, state.document]);
 
   // Refs con el último valor para que el listener de teclado no quede con closures obsoletas.
   const saveRef = useRef(save);

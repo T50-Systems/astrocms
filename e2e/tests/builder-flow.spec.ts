@@ -98,3 +98,42 @@ test("criterio de éxito (builder visual): crea hero, guarda, publica y queda di
     expect(hero?.props?.title).toBe(HERO_TITLE);
   }).toPass({ timeout: 10_000 });
 });
+
+test("el preview refleja los cambios estructurales al guardar (recarga del iframe)", async ({
+  page,
+}) => {
+  const suffix = Date.now().toString(36);
+  const title = `Reload E2E ${suffix}`;
+
+  await page.goto("/login");
+  await page.fill("#email", ADMIN.email);
+  await page.fill("#password", ADMIN.password);
+  await page.click('button[type="submit"]');
+  await expect(page.getByRole("heading", { name: "Páginas" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Añadir nueva" }).first().click();
+  await page.getByLabel("Título").fill(title);
+  await page.getByRole("button", { name: "Crear borrador" }).click();
+  await page.waitForURL(/\/pages\/[0-9a-f-]+$/);
+  const pageId = new URL(page.url()).pathname.match(/\/pages\/([^/]+)/)?.[1];
+
+  await page.goto(`/pages/${pageId}/builder`);
+  await expect(page.getByText("Preview conectado")).toBeVisible();
+
+  const preview = page.frameLocator('iframe[title="Builder preview"]');
+  const heroInPreview = preview.locator('[data-builder-type="site/hero"]');
+
+  // El documento recién creado no tiene hero → el preview tampoco.
+  await expect(heroInPreview).toHaveCount(0);
+
+  // Insertar un Hero (cambio ESTRUCTURAL). El preview solo parchea props en vivo,
+  // así que el hero NO debe aparecer todavía en el iframe pese a estar en el árbol.
+  await page.getByTestId("add-block-site/hero").click();
+  await expect(page.getByText("2 nodos")).toBeVisible();
+  await expect(heroInPreview).toHaveCount(0);
+
+  // Guardar: la estructura cambió → el host envía host/reload-preview → el iframe
+  // recarga y SSR-renderiza el documento guardado, ahora CON el hero.
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+  await expect(heroInPreview).toBeVisible({ timeout: 10_000 });
+});
