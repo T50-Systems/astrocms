@@ -4,7 +4,7 @@ import { getBlock, insertionParentId, isMediaRef, newNode, optionList } from "./
 
 const manifest: BlockManifest = {
   schemaVersion: 1,
-  tokens: { spacing: [], widths: [], columns: [], colors: [], breakpoints: ["desktop"] },
+  tokens: { spacing: [], widths: [], columns: [], colors: [], breakpoints: [{ name: "desktop" }] },
   blocks: [
     {
       type: "site/hero",

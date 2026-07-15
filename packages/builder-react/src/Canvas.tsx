@@ -97,6 +97,8 @@ export function BuilderCanvas() {
     if (ready) post({ type: "host/set-breakpoint", breakpoint: state.breakpoint });
   }, [ready, state.breakpoint]);
 
+  const frameWidth = manifest.tokens.breakpoints.find((b) => b.name === state.breakpoint)?.width; // number | undefined (undefined = completo)
+
   const chipStyle = {
     background: colors.subtle,
     border: `1px solid ${colors.border}`,
@@ -130,7 +132,10 @@ export function BuilderCanvas() {
     >
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <span style={chipStyle}>{ready ? "Preview conectado" : "Esperando preview..."}</span>
-        <span style={chipStyle}>{allNodeIds(state.document.root).length} nodos</span>
+        <div style={{ display: "flex", gap: 8 }}>
+          {frameWidth ? <span style={chipStyle}>{frameWidth}px</span> : null}
+          <span style={chipStyle}>{allNodeIds(state.document.root).length} nodos</span>
+        </div>
       </div>
       {previewErrors.length > 0 ? (
         <div role="alert" style={errorBannerStyle}>
@@ -158,7 +163,18 @@ export function BuilderCanvas() {
           ) : null}
         </div>
       ) : null}
-      <iframe ref={frameRef} title="Builder preview" src={src} style={styles.iframe} />
+      <iframe
+        ref={frameRef}
+        title="Builder preview"
+        src={src}
+        style={{
+          ...styles.iframe,
+          width: frameWidth ? `${frameWidth}px` : "100%",
+          maxWidth: "100%",
+          justifySelf: "center",
+          transition: "width 200ms var(--ease-standard, ease)",
+        }}
+      />
     </div>
   );
 }
