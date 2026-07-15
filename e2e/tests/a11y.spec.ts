@@ -77,9 +77,18 @@ test("login no tiene violaciones WCAG serious/critical", async ({ page }) => {
 test("vistas autenticadas no tienen violaciones WCAG serious/critical", async ({ page }) => {
   await login(page);
 
-  for (const path of ["/", "/pages/new"]) {
+  // Espera contenido ASENTADO de cada ruta antes de escanear: `/pages/new` es una ruta
+  // lazy (code-splitting F3a), así que el <main> muestra primero el skeleton de Suspense.
+  // Escanear ahí analizaría el fallback, no la página real. Anclamos a un elemento propio
+  // de cada página cargada (ausente en el skeleton).
+  const settled: Record<string, () => Promise<void>> = {
+    "/": () => expect(page.getByRole("heading", { name: "Páginas" })).toBeVisible(),
+    "/pages/new": () => expect(page.getByRole("button", { name: "Crear borrador" })).toBeVisible(),
+  };
+  for (const [path, waitSettled] of Object.entries(settled)) {
     await page.goto(path);
     await expect(page.getByRole("main")).toBeVisible();
+    await waitSettled();
     await analyze(page);
   }
 });
