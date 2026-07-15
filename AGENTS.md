@@ -24,6 +24,16 @@
 - Do not publish, change permissions, or touch global configuration outside of explicit tools/contracts.
 - Do not expose secrets in logs, errors, snapshots, or fixtures.
 
+## MCP Builder Tools
+
+- `get_document`: reads the current BuilderDocument draft by id.
+- `publish_document`: publishes the current BuilderDocument version.
+- `list_document_revisions`: lists BuilderDocument revisions.
+- `restore_document_revision`: restores a BuilderDocument revision as a new draft.
+- `get_ai_guidelines`: reads the `ai-guidelines` content and brand settings group.
+- `get_design_tokens`: reads the site's DTCG `design-tokens` settings group.
+- AI can read `get_ai_guidelines` and `get_design_tokens` to author on-brand while using validated contracts.
+
 ## Tests and Local DB
 
 Expected local Postgres:
