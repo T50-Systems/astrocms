@@ -19,6 +19,25 @@ export default defineConfig({
       "@astrocms/builder-react": workspace("packages/builder-react/src/index.ts"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (
+            id.includes("node_modules/react/") ||
+            id.includes("node_modules/react-dom/") ||
+            id.includes("node_modules/scheduler/")
+          ) {
+            return "react";
+          }
+          if (id.includes("node_modules/@tanstack/")) {
+            return "tanstack";
+          }
+          return undefined;
+        },
+      },
+    },
+  },
   server: {
     port: Number(process.env.PORT) || 5173,
     proxy: {

@@ -6,22 +6,25 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { lazy, Suspense } from "react";
 import { useSession, useLogout } from "./auth.tsx";
 import { cms } from "./lib.ts";
 import { DesignTokensBridge } from "@/components/design-tokens-bridge.tsx";
+import { PageEditSkeleton } from "@/components/skeletons.tsx";
 import { AppShell } from "./shell.tsx";
 import { LoginPage } from "./routes/login.tsx";
 import { PagesListPage } from "./routes/pages-list.tsx";
-import { NewPage } from "./routes/page-new.tsx";
-import { EditPage } from "./routes/page-edit.tsx";
-import { BuilderPage } from "./routes/page-builder.tsx";
-import { MediaPage } from "./routes/media.tsx";
-import { MenusPage } from "./routes/menus.tsx";
-import { SettingsPage } from "./routes/settings.tsx";
-import { GuidelinesPage } from "./routes/guidelines.tsx";
-import { TokensPage } from "./routes/tokens.tsx";
-import { TagsPage } from "./routes/tags.tsx";
-import { TaxonomiesPage } from "./routes/taxonomies.tsx";
+
+const NewPage = lazy(async () => ({ default: (await import("./routes/page-new.tsx")).NewPage }));
+const EditPage = lazy(async () => ({ default: (await import("./routes/page-edit.tsx")).EditPage }));
+const BuilderPage = lazy(async () => ({ default: (await import("./routes/page-builder.tsx")).BuilderPage }));
+const MediaPage = lazy(async () => ({ default: (await import("./routes/media.tsx")).MediaPage }));
+const MenusPage = lazy(async () => ({ default: (await import("./routes/menus.tsx")).MenusPage }));
+const SettingsPage = lazy(async () => ({ default: (await import("./routes/settings.tsx")).SettingsPage }));
+const GuidelinesPage = lazy(async () => ({ default: (await import("./routes/guidelines.tsx")).GuidelinesPage }));
+const TokensPage = lazy(async () => ({ default: (await import("./routes/tokens.tsx")).TokensPage }));
+const TagsPage = lazy(async () => ({ default: (await import("./routes/tags.tsx")).TagsPage }));
+const TaxonomiesPage = lazy(async () => ({ default: (await import("./routes/taxonomies.tsx")).TaxonomiesPage }));
 
 function Root() {
   const { data: session } = useSession();
@@ -48,7 +51,9 @@ function Root() {
         siteName={siteName}
         onLogout={() => logout.mutate(undefined, { onSuccess: () => nav({ to: "/login" }) })}
       >
-        <Outlet />
+        <Suspense fallback={<div className="p-6"><PageEditSkeleton /></div>}>
+          <Outlet />
+        </Suspense>
       </AppShell>
     </>
   );
