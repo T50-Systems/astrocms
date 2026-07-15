@@ -14,8 +14,10 @@ import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog.tsx";
 import { PageHeaderSkeleton, TableSkeleton } from "@/components/skeletons.tsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
+import { PAGE_TEMPLATES, type PageTemplate } from "@/lib/page-templates.ts";
 import { cn } from "@/lib/utils.ts";
 
 const dateFormatter = new Intl.DateTimeFormat("es-ES", { dateStyle: "medium", timeStyle: "short" });
@@ -37,6 +39,7 @@ export function PagesListPage() {
   const [bulkAction, setBulkAction] = useState("");
   const [bulkEditing, setBulkEditing] = useState(false);
   const [bulkStatus, setBulkStatus] = useState<"" | "published" | "draft">("");
+  const [templatesOpen, setTemplatesOpen] = useState(false);
 
   useEffect(() => {
     if (!sessionLoading && !session) nav({ to: "/login" });
@@ -78,6 +81,21 @@ export function PagesListPage() {
       cms.pages.create({ contentTypeKey: "page", title: "Página sin título", editorType: "builder", data: {} }),
     onSuccess: (entry) => nav({ to: "/pages/$pageId/builder", params: { pageId: entry.id } }),
   });
+  const createFromTemplate = useMutation({
+    mutationFn: async (template: PageTemplate) => {
+      const entry = await cms.pages.create({ contentTypeKey: "page", title: template.defaultTitle, editorType: "builder", data: {} });
+      if (template.id !== "blank" && entry.builderDocumentId) {
+        const doc = await cms.builder.getDocument(entry.builderDocumentId);
+        await cms.builder.saveDocument(entry.builderDocumentId, { ...doc, root: template.buildRoot() });
+      }
+      return entry;
+    },
+    onSuccess: async (entry) => {
+      await invalidateLists();
+      setTemplatesOpen(false);
+      nav({ to: "/pages/$pageId/builder", params: { pageId: entry.id } });
+    },
+  });
 
   if (sessionLoading || !session)
     return (
@@ -89,7 +107,7 @@ export function PagesListPage() {
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setSearch(searchInput.trim()); setSelected(new Set()); };
   const toggleAll = () => setSelected((cur) => (pageIds.length > 0 && pageIds.every((id) => cur.has(id)) ? new Set() : new Set(pageIds)));
-  const toggleOne = (id: string) => setSelected((cur) => { const next = new Set(cur); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const toggleOne = (id: string) => setSelected((cur) => { const next = new Set(cur); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const applyBulk = () => {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
@@ -113,11 +131,14 @@ export function PagesListPage() {
           <Button size="sm" variant="outline" onClick={() => createVisual.mutate()} loading={createVisual.isPending}>
             <LayoutTemplate className="size-4" /> Página visual
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setTemplatesOpen(true)}>
+            <LayoutTemplate className="size-4" /> Plantillas
+          </Button>
         </div>
         <form onSubmit={submitSearch} role="search" className="flex items-center gap-2">
           <label htmlFor="page-search" className="sr-only">Buscar páginas</label>
           <Input id="page-search" value={searchInput} onChange={(e) => setSearchInput(e.currentTarget.value)} placeholder="Buscar páginas" className="w-56" />
-          <Button type="submit" variant="outline" size="icon"><Search /></Button>
+          <Button type="submit" variant="outline" size="icon" aria-label="Buscar"><Search /></Button>
         </form>
       </div>
 
@@ -129,7 +150,7 @@ export function PagesListPage() {
 
       <div className="mb-3 flex items-center gap-2">
         <Select value={bulkAction} onValueChange={setBulkAction}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="Acciones en lote" /></SelectTrigger>
+          <SelectTrigger className="w-48" aria-label="Acciones en lote"><SelectValue placeholder="Acciones en lote" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="edit">Editar</SelectItem>
             <SelectItem value="delete">Eliminar</SelectItem>
@@ -147,7 +168,7 @@ export function PagesListPage() {
             <strong className="text-sm">Edición masiva · {selected.size} página(s)</strong>
             <span className="text-sm">Estado:</span>
             <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as "published" | "draft")}>
-              <SelectTrigger className="w-48"><SelectValue placeholder="— Sin cambios —" /></SelectTrigger>
+              <SelectTrigger className="w-48" aria-label="Cambiar estado"><SelectValue placeholder="— Sin cambios —" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="published">Publicar</SelectItem>
                 <SelectItem value="draft">Pasar a borrador</SelectItem>
@@ -177,6 +198,9 @@ export function PagesListPage() {
                 <Button size="sm" onClick={() => nav({ to: "/pages/new" })}>Añadir nueva</Button>
                 <Button size="sm" variant="outline" onClick={() => createVisual.mutate()} loading={createVisual.isPending}>
                   <LayoutTemplate className="size-4" /> Página visual
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setTemplatesOpen(true)}>
+                  <LayoutTemplate className="size-4" /> Plantillas
                 </Button>
               </div>
             }
@@ -234,6 +258,33 @@ export function PagesListPage() {
           </Table>
         </div>
       )}
+
+      <Dialog open={templatesOpen} onOpenChange={setTemplatesOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Elige una plantilla</DialogTitle>
+            <DialogDescription>Crea una página visual con contenido inicial que podrás editar después.</DialogDescription>
+          </DialogHeader>
+          {createFromTemplate.error && <Alert>{createFromTemplate.error.message}</Alert>}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {PAGE_TEMPLATES.map((template) => (
+              <Button
+                key={template.id}
+                type="button"
+                variant="outline"
+                className="h-auto items-start justify-start whitespace-normal p-4 text-left"
+                disabled={createFromTemplate.isPending}
+                onClick={() => createFromTemplate.mutate(template)}
+              >
+                <span>
+                  <span className="block font-semibold">{template.name}</span>
+                  <span className="mt-1 block text-sm font-normal text-muted-foreground">{template.description}</span>
+                </span>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 }

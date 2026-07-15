@@ -5,4 +5,6 @@ export { Toolbar } from "./Toolbar.js";
 export { BlockPanel } from "./BlockPanel.js";
 export { NodeTree } from "./NodeTree.js";
 export { Inspector } from "./Inspector.js";
+export { MediaPicker } from "./MediaPicker.js";
+export type { MediaPickerProps } from "./MediaPicker.js";
 export { BuilderCanvas } from "./Canvas.js";

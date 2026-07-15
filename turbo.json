@@ -1,6 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": [".env", "tsconfig.base.json"],
+  "globalPassThroughEnv": ["DATABASE_URL", "SESSION_SECRET"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

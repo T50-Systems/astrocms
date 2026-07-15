@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { ChevronDown, ChevronLeft, ChevronUp, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronUp, ExternalLink, LayoutTemplate } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { cms } from "../lib.ts";
 import { PageContainer } from "@/components/page-container.tsx";
@@ -52,11 +52,15 @@ export function EditPage() {
     qc.invalidateQueries({ queryKey: ["pages"] });
   };
 
+  const isBuilder = page.data?.editorType === "builder";
+
   const save = useMutation({
     mutationFn: (v: EditForm) =>
       cms.pages.update(pageId, {
         title: v.title,
-        data: { body: v.body },
+        // Las páginas visuales guardan su contenido en el documento del builder,
+        // no en `data.body`: no lo sobreescribimos desde este editor de metadatos.
+        ...(isBuilder ? {} : { data: { body: v.body } }),
         ...(v.slug.trim() ? { slug: v.slug.trim() } : {}),
         seo: {
           ...(v.seoTitle.trim() ? { title: v.seoTitle.trim() } : {}),
@@ -113,7 +117,22 @@ export function EditPage() {
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <form id="page-form" onSubmit={handleSubmit((v) => save.mutate(v))} noValidate>
           <input aria-label="Título" placeholder="Añade un título" className="mb-3 w-full border-0 bg-transparent p-1 text-3xl font-bold outline-none placeholder:text-muted-foreground" {...register("title")} />
-          <Textarea aria-label="Contenido" placeholder="Escribe el contenido de la página…" rows={16} className="min-h-96 text-base leading-relaxed" {...register("body")} />
+          {isBuilder ? (
+            <Card className="flex flex-col items-start gap-3 border-dashed p-6">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <LayoutTemplate className="size-4 text-primary" /> Página visual
+              </div>
+              <p className="text-sm text-muted-foreground">
+                El contenido de esta página se edita con el builder visual de bloques. Aquí solo gestionas el título, el
+                ID en URL, el SEO y la publicación.
+              </p>
+              <Button asChild size="sm">
+                <Link to="/pages/$pageId/builder" params={{ pageId }}>Abrir el builder</Link>
+              </Button>
+            </Card>
+          ) : (
+            <Textarea aria-label="Contenido" placeholder="Escribe el contenido de la página…" rows={16} className="min-h-96 text-base leading-relaxed" {...register("body")} />
+          )}
         </form>
 
         <aside className="flex flex-col gap-3">

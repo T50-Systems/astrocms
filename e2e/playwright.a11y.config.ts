@@ -8,6 +8,7 @@ const SESSION_SECRET =
 
 const CMS_PORT = 3000;
 const ADMIN_PORT = 4300;
+const PREVIEW_PORT = 4321;
 
 export default defineConfig({
   testDir: "./tests",
@@ -25,21 +26,45 @@ export default defineConfig({
       command: "pnpm --filter @astrocms/cms-server start",
       url: `http://127.0.0.1:${CMS_PORT}/healthz`,
       reuseExistingServer: true,
-      timeout: 60_000,
+      timeout: 120_000,
+      stdout: "pipe",
+      stderr: "pipe",
       env: {
         DATABASE_URL,
         SESSION_SECRET,
         NODE_ENV: "development",
+        DEV_AUTOLOGIN: "",
         CMS_PORT: String(CMS_PORT),
+        ADMIN_ORIGIN: `http://localhost:${ADMIN_PORT}`,
+        PREVIEW_ORIGIN: `http://localhost:${PREVIEW_PORT}`,
+      },
+    },
+    {
+      command: "pnpm --filter @astrocms/astro-demo dev",
+      url: `http://localhost:${PREVIEW_PORT}/health.txt`,
+      reuseExistingServer: false,
+      timeout: 120_000,
+      stdout: "pipe",
+      stderr: "pipe",
+      env: {
+        CMS_API_URL: `http://127.0.0.1:${CMS_PORT}/api/v1`,
+        ADMIN_ORIGIN: `http://localhost:${ADMIN_PORT}`,
+        PREVIEW_ORIGIN: `http://localhost:${PREVIEW_PORT}`,
       },
     },
     {
       command: "pnpm --filter @astrocms/cms-admin dev",
       url: `http://localhost:${ADMIN_PORT}/`,
       reuseExistingServer: false,
-      timeout: 60_000,
+      timeout: 120_000,
+      stdout: "pipe",
+      stderr: "pipe",
       // Los e2e prueban el login real: desactiva el auto-login de desarrollo del admin.
-      env: { PORT: String(ADMIN_PORT), VITE_DEV_AUTOLOGIN: "false" },
+      env: {
+        PORT: String(ADMIN_PORT),
+        VITE_PREVIEW_ORIGIN: `http://localhost:${PREVIEW_PORT}`,
+        VITE_DEV_AUTOLOGIN: "false",
+      },
     },
   ],
 });

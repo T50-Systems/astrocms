@@ -298,11 +298,40 @@ export function createEntryService(
       assertTransition(entry.status, "published");
       if (!entry.currentVersionId) throw conflict("sin versión que publicar");
       const before = await loadContract(entry.id);
-      await db
-        .update(entries)
-        .set({ status: "published", publishedVersionId: entry.currentVersionId, updatedAt: clock.now() })
-        .where(eq(entries.id, args.id));
+      await db.transaction(async (tx) => {
+        if (entry.editorType === "builder") {
+          const currentVersion = (
+            await tx
+              .select({ builderDocumentId: entryVersions.builderDocumentId })
+              .from(entryVersions)
+              .where(eq(entryVersions.id, entry.currentVersionId!))
+              .limit(1)
+          )[0];
+          if (currentVersion?.builderDocumentId) {
+            const document = (
+              await tx
+                .select({ currentVersionId: builderDocuments.currentVersionId })
+                .from(builderDocuments)
+                .where(eq(builderDocuments.id, currentVersion.builderDocumentId))
+                .limit(1)
+            )[0];
+            if (document?.currentVersionId) {
+              await tx
+                .update(builderDocuments)
+                .set({ publishedVersionId: document.currentVersionId, updatedAt: clock.now() })
+                .where(eq(builderDocuments.id, currentVersion.builderDocumentId));
+            }
+          }
+        }
+        await tx
+          .update(entries)
+          .set({ status: "published", publishedVersionId: entry.currentVersionId, updatedAt: clock.now() })
+          .where(eq(entries.id, args.id));
+      });
       const published = await this.get(args.id);
+      // Un único webhook entry.published con el Entry completo. Publicar el builder
+      // document (mover su puntero) es parte de la MISMA transacción atómica y NO
+      // debe emitir un segundo entry.published (payload malformado / entrega duplicada).
       try {
         await onPublished?.(entry.siteId, published);
       } catch {

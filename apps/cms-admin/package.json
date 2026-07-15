@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "lint": "echo \"(lint pendiente)\""
+    "lint": "eslint src --max-warnings=-1"
   },
   "dependencies": {
     "@astrocms/builder-adapters": "workspace:*",

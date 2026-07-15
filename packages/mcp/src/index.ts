@@ -58,6 +58,11 @@ const updateEntryInputSchema = z.object({
   patch: updateEntryRequestSchema,
 });
 const publishEntryInputSchema = z.object({ id: z.string().min(1) });
+const documentIdInputSchema = z.object({ documentId: z.string().min(1) });
+const restoreDocumentRevisionInputSchema = z.object({
+  documentId: z.string().min(1),
+  revisionId: z.string().min(1),
+});
 const validateDocumentInputSchema = z.object({ document: builderDocumentSchema });
 const applyDocumentOpsInputSchema = z.object({
   documentId: z.string().min(1),
@@ -165,6 +170,35 @@ function createTools(runtime: RuntimeDeps) {
       return ok(await runtime.core.entries.publish({ id: input.id, userId }));
     }),
 
+    get_document: withValidation(documentIdInputSchema, async (input) => {
+      return ok({ document: await runtime.core.builder.get(input.documentId) });
+    }),
+
+    publish_document: withValidation(documentIdInputSchema, async (input) => {
+      await runtime.core.builder.publish(input.documentId);
+      return ok({ published: true, documentId: input.documentId });
+    }),
+
+    list_document_revisions: withValidation(documentIdInputSchema, async (input) => {
+      return ok({ revisions: await runtime.core.builder.revisions(input.documentId) });
+    }),
+
+    restore_document_revision: withValidation(restoreDocumentRevisionInputSchema, async (input) => {
+      const userId = await resolveUserId(runtime);
+      const document = await runtime.core.builder.restore({ id: input.documentId, revisionId: input.revisionId, userId });
+      return ok({ document });
+    }),
+
+    get_ai_guidelines: withValidation(emptyInputSchema, async () => {
+      const siteId = await resolveSiteId(runtime);
+      return ok(await runtime.core.settings.getGroup(siteId, "ai-guidelines"));
+    }),
+
+    get_design_tokens: withValidation(emptyInputSchema, async () => {
+      const siteId = await resolveSiteId(runtime);
+      return ok(await runtime.core.settings.getGroup(siteId, "design-tokens"));
+    }),
+
     validate_document: withValidation(validateDocumentInputSchema, async (input) => {
       return ok(validateDocument(input.document, runtime.manifest));
     }),
@@ -212,6 +246,30 @@ function registerTools(server: McpServer, tools: AstroCmsMcpTools): void {
     description: "Publica un entry.",
     inputSchema: publishEntryInputSchema,
   }, async (input) => mcpResult(await tools.publish_entry(input)));
+  server.registerTool("get_document", {
+    description: "Lee un BuilderDocument (borrador actual) por id.",
+    inputSchema: documentIdInputSchema,
+  }, async (input) => mcpResult(await tools.get_document(input)));
+  server.registerTool("publish_document", {
+    description: "Publica un BuilderDocument (mueve el puntero de versión publicada).",
+    inputSchema: documentIdInputSchema,
+  }, async (input) => mcpResult(await tools.publish_document(input)));
+  server.registerTool("list_document_revisions", {
+    description: "Lista las revisiones de un BuilderDocument.",
+    inputSchema: documentIdInputSchema,
+  }, async (input) => mcpResult(await tools.list_document_revisions(input)));
+  server.registerTool("restore_document_revision", {
+    description: "Restaura una revisión de un BuilderDocument como nuevo borrador.",
+    inputSchema: restoreDocumentRevisionInputSchema,
+  }, async (input) => mcpResult(await tools.restore_document_revision(input)));
+  server.registerTool("get_ai_guidelines", {
+    description: "Devuelve las guidelines de contenido/marca para IA (grupo de settings ai-guidelines).",
+    inputSchema: emptyInputSchema,
+  }, async (input) => mcpResult(await tools.get_ai_guidelines(input)));
+  server.registerTool("get_design_tokens", {
+    description: "Devuelve los design tokens DTCG del sitio (grupo de settings design-tokens).",
+    inputSchema: emptyInputSchema,
+  }, async (input) => mcpResult(await tools.get_design_tokens(input)));
   server.registerTool("validate_document", {
     description: "Valida un BuilderDocument contra el manifiesto.",
     inputSchema: validateDocumentInputSchema,
