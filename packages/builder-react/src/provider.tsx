@@ -31,6 +31,8 @@ export interface BuilderProviderProps {
   documentTitle?: string | undefined;
   /** Si se proporciona, la Toolbar muestra un botón "← Volver" que lo invoca. */
   onExit?: (() => void) | undefined;
+  /** Si se proporciona, la Toolbar muestra el título como un input editable que lo invoca al guardar. */
+  onRenameDocument?: ((title: string) => Promise<void> | void) | undefined;
   children: ReactNode;
 }
 
@@ -47,6 +49,7 @@ export interface BuilderContextValue {
   onPublish: (document: BuilderDocument) => Promise<void> | void;
   documentTitle?: string | undefined;
   onExit?: (() => void) | undefined;
+  onRenameDocument?: ((title: string) => Promise<void> | void) | undefined;
   previewReloadNonce: number;
   requestPreviewReload: () => void;
 }
@@ -78,6 +81,7 @@ export function BuilderProvider(props: BuilderProviderProps) {
       onPublish: props.onPublish ?? ((document) => props.adapter.publish(document.id)),
       ...(props.documentTitle !== undefined ? { documentTitle: props.documentTitle } : {}),
       ...(props.onExit ? { onExit: props.onExit } : {}),
+      ...(props.onRenameDocument ? { onRenameDocument: props.onRenameDocument } : {}),
       previewReloadNonce,
       requestPreviewReload,
     }),
@@ -91,6 +95,7 @@ export function BuilderProvider(props: BuilderProviderProps) {
       props.manifest,
       props.onExit,
       props.onPublish,
+      props.onRenameDocument,
       props.onSave,
       props.previewOrigin,
       props.previewToken,

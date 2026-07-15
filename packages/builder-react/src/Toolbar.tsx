@@ -7,12 +7,34 @@ import { getBlock } from "./utils.js";
 type Phase = "idle" | "saving" | "saved" | "publishing" | "published" | "error";
 
 export function Toolbar() {
-  const { engine, manifest, state, onSave, onPublish, documentTitle, onExit, requestPreviewReload } = useBuilder();
+  const { engine, manifest, state, onSave, onPublish, documentTitle, onExit, onRenameDocument, requestPreviewReload } = useBuilder();
   const savedDocumentRef = useRef(state.document);
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [titleDraft, setTitleDraft] = useState(documentTitle ?? "");
+  const titleFocusedRef = useRef(false);
   const busy = phase === "saving" || phase === "publishing";
   const dirty = state.document !== savedDocumentRef.current;
+
+  useEffect(() => {
+    if (!titleFocusedRef.current) setTitleDraft(documentTitle ?? "");
+  }, [documentTitle]);
+
+  const commitTitle = async () => {
+    titleFocusedRef.current = false;
+    const t = titleDraft.trim();
+    if (!onRenameDocument || !t || t === documentTitle) {
+      setTitleDraft(documentTitle ?? ""); // vacío o sin cambio → vuelve al título actual
+      return;
+    }
+    try {
+      await onRenameDocument(t);
+    } catch (err) {
+      setTitleDraft(documentTitle ?? ""); // revierte al fallar
+      setErrorMessage(err instanceof Error ? err.message : "No se pudo renombrar la página.");
+      setPhase("error");
+    }
+  };
 
   const save = useCallback(async () => {
     setPhase("saving");
@@ -124,7 +146,33 @@ export function Toolbar() {
             ← Volver
           </button>
         )}
-        {documentTitle && (
+        {onRenameDocument ? (
+          <input
+            aria-label="Título de la página"
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onFocus={() => {
+              titleFocusedRef.current = true;
+            }}
+            onBlur={() => void commitTitle()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            style={{
+              fontWeight: 600,
+              maxWidth: 240,
+              border: "1px solid transparent",
+              borderRadius: 6,
+              padding: "2px 6px",
+              background: "transparent",
+              color: "inherit",
+              fontSize: "inherit",
+            }}
+          />
+        ) : documentTitle ? (
           <span
             title={documentTitle}
             style={{
@@ -137,7 +185,7 @@ export function Toolbar() {
           >
             {documentTitle}
           </span>
-        )}
+        ) : null}
         <button type="button" style={{ ...styles.button, ...disabledStyle(!engine.canUndo()) }} disabled={!engine.canUndo()} onClick={() => engine.undo()}>
           Deshacer
         </button>

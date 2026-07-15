@@ -25,13 +25,12 @@ export function BuilderPage() {
     enabled: Boolean(document.data?.id),
     queryFn: async () => cms.preview.createToken(document.data!.id),
   });
-  // El título del documento no vive en el BuilderDocument; se pide la page solo si hace falta.
+  // El título del documento no vive en el BuilderDocument; se obtiene siempre de la page.
   const page = useQuery({
     queryKey: ["page", pageId],
-    enabled: !document.data?.meta?.title,
     queryFn: () => cms.pages.get(pageId),
   });
-  const documentTitle = document.data?.meta?.title ?? page.data?.title;
+  const documentTitle = page.data?.title;
 
   if (manifest.isLoading || document.isLoading || token.isLoading) {
     // Silueta del builder: barra de acciones + lienzo grande.
@@ -62,6 +61,10 @@ export function BuilderPage() {
       previewToken={token.data.token}
       {...(documentTitle ? { documentTitle } : {})}
       onExit={() => nav({ to: "/pages/$pageId", params: { pageId } })}
+      onRenameDocument={async (title) => {
+        await cms.pages.update(pageId, { title });
+        await qc.invalidateQueries({ queryKey: ["page", pageId] });
+      }}
       onSave={async (doc) => {
         await adapter.saveDraft(doc);
         await qc.invalidateQueries({ queryKey: ["builder-document", pageId] });

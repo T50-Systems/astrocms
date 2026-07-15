@@ -228,3 +228,40 @@ test("el breakpoint redimensiona el preview (responsive)", async ({ page }) => {
     expect(box?.width ?? 0).toBeGreaterThan(500);
   }).toPass({ timeout: 5_000 });
 });
+
+test("mínima config: crear página con el builder en un clic y renombrarla en el toolbar", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/login");
+  await page.fill("#email", ADMIN.email);
+  await page.fill("#password", ADMIN.password);
+  await page.click('button[type="submit"]');
+  await expect(page.getByRole("heading", { name: "Páginas" })).toBeVisible();
+  await copyAdminCookiesToApiHost(context); // para las llamadas autenticadas a la API (127.0.0.1:3000)
+
+  // Un clic en "Página visual" → crea una página builder y aterriza en el builder.
+  await page.getByRole("button", { name: "Página visual" }).first().click();
+  await page.waitForURL(/\/pages\/[0-9a-f-]+\/builder$/);
+  const pageId = new URL(page.url()).pathname.match(/\/pages\/([^/]+)\/builder/)?.[1];
+  expect(pageId).toBeTruthy();
+  await expect(page.getByRole("heading", { name: "Bloques" })).toBeVisible();
+
+  // El título por defecto se muestra editable en el toolbar.
+  const titleInput = page.getByLabel("Título de la página");
+  await expect(titleInput).toHaveValue("Página sin título");
+
+  // Renombrar en el propio builder → persiste (verificado vía API).
+  const newTitle = `Mi página visual ${Date.now().toString(36)}`;
+  await titleInput.fill(newTitle);
+  await titleInput.blur();
+
+  await expect(async () => {
+    const res = await page.request.get(`${CMS_API}/pages/${pageId}`);
+    expect(res.status()).toBe(200);
+    expect((await res.json()).title).toBe(newTitle);
+  }).toPass({ timeout: 10_000 });
+
+  // La UI del toolbar refleja el nuevo título tras el refetch.
+  await expect(titleInput).toHaveValue(newTitle);
+});
