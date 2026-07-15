@@ -298,7 +298,6 @@ export function createEntryService(
       assertTransition(entry.status, "published");
       if (!entry.currentVersionId) throw conflict("sin versión que publicar");
       const before = await loadContract(entry.id);
-      let publishedBuilderDocumentId: string | undefined;
       await db.transaction(async (tx) => {
         if (entry.editorType === "builder") {
           const currentVersion = (
@@ -321,7 +320,6 @@ export function createEntryService(
                 .update(builderDocuments)
                 .set({ publishedVersionId: document.currentVersionId, updatedAt: clock.now() })
                 .where(eq(builderDocuments.id, currentVersion.builderDocumentId));
-              publishedBuilderDocumentId = currentVersion.builderDocumentId;
             }
           }
         }
@@ -331,17 +329,13 @@ export function createEntryService(
           .where(eq(entries.id, args.id));
       });
       const published = await this.get(args.id);
+      // Un único webhook entry.published con el Entry completo. Publicar el builder
+      // document (mover su puntero) es parte de la MISMA transacción atómica y NO
+      // debe emitir un segundo entry.published (payload malformado / entrega duplicada).
       try {
         await onPublished?.(entry.siteId, published);
       } catch {
         // Los webhooks no deben romper la publicación.
-      }
-      if (publishedBuilderDocumentId) {
-        try {
-          await onPublished?.(entry.siteId, { builderDocumentId: publishedBuilderDocumentId, entryId: entry.id });
-        } catch {
-          // Los webhooks no deben romper la publicación.
-        }
       }
       await recordAuditSafe({
         siteId: entry.siteId,

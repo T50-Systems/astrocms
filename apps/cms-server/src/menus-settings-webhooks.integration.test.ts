@@ -342,4 +342,54 @@ describe.skipIf(!DB)("API v1 — menús, ajustes y webhooks (integración)", () 
       await new Promise<void>((resolve, reject) => receiver.close((err) => (err ? reject(err) : resolve())));
     }
   });
+
+  it("publica una página builder emitiendo un ÚNICO webhook entry.published (sin duplicado)", async () => {
+    const captures: CapturedWebhook[] = [];
+    const receiver = createServer(async (req, res) => {
+      const body = await readBody(req);
+      captures.push({ body, signature: header(req, "x-astrocms-signature") });
+      res.statusCode = 204;
+      res.end();
+    });
+    await new Promise<void>((resolve) => receiver.listen(0, "127.0.0.1", resolve));
+    const address = receiver.address() as AddressInfo;
+    const secret = `secret-${randomUUID()}`;
+
+    try {
+      const createdHook = await app.inject({
+        method: "POST",
+        url: "/api/v1/webhooks",
+        ...auth({ payload: { event: "entry.published", targetUrl: `http://127.0.0.1:${address.port}/hook`, secret } }),
+      });
+      expect(createdHook.statusCode).toBe(201);
+      const webhookId = (createdHook.json() as { id: string }).id;
+
+      const slug = `/wh-builder-${randomUUID().slice(0, 8)}`;
+      const page = await app.inject({
+        method: "POST",
+        url: "/api/v1/pages",
+        ...auth({ payload: { title: "Webhook Builder Page", slug, editorType: "builder" } }),
+      });
+      expect(page.statusCode).toBe(201);
+      const pageId = (page.json() as { id: string }).id;
+
+      const published = await app.inject({ method: "POST", url: `/api/v1/pages/${pageId}/publish`, ...auth() });
+      expect(published.statusCode).toBe(200);
+
+      // Regresión: publicar una página builder emitía DOS entry.published (uno con el
+      // Entry completo y otro malformado {builderDocumentId, entryId}). Debe ser UNO solo,
+      // con el Entry completo (id/slug), porque publicar el builder document es parte de
+      // la misma transacción atómica y no debe re-disparar el webhook.
+      expect(captures).toHaveLength(1);
+      const payload = JSON.parse(captures[0]!.body) as { event: string; data?: { id?: string; slug?: string } };
+      expect(payload.event).toBe("entry.published");
+      expect(payload.data?.id).toBe(pageId);
+      expect(payload.data?.slug).toBe(slug);
+
+      const deliveries = await db.select().from(webhookDeliveries).where(eq(webhookDeliveries.webhookId, webhookId));
+      expect(deliveries).toHaveLength(1);
+    } finally {
+      await new Promise<void>((resolve, reject) => receiver.close((err) => (err ? reject(err) : resolve())));
+    }
+  });
 });
