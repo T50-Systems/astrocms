@@ -9,7 +9,7 @@
     "preview": "node ./dist/server/entry.mjs",
     "start": "node ./dist/server/entry.mjs",
     "typecheck": "astro check",
-    "lint": "echo \"(lint pendiente)\""
+    "lint": "eslint \"src/**/*.ts\" --max-warnings=-1"
   },
   "dependencies": {
     "@astrocms/cms-sdk": "workspace:*",

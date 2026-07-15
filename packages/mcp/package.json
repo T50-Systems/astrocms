@@ -15,7 +15,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "echo \"(lint pendiente)\""
+    "lint": "eslint src --max-warnings=-1"
   },
   "dependencies": {
     "@astrocms/builder-core": "workspace:*",
