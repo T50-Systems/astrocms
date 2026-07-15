@@ -67,4 +67,10 @@ jobs:
       - name: Run builder end-to-end tests
         env:
           SESSION_SECRET: e2e-secret-of-32-characters-min!!
-        run: pnpm e2e:builder
+        # El `start` del cms-server usa `tsx --env-file=../../.env`, que exige que
+        # el fichero exista; en CI no hay .env (gitignorado). Lo creamos desde el
+        # ejemplo — las variables reales las inyecta la config de Playwright por env,
+        # que tienen precedencia sobre el fichero.
+        run: |
+          cp .env.example .env
+          pnpm e2e:builder
