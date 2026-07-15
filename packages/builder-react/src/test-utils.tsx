@@ -1,6 +1,6 @@
 import { render, type RenderOptions, type RenderResult } from "@testing-library/react";
 import type { CmsClient } from "@astrocms/cms-sdk";
-import type { BlockManifest, BuilderDocument, BuilderNode } from "@astrocms/contracts";
+import type { BlockManifest, BuilderDocument, BuilderNode, MediaAsset } from "@astrocms/contracts";
 import { BuilderProvider, type BuilderProviderProps, type BuilderStorageAdapterLike } from "./provider.js";
 
 export function makeManifest(): BlockManifest {
@@ -71,9 +71,29 @@ export function makeAdapter(document = makeDocument()): BuilderStorageAdapterLik
   };
 }
 
-export function makeCms(): CmsClient {
+export function makeMediaAsset(overrides: Partial<MediaAsset> = {}): MediaAsset {
   return {
-    media: { list: async () => ({ data: [], page: 1, pageSize: 50, total: 0 }) },
+    id: "asset-1",
+    filename: "imagen.jpg",
+    mime: "image/jpeg",
+    bytes: 1024,
+    url: "https://cdn.test/imagen.jpg",
+    variants: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+export function makeCms(assets: MediaAsset[] = []): CmsClient {
+  return {
+    media: {
+      list: async () => ({ data: assets, page: 1, pageSize: 50, total: assets.length }),
+      get: async (id: string) => {
+        const asset = assets.find((item) => item.id === id);
+        if (!asset) throw new Error("Media no encontrada");
+        return asset;
+      },
+    },
   } as unknown as CmsClient;
 }
 
