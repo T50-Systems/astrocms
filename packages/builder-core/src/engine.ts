@@ -52,7 +52,10 @@ export function createEngine(document: BuilderDocument, opts: EngineOptions): Bu
     document,
     selectedNodeId: null,
     hoveredNodeId: null,
-    breakpoint: opts.breakpoint ?? opts.manifest.tokens.breakpoints[0] ?? "desktop",
+    breakpoint:
+      opts.breakpoint ??
+      opts.manifest.tokens.breakpoints[opts.manifest.tokens.breakpoints.length - 1]?.name ??
+      "desktop",
   };
   const undoStack: BuilderDocument[] = [];
   const redoStack: BuilderDocument[] = [];

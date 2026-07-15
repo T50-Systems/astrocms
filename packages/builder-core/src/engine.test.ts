@@ -5,7 +5,7 @@ import { collectNodeIds } from "./tree.js";
 
 const manifest: BlockManifest = {
   schemaVersion: 1,
-  tokens: { spacing: [], widths: [], columns: [], colors: [], breakpoints: ["mobile", "desktop"] },
+  tokens: { spacing: [], widths: [], columns: [], colors: [], breakpoints: [{ name: "mobile" }, { name: "desktop" }] },
   blocks: [
     {
       type: "site/hero",

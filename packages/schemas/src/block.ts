@@ -82,5 +82,5 @@ export const DEFAULT_TOKENS: ThemeTokens = {
   widths: ["content", "wide", "full"],
   columns: [1, 2, 3, 4],
   colors: ["primary", "secondary", "muted", "accent", "surface", "text"],
-  breakpoints: ["mobile", "tablet", "desktop"],
+  breakpoints: [{ name: "mobile", width: 390 }, { name: "tablet", width: 768 }, { name: "desktop" }],
 };

@@ -183,3 +183,48 @@ test("atajos de teclado de nodo: Supr elimina, Ctrl+D duplica, Escape deseleccio
   await page.keyboard.press("Escape");
   await expect(page.getByText("Selecciona un nodo para editar sus propiedades.")).toBeVisible();
 });
+
+test("el breakpoint redimensiona el preview (responsive)", async ({ page }) => {
+  const suffix = Date.now().toString(36);
+  const title = `Responsive E2E ${suffix}`;
+
+  // Viewport ancho para que el panel de lienzo supere holgadamente los 390px del móvil.
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto("/login");
+  await page.fill("#email", ADMIN.email);
+  await page.fill("#password", ADMIN.password);
+  await page.click('button[type="submit"]');
+  await expect(page.getByRole("heading", { name: "Páginas" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Añadir nueva" }).first().click();
+  await page.getByLabel("Título").fill(title);
+  await page.getByRole("button", { name: "Crear borrador" }).click();
+  await page.waitForURL(/\/pages\/[0-9a-f-]+$/);
+  const pageId = new URL(page.url()).pathname.match(/\/pages\/([^/]+)/)?.[1];
+
+  await page.goto(`/pages/${pageId}/builder`);
+  await expect(page.getByText("Preview conectado")).toBeVisible();
+
+  const frame = page.locator('iframe[title="Builder preview"]');
+
+  // Por defecto abre en el breakpoint más ancho (desktop) → ancho completo del panel.
+  const fullBox = await frame.boundingBox();
+  expect(fullBox?.width ?? 0).toBeGreaterThan(500);
+
+  // Seleccionar "mobile" → el iframe se constriñe a 390px (su viewport, no solo un data-attr).
+  await page.selectOption("#builder-breakpoint", "mobile");
+  await expect(async () => {
+    const box = await frame.boundingBox();
+    // ~390px (el boundingBox incluye el borde de 1px del iframe).
+    expect(box?.width ?? 0).toBeGreaterThanOrEqual(390);
+    expect(box?.width ?? 0).toBeLessThanOrEqual(393);
+  }).toPass({ timeout: 5_000 });
+  await expect(page.getByText("390px")).toBeVisible();
+
+  // Volver a "desktop" → ancho completo de nuevo.
+  await page.selectOption("#builder-breakpoint", "desktop");
+  await expect(async () => {
+    const box = await frame.boundingBox();
+    expect(box?.width ?? 0).toBeGreaterThan(500);
+  }).toPass({ timeout: 5_000 });
+});
