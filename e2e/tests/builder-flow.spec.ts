@@ -99,7 +99,7 @@ test("criterio de éxito (builder visual): crea hero, guarda, publica y queda di
   }).toPass({ timeout: 10_000 });
 });
 
-test("el preview refleja los cambios estructurales al guardar (recarga del iframe)", async ({
+test("el preview refleja los cambios estructurales en vivo", async ({
   page,
 }) => {
   const suffix = Date.now().toString(36);
@@ -126,14 +126,12 @@ test("el preview refleja los cambios estructurales al guardar (recarga del ifram
   // El documento recién creado no tiene hero → el preview tampoco.
   await expect(heroInPreview).toHaveCount(0);
 
-  // Insertar un Hero (cambio ESTRUCTURAL). El preview solo parchea props en vivo,
-  // así que el hero NO debe aparecer todavía en el iframe pese a estar en el árbol.
+  // Preview estructural en vivo: el hero aparece al insertar, sin guardar.
   await page.getByTestId("add-block-site/hero").click();
   await expect(page.getByText("2 nodos")).toBeVisible();
-  await expect(heroInPreview).toHaveCount(0);
+  await expect(heroInPreview).toBeVisible({ timeout: 10_000 });
 
-  // Guardar: la estructura cambió → el host envía host/reload-preview → el iframe
-  // recarga y SSR-renderiza el documento guardado, ahora CON el hero.
+  // Guardar mantiene el fallback de recarga y el hero sigue visible.
   await page.getByRole("button", { name: "Guardar", exact: true }).click();
   await expect(heroInPreview).toBeVisible({ timeout: 10_000 });
 });
