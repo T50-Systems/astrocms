@@ -2,8 +2,9 @@ import { randomUUID } from "node:crypto";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import type { LightMyRequestResponse } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
 import { createCmsCore } from "@astrocms/cms-core";
-import { createDb } from "@astrocms/cms-database";
+import { builderDocuments, createDb, entries, entryVersions } from "@astrocms/cms-database";
 import { buildApp } from "./app.js";
 import { loadEnv } from "./env.js";
 
@@ -13,6 +14,7 @@ const DB = process.env.DATABASE_URL;
 describe.skipIf(!DB)("API v1 — flujo vertical (integración)", () => {
   let app: FastifyInstance;
   let close: () => Promise<unknown>;
+  let db: ReturnType<typeof createDb>["db"];
   let cookies = "";
   let csrf = "";
   const slug = `/it-${randomUUID().slice(0, 8)}`;
@@ -23,6 +25,7 @@ describe.skipIf(!DB)("API v1 — flujo vertical (integración)", () => {
     const env = loadEnv();
     const conn = createDb(env.DATABASE_URL);
     close = conn.close;
+    db = conn.db;
     const siteId = await createCmsCore({ db: conn.db }).resolvePrimarySiteId();
     app = await buildApp({ env, db: conn.db, siteId });
     await app.ready();
@@ -126,6 +129,40 @@ describe.skipIf(!DB)("API v1 — flujo vertical (integración)", () => {
     const pub = await app.inject({ method: "GET", url: `/api/v1/public/pages?slug=${encodeURIComponent(slug)}` });
     expect(pub.statusCode).toBe(200);
     expect(pub.json().title).toBe("Inicio Test");
+
+    const entry = (await db.select().from(entries).where(eq(entries.id, pageId)).limit(1))[0];
+    expect(entry?.status).toBe("published");
+    expect(entry?.publishedVersionId).toBe(entry?.currentVersionId);
+    const version = entry?.currentVersionId
+      ? (await db.select().from(entryVersions).where(eq(entryVersions.id, entry.currentVersionId)).limit(1))[0]
+      : undefined;
+    expect(version?.builderDocumentId).toBeNull();
+  });
+
+  it("publica atómicamente los punteros de una página builder", async () => {
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/v1/pages",
+      ...auth({ payload: { title: "Página Builder", slug: `/builder-${randomUUID().slice(0, 8)}`, editorType: "builder" } }),
+    });
+    expect(created.statusCode).toBe(201);
+    const builderPageId = (created.json() as { id: string }).id;
+
+    const before = (await db.select().from(entries).where(eq(entries.id, builderPageId)).limit(1))[0]!;
+    const version = (
+      await db.select().from(entryVersions).where(eq(entryVersions.id, before.currentVersionId!)).limit(1)
+    )[0]!;
+    expect(version.builderDocumentId).toBeTruthy();
+
+    const published = await app.inject({ method: "POST", url: `/api/v1/pages/${builderPageId}/publish`, ...auth() });
+    expect(published.statusCode).toBe(200);
+
+    const entry = (await db.select().from(entries).where(eq(entries.id, builderPageId)).limit(1))[0]!;
+    const document = (
+      await db.select().from(builderDocuments).where(eq(builderDocuments.id, version.builderDocumentId!)).limit(1)
+    )[0]!;
+    expect(entry.publishedVersionId).toBe(entry.currentVersionId);
+    expect(document.publishedVersionId).toBe(document.currentVersionId);
   });
 
   it("lista auditoría de publicación para la página", async () => {
