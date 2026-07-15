@@ -8,6 +8,7 @@ import type { Database } from "@astrocms/cms-database";
 import { createFilesystemStorageDriver, type StorageDriver } from "@astrocms/storage";
 import { registerCsrf } from "./csrf.js";
 import type { Env } from "./env.js";
+import { registerMetrics } from "./metrics.js";
 import { authRoutes } from "./routes/auth.js";
 import { auditRoutes } from "./routes/audit.js";
 import { builderRoutes } from "./routes/builder.js";
@@ -53,6 +54,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(rateLimit, { global: false, max: 100, timeWindow: "1 minute" });
   registerCsrf(app);
 
+  registerMetrics(app);
   await healthRoutes(app, opts.db);
 
   await app.register(
