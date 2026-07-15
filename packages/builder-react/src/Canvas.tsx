@@ -105,7 +105,7 @@ export function BuilderCanvas() {
     borderRadius: 999,
     padding: "2px 8px",
     fontSize: 12,
-    color: colors.muted,
+    color: colors.text,
   };
 
   const errorBannerStyle = {
