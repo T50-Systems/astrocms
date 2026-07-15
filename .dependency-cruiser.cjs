@@ -34,7 +34,7 @@ module.exports = {
       path: "node_modules|dist|build|\\.astro",
     },
     exclude: {
-      path: "(node_modules|dist|build|\\.astro)|\\.(test|spec)\\.ts$|(^|/)[^/]*\\.(config|conf)\\.(js|cjs|mjs|ts)$",
+      path: "(node_modules|dist|build|\\.astro)|\\.(test|spec)\\.(ts|tsx)$|test-utils\\.tsx$|(^|/)[^/]*\\.(config|conf)\\.(js|cjs|mjs|ts)$",
     },
   },
 };
