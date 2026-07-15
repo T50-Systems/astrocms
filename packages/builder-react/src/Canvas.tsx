@@ -1,15 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { envelopeSchema, guestMessageSchema, PROTOCOL_VERSION, type HostMessage } from "@astrocms/contracts";
+import {
+  envelopeSchema,
+  guestMessageSchema,
+  PROTOCOL_VERSION,
+  type BuilderNode,
+  type HostMessage,
+} from "@astrocms/contracts";
 import { useBuilder } from "./provider.js";
 import { allNodeIds } from "./utils.js";
 import { colors, styles } from "./styles.js";
 
+function structureSignature(node: BuilderNode): string {
+  return `${node.id}${node.type}${node.hidden ? 1 : 0}[${node.children.map(structureSignature).join("")}]`;
+}
+
 export function BuilderCanvas() {
-  const { engine, manifest, previewOrigin, previewToken, channelId, state } = useBuilder();
+  const { engine, manifest, previewOrigin, previewToken, channelId, state, previewReloadNonce } = useBuilder();
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const [ready, setReady] = useState(false);
   const [previewErrors, setPreviewErrors] = useState<string[]>([]);
   const renderTokenRef = useRef(0);
+  const lastLoadedSigRef = useRef<string | null>(null);
+  if (lastLoadedSigRef.current === null) {
+    lastLoadedSigRef.current = structureSignature(state.document.root);
+  }
   const targetOrigin = useMemo(() => new URL(previewOrigin).origin, [previewOrigin]);
   const src = useMemo(() => {
     const url = new URL(`/builder-preview/${state.document.id}`, previewOrigin);
@@ -63,6 +77,17 @@ export function BuilderCanvas() {
     post({ type: "host/document-updated", document: state.document, renderToken: renderTokenRef.current });
     setPreviewErrors([]);
   }, [ready, state.document]);
+
+  useEffect(() => {
+    if (!ready || previewReloadNonce === 0) return;
+    const sig = structureSignature(state.document.root);
+    if (sig !== lastLoadedSigRef.current) {
+      lastLoadedSigRef.current = sig;
+      setReady(false);
+      post({ type: "host/reload-preview" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- el disparo debe ser SOLO previewReloadNonce; ready/state.document se leen por closure con el valor fresco del render en curso.
+  }, [previewReloadNonce]);
 
   useEffect(() => {
     if (ready) post({ type: "host/select-node", nodeId: state.selectedNodeId });
