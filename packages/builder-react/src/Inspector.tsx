@@ -87,6 +87,10 @@ function MediaField({ id, value, onChange }: { id: string; value: unknown; onCha
     }
     let active = true;
     setError("");
+    // Limpia la miniatura previa mientras se resuelve el nuevo assetId: al reusar
+    // esta instancia para otro nodo (o si el get falla) no debe quedar visible el
+    // asset anterior, que ya no corresponde al MediaRef actual.
+    setAsset(undefined);
     cms.media.get(selected)
       .then((nextAsset) => {
         if (active) setAsset(nextAsset);
