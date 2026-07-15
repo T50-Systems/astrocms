@@ -85,3 +85,8 @@ jobs:
         env:
           SESSION_SECRET: e2e-secret-of-32-characters-min!!
         run: pnpm e2e:a11y
+
+      - name: Run end-to-end journeys
+        env:
+          SESSION_SECRET: e2e-secret-of-32-characters-min!!
+        run: pnpm e2e:journey
