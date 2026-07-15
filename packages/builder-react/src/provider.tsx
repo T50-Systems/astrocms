@@ -1,7 +1,9 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useMemo,
+  useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -45,6 +47,8 @@ export interface BuilderContextValue {
   onPublish: (document: BuilderDocument) => Promise<void> | void;
   documentTitle?: string | undefined;
   onExit?: (() => void) | undefined;
+  previewReloadNonce: number;
+  requestPreviewReload: () => void;
 }
 
 const BuilderContext = createContext<Omit<BuilderContextValue, "state"> | null>(null);
@@ -58,6 +62,8 @@ export function BuilderProvider(props: BuilderProviderProps) {
     props.channelId,
     props.document.id,
   ]);
+  const [previewReloadNonce, setPreviewReloadNonce] = useState(0);
+  const requestPreviewReload = useCallback(() => setPreviewReloadNonce((n) => n + 1), []);
 
   const value = useMemo<Omit<BuilderContextValue, "state">>(
     () => ({
@@ -72,10 +78,13 @@ export function BuilderProvider(props: BuilderProviderProps) {
       onPublish: props.onPublish ?? ((document) => props.adapter.publish(document.id)),
       ...(props.documentTitle !== undefined ? { documentTitle: props.documentTitle } : {}),
       ...(props.onExit ? { onExit: props.onExit } : {}),
+      previewReloadNonce,
+      requestPreviewReload,
     }),
     [
       channelId,
       engine,
+      previewReloadNonce,
       props.adapter,
       props.cms,
       props.documentTitle,
@@ -85,6 +94,7 @@ export function BuilderProvider(props: BuilderProviderProps) {
       props.onSave,
       props.previewOrigin,
       props.previewToken,
+      requestPreviewReload,
     ],
   );
 
