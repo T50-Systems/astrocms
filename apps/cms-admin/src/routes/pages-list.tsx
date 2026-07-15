@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { FileText, Search, SearchX } from "lucide-react";
+import { FileText, LayoutTemplate, Search, SearchX } from "lucide-react";
 import type { Entry, EntryStatus } from "@astrocms/contracts";
 import { cms } from "../lib.ts";
 import { useSession } from "../auth.tsx";
@@ -73,6 +73,11 @@ export function PagesListPage() {
     },
     onSuccess: async () => { setSelected(new Set()); setBulkAction(""); setBulkEditing(false); setBulkStatus(""); await invalidateLists(); },
   });
+  const createVisual = useMutation({
+    mutationFn: () =>
+      cms.pages.create({ contentTypeKey: "page", title: "Página sin título", editorType: "builder", data: {} }),
+    onSuccess: (entry) => nav({ to: "/pages/$pageId/builder", params: { pageId: entry.id } }),
+  });
 
   if (sessionLoading || !session)
     return (
@@ -97,7 +102,7 @@ export function PagesListPage() {
     bulkUpdate.mutate({ ids, target: bulkStatus });
   };
   const setFilter = (nextStatus: EntryStatus | undefined) => { setStatus(nextStatus); setSelected(new Set()); };
-  const errors = [pages.error, counts.error, removeSelected.error, bulkUpdate.error, removeOne.error, duplicate.error].filter(Boolean) as Error[];
+  const errors = [pages.error, counts.error, removeSelected.error, bulkUpdate.error, removeOne.error, duplicate.error, createVisual.error].filter(Boolean) as Error[];
 
   return (
     <PageContainer>
@@ -105,6 +110,9 @@ export function PagesListPage() {
         <div className="flex items-center gap-3">
           <h1 className="text-page-title font-semibold tracking-tight">Páginas</h1>
           <Button size="sm" onClick={() => nav({ to: "/pages/new" })}>Añadir nueva</Button>
+          <Button size="sm" variant="outline" onClick={() => createVisual.mutate()} loading={createVisual.isPending}>
+            <LayoutTemplate className="size-4" /> Página visual
+          </Button>
         </div>
         <form onSubmit={submitSearch} role="search" className="flex items-center gap-2">
           <label htmlFor="page-search" className="sr-only">Buscar páginas</label>
@@ -164,7 +172,14 @@ export function PagesListPage() {
           <EmptyState
             icon={FileText}
             title="Aún no hay páginas. Crea la primera con Añadir nueva."
-            action={<Button size="sm" onClick={() => nav({ to: "/pages/new" })}>Añadir nueva</Button>}
+            action={
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={() => nav({ to: "/pages/new" })}>Añadir nueva</Button>
+                <Button size="sm" variant="outline" onClick={() => createVisual.mutate()} loading={createVisual.isPending}>
+                  <LayoutTemplate className="size-4" /> Página visual
+                </Button>
+              </div>
+            }
           />
         )
       )}
