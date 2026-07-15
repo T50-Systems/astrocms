@@ -41,7 +41,10 @@ export default defineConfig({
     },
     {
       command: "pnpm --filter @astrocms/astro-demo dev",
-      url: `http://localhost:${PREVIEW_PORT}/`,
+      // Readiness sobre un asset estático (public/health.txt → 200 siempre). No usar
+      // `/`: sin una página publicada con slug "/" el catch-all responde 404, y
+      // Playwright sólo acepta status < 404 como "listo" (colgaría el arranque).
+      url: `http://localhost:${PREVIEW_PORT}/health.txt`,
       reuseExistingServer: false,
       timeout: 120_000,
       stdout: "pipe",
