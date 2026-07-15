@@ -36,8 +36,15 @@ function Root() {
     enabled: Boolean(session),
   });
   // Sin sesión (login): sin shell. Con sesión: layout tipo WordPress (barra superior + lateral).
+  // El Suspense también cubre esta rama: al abrir/refrescar directamente una ruta lazy
+  // mientras `useSession()` aún es `undefined`, la ruta suspende antes de resolver la
+  // sesión; sin frontera aquí sería una suspensión sin capturar (pantalla en blanco).
   if (!session) {
-    return <Outlet />;
+    return (
+      <Suspense fallback={<div className="p-6"><PageEditSkeleton /></div>}>
+        <Outlet />
+      </Suspense>
+    );
   }
   const siteName = typeof siteSettings.data?.values.title === "string" && siteSettings.data.values.title.trim()
     ? siteSettings.data.values.title
