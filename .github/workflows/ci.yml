@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Typecheck, tests, and builder E2E
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: astrocms
+          POSTGRES_PASSWORD: astrocms
+          POSTGRES_DB: astrocms
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U astrocms -d astrocms"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://astrocms:astrocms@127.0.0.1:5432/astrocms
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # Los tests de integración del cms-server y el e2e requieren el esquema y
+      # los datos demo (admin@astrocms.local). Migrar+seed ANTES de correr tests.
+      - name: Migrate and seed database
+        run: |
+          pnpm db:migrate
+          pnpm db:seed
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run builder end-to-end tests
+        env:
+          SESSION_SECRET: e2e-secret-of-32-characters-min!!
+        run: pnpm e2e:builder
