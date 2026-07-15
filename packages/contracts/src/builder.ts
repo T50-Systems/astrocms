@@ -96,7 +96,7 @@ export const themeTokensSchema = z.object({
   widths: z.array(z.string()),
   columns: z.array(z.number()),
   colors: z.array(z.string()),
-  breakpoints: z.array(z.string()),
+  breakpoints: z.array(z.object({ name: z.string().min(1), width: z.number().int().positive().optional() })),
 });
 export type ThemeTokens = z.infer<typeof themeTokensSchema>;
 

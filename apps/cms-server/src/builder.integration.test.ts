@@ -13,7 +13,7 @@ const DB = process.env.DATABASE_URL;
 
 const manifest: BlockManifest = {
   schemaVersion: 1,
-  tokens: { spacing: [], widths: [], columns: [], colors: [], breakpoints: ["desktop"] },
+  tokens: { spacing: [], widths: [], columns: [], colors: [], breakpoints: [{ name: "desktop" }] },
   blocks: [],
 };
 

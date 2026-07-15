@@ -147,7 +147,7 @@ export function Toolbar() {
         <label htmlFor="builder-breakpoint" style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13 }}>
           Breakpoint
           <select id="builder-breakpoint" style={styles.input} value={state.breakpoint} onChange={(event) => engine.setBreakpoint(event.target.value)}>
-            {manifest.tokens.breakpoints.map((bp) => <option key={bp} value={bp}>{bp}</option>)}
+            {manifest.tokens.breakpoints.map((bp) => <option key={bp.name} value={bp.name}>{bp.name}</option>)}
           </select>
         </label>
       </div>
