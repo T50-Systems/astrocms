@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildManifest, defineBlock, blockZod, DEFAULT_TOKENS } from "./block.js";
-import { demoBuilderManifest } from "./demo.js";
-import { media, richText, select, text } from "./fields.js";
+import { blockDefaults, buildManifest, defineBlock, blockZod, DEFAULT_TOKENS } from "./block.js";
+import { demoBlocks, demoBuilderManifest } from "./demo.js";
+import { media, richText, select, text, url } from "./fields.js";
 
 const hero = defineBlock({
   type: "site/hero",
@@ -36,6 +36,26 @@ describe("schemas / defineBlock", () => {
     expect(zod.safeParse({ title: "Hola", alignment: "diagonal" }).success).toBe(false);
   });
 
+  it("los defaults de cada bloque demo pasan su propio blockZod (nodo recién insertado válido)", () => {
+    // Regresión: url() con default "" invalidaba un core/image recién insertado
+    // (los defaults se serializan a props). "" es "sin URL", un valor legítimo.
+    for (const block of demoBlocks) {
+      const result = blockZod(block).safeParse(blockDefaults(block));
+      expect(result.success, `${block.type}: ${JSON.stringify(!result.success && result.error.issues)}`).toBe(true);
+    }
+    // Una URL malformada sigue rechazándose.
+    const image = demoBlocks.find((b) => b.type === "core/image")!;
+    expect(blockZod(image).safeParse({ ...blockDefaults(image), src: "no-es-url" }).success).toBe(false);
+  });
+
+  it("url(): \"\" es válido solo en campos opcionales; en required se rechaza", () => {
+    const optional = defineBlock({ type: "t/opt", label: "Opt", category: "x", version: 1, fields: { href: url({ label: "URL" }) }, component: "" });
+    const required = defineBlock({ type: "t/req", label: "Req", category: "x", version: 1, fields: { href: url({ label: "URL", required: true }) }, component: "" });
+    expect(blockZod(optional).safeParse({ href: "" }).success).toBe(true);
+    expect(blockZod(required).safeParse({ href: "" }).success).toBe(false);
+    expect(blockZod(required).safeParse({ href: "https://example.com" }).success).toBe(true);
+  });
+
   it("serializa opciones del select en config", () => {
     const manifest = buildManifest([hero], DEFAULT_TOKENS);
     const alignment = manifest.blocks[0]!.fields.find((f) => f.key === "alignment")!;
@@ -61,5 +81,10 @@ describe("schemas / defineBlock", () => {
     const columns = demoBuilderManifest.blocks.find((block) => block.type === "core/columns")!;
     expect(columns.capabilities.acceptsChildren).toBe(true);
     expect(columns.constraints.allowedChildren).toContain("site/cta");
+
+    const image = demoBuilderManifest.blocks.find((block) => block.type === "core/image")!;
+    expect(image.version).toBe(1);
+    expect(image.fields.map((field) => field.key)).toEqual(["media", "src", "alt"]);
+    expect(image.defaults.src).toBe("");
   });
 });

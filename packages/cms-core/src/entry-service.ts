@@ -442,6 +442,27 @@ export function createEntryService(
     },
 
     /** API pública: sólo devuelve contenido publicado (usa la versión publicada). */
+    /** Snapshot PUBLICADO por id (null si la entry no está publicada). A diferencia
+     * de get(), mapea publishedVersionId — no expone la revisión borrador en curso. */
+    async getPublishedById(id: string): Promise<Entry | null> {
+      const entry = (
+        await db
+          .select()
+          .from(entries)
+          .where(and(eq(entries.id, id), eq(entries.status, "published")))
+          .limit(1)
+      )[0];
+      if (!entry || !entry.publishedVersionId) return null;
+      const published = await versionById(entry.publishedVersionId);
+      if (!published) return null;
+      return toEntry({
+        entry,
+        version: published,
+        contentTypeKey: await keyById(entry.contentTypeId),
+        publishedVersionNo: published.versionNo,
+      });
+    },
+
     async getPublishedBySlug(siteId: string, slug: string): Promise<Entry | null> {
       const entry = (
         await db

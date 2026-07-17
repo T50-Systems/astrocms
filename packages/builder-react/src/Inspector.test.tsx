@@ -37,18 +37,17 @@ describe("Inspector", () => {
     expect(heading.props).toMatchObject({ text: "Título actualizado", level: "h1" });
   });
 
-  it("asigna la URL pública al src de core/image desde la biblioteca", async () => {
+  it("mantiene src de core/image como input de URL externa sin botón de biblioteca", async () => {
     const user = userEvent.setup();
     const manifest = makeManifest();
     manifest.blocks.push({
       type: "core/image", label: "Imagen", category: "Contenido", version: 1,
-      fields: [{ key: "src", type: "url", label: "URL", required: true, config: {} }],
+      fields: [{ key: "src", type: "url", label: "URL externa", required: false, config: {} }],
       defaults: { src: "" }, constraints: {},
       capabilities: { acceptsChildren: false, duplicable: true, removable: true, hideable: true }, hasPreviewComponent: false,
     });
-    const asset = makeMediaAsset({ alt: "Bosque", url: "https://cdn.test/bosque.jpg" });
     renderInBuilder(<><SelectImage /><Inspector /><DocumentState /></>, {
-      cms: makeCms([asset]),
+      cms: makeCms([]),
       manifest,
       document: {
         id: "document-1", schemaVersion: 1,
@@ -57,19 +56,20 @@ describe("Inspector", () => {
       },
     });
 
-    await user.click(await screen.findByRole("button", { name: "Biblioteca" }));
-    await user.click(await screen.findByRole("button", { name: "Elegir Bosque" }));
+    const input = await screen.findByLabelText("URL externa");
+    expect(screen.queryByRole("button", { name: "Biblioteca" })).not.toBeInTheDocument();
+    await user.type(input, "https://cdn.test/bosque.jpg");
 
     const image = JSON.parse(screen.getByTestId("document-state").textContent ?? "{}").root.children[0];
     expect(image.props.src).toBe("https://cdn.test/bosque.jpg");
   });
 
-  it("guarda MediaRef al elegir un campo media", async () => {
+  it("guarda MediaRef al elegir la biblioteca de core/image", async () => {
     const user = userEvent.setup();
     const manifest = makeManifest();
     manifest.blocks.push({
-      type: "plugin/asset", label: "Asset", category: "Contenido", version: 1,
-      fields: [{ key: "imagen", type: "media", label: "Imagen", required: false, config: {} }],
+      type: "core/image", label: "Imagen", category: "Contenido", version: 1,
+      fields: [{ key: "media", type: "media", label: "Imagen de la biblioteca", required: false, config: {} }],
       defaults: {}, constraints: {},
       capabilities: { acceptsChildren: false, duplicable: true, removable: true, hideable: true }, hasPreviewComponent: false,
     });
@@ -79,7 +79,7 @@ describe("Inspector", () => {
       manifest,
       document: {
         id: "document-1", schemaVersion: 1,
-        root: { id: "root", type: "core/page", version: 1, props: {}, children: [{ id: "image-1", type: "plugin/asset", version: 1, props: {}, children: [] }] },
+        root: { id: "root", type: "core/page", version: 1, props: {}, children: [{ id: "image-1", type: "core/image", version: 1, props: {}, children: [] }] },
         meta: { title: "Documento de prueba" },
       },
     });
@@ -88,6 +88,6 @@ describe("Inspector", () => {
     await user.click(await screen.findByRole("button", { name: "Elegir Lago" }));
 
     const node = JSON.parse(screen.getByTestId("document-state").textContent ?? "{}").root.children[0];
-    expect(node.props.imagen).toEqual({ kind: "media", assetId: "asset-media" });
+    expect(node.props.media).toEqual({ kind: "media", assetId: "asset-media" });
   });
 });

@@ -35,6 +35,8 @@ import { createHttp, type CmsClientOptions } from "./http.js";
 
 export { CmsClientError, type CmsClientOptions } from "./http.js";
 
+export type PublicMediaAsset = Pick<MediaAsset, "id" | "url" | "alt" | "width" | "height" | "variants">;
+
 export interface EntryResource {
   list(q?: { status?: EntryStatus; search?: string; page?: number; pageSize?: number }): Promise<Paginated<Entry>>;
   counts(): Promise<EntryStatusCounts>;
@@ -131,6 +133,7 @@ export interface CmsClient {
   public: {
     getPageBySlug(slug: string): Promise<Entry | null>;
     getBuilderDocument(id: string): Promise<BuilderDocument | null>;
+    getMedia(id: string): Promise<PublicMediaAsset>;
     getMenu(location: string): Promise<Menu>;
     getSettings(group: string): Promise<SettingsGroup>;
     getTaxonomy(key: string): Promise<TaxonomyDetail>;
@@ -265,6 +268,7 @@ export function createCmsClient(opts: CmsClientOptions): CmsClient {
           throw err;
         }
       },
+      getMedia: (id) => request<PublicMediaAsset>("GET", `/public/media/${encodeURIComponent(id)}`),
       getMenu: (location) => request<Menu>("GET", `/public/menus/${encodeURIComponent(location)}`),
       getSettings: (group) => request<SettingsGroup>("GET", `/public/settings/${encodeURIComponent(group)}`),
       getTaxonomy: (key) => request<TaxonomyDetail>("GET", `/public/taxonomies/${encodeURIComponent(key)}`),
