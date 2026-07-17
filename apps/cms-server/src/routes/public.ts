@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { ErrorCode } from "@astrocms/contracts";
 import { validation } from "@astrocms/cms-core";
+import { migrateTree } from "../builder-migrations.js";
 import { apiError, parse, sendError } from "../http.js";
 
 const slugQuery = z.object({ slug: z.string().min(1) });
@@ -86,7 +87,7 @@ export async function publicRoutes(app: FastifyInstance): Promise<void> {
       const { id } = parse(idParam, req.params);
       const doc = await app.core.builder.getPublished(id);
       if (!doc) return reply.code(404).send(apiError(ErrorCode.NotFound, "Documento no publicado"));
-      return reply.send(doc);
+      return reply.send(migrateTree(doc));
     } catch (err) {
       return sendError(reply, err);
     }

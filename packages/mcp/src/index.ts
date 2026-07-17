@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { applyCommand, validateDocument } from "@astrocms/builder-core";
+import { applyCommand, migrateDocument, registryFromBlocks, validateDocument } from "@astrocms/builder-core";
 import {
   builderCommandSchema,
   builderDocumentSchema,
@@ -16,7 +16,7 @@ import {
 import type { CmsCore } from "@astrocms/cms-core";
 import { createCmsCore, DomainError } from "@astrocms/cms-core";
 import { contentTypes, createDb, users, type Database } from "@astrocms/cms-database";
-import { demoBuilderManifest } from "@astrocms/schemas";
+import { demoBlocks, demoBuilderManifest } from "@astrocms/schemas";
 
 type ToolSuccess<T> = { ok: true; data: T };
 type ToolFailure = { ok: false; error: { code: string; message: string; details?: unknown } };
@@ -68,6 +68,9 @@ const applyDocumentOpsInputSchema = z.object({
   documentId: z.string().min(1),
   ops: z.array(builderCommandSchema),
 });
+
+// El manifiesto del MCP y este registro proceden del mismo catálogo de bloques.
+const migrationRegistry = registryFromBlocks(demoBlocks);
 
 export type AstroCmsMcpTools = ReturnType<typeof createTools>;
 
@@ -171,7 +174,8 @@ function createTools(runtime: RuntimeDeps) {
     }),
 
     get_document: withValidation(documentIdInputSchema, async (input) => {
-      return ok({ document: await runtime.core.builder.get(input.documentId) });
+      const document = await runtime.core.builder.get(input.documentId);
+      return ok({ document: migrateDocument(document, migrationRegistry).document });
     }),
 
     publish_document: withValidation(documentIdInputSchema, async (input) => {
@@ -205,7 +209,7 @@ function createTools(runtime: RuntimeDeps) {
 
     apply_document_ops: withValidation(applyDocumentOpsInputSchema, async (input) => {
       const userId = await resolveUserId(runtime);
-      const original = await runtime.core.builder.get(input.documentId);
+      const original = migrateDocument(await runtime.core.builder.get(input.documentId), migrationRegistry).document;
       const next = applyOps(original, input.ops);
       const validation = validateDocument(next, runtime.manifest);
       if (!validation.valid) {

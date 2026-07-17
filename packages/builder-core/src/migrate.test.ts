@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BuilderDocument } from "@astrocms/contracts";
-import { migrateDocument, type MigrationRegistry } from "./migrate.js";
+import { migrateDocument, registryFromBlocks, type MigrationRegistry } from "./migrate.js";
 
 describe("builder-core migraciones de bloque", () => {
   it("migra un nodo desactualizado por versión (rename de prop)", () => {
@@ -46,6 +46,19 @@ describe("builder-core migraciones de bloque", () => {
     const { document, applied } = migrateDocument(doc, new Map());
     expect(applied).toHaveLength(0);
     expect(document.root.children[0]?.version).toBe(1);
+  });
+
+  it("construye un registro vacío para bloques v1 sin migraciones", () => {
+    const registry = registryFromBlocks([{ type: "core/heading", version: 1 }]);
+
+    expect(registry).toEqual(new Map());
+  });
+
+  it("incluye bloques con versión y migración declarada", () => {
+    const migration = { from: 1, to: 2, migrate: (props: Record<string, unknown>) => props };
+    const registry = registryFromBlocks([{ type: "core/heading", version: 2, migrations: [migration] }]);
+
+    expect(registry.get("core/heading")).toEqual({ toVersion: 2, migrations: [migration] });
   });
 });
 

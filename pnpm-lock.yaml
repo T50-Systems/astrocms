@@ -163,6 +163,9 @@ importers:
 
   apps/cms-server:
     dependencies:
+      '@astrocms/builder-core':
+        specifier: workspace:*
+        version: link:../../packages/builder-core
       '@astrocms/cms-auth':
         specifier: workspace:*
         version: link:../../packages/cms-auth
@@ -206,9 +209,6 @@ importers:
       '@astrocms/builder-adapters':
         specifier: workspace:*
         version: link:../../packages/builder-adapters
-      '@astrocms/builder-core':
-        specifier: workspace:*
-        version: link:../../packages/builder-core
       '@astrocms/cms-sdk':
         specifier: workspace:*
         version: link:../../packages/cms-sdk
