@@ -14,6 +14,25 @@ export interface MigrationEntry {
 /** Registro type → migraciones. Lo construye el proyecto/tema (no acopla a schemas). */
 export type MigrationRegistry = Map<string, MigrationEntry>;
 
+/** Construye el MigrationRegistry desde definiciones de bloque (shape estructural,
+ * sin acoplar a @astrocms/schemas). Solo entran bloques con version > 1 o con
+ * migraciones declaradas. */
+export interface MigratableBlock {
+  type: string;
+  version: number;
+  migrations?: NodeMigration[];
+}
+
+export function registryFromBlocks(blocks: MigratableBlock[]): MigrationRegistry {
+  const registry: MigrationRegistry = new Map();
+  for (const block of blocks) {
+    if (block.version > 1 || (block.migrations?.length ?? 0) > 0) {
+      registry.set(block.type, { toVersion: block.version, migrations: block.migrations ?? [] });
+    }
+  }
+  return registry;
+}
+
 export interface AppliedMigration {
   nodeId: string;
   type: string;

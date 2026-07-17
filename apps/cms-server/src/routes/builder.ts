@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { builderDocumentSchema, builderNodeSchema } from "@astrocms/contracts";
 import { demoBuilderManifest } from "../builder-manifest.js";
+import { migrateTree } from "../builder-migrations.js";
 import { makeGuards } from "../guards.js";
 import { parse, sendError } from "../http.js";
 
@@ -36,7 +37,7 @@ export async function builderRoutes(app: FastifyInstance): Promise<void> {
   app.get("/builder/documents/:id", read, async (req, reply) => {
     try {
       const { id } = parse(idParam, req.params);
-      return reply.send(await app.core.builder.get(id));
+      return reply.send(migrateTree(await app.core.builder.get(id)));
     } catch (err) {
       return sendError(reply, err);
     }

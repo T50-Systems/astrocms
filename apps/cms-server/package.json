@@ -11,6 +11,7 @@
     "lint": "eslint src --max-warnings=-1"
   },
   "dependencies": {
+    "@astrocms/builder-core": "workspace:*",
     "@astrocms/cms-auth": "workspace:*",
     "@astrocms/cms-core": "workspace:*",
     "@astrocms/cms-database": "workspace:*",
@@ -27,7 +28,6 @@
   },
   "devDependencies": {
     "@astrocms/builder-adapters": "workspace:*",
-    "@astrocms/builder-core": "workspace:*",
     "@astrocms/cms-sdk": "workspace:*",
     "@types/node": "^22.7.0",
     "drizzle-orm": "^0.36.0",

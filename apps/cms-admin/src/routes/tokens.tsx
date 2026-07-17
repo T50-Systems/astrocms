@@ -13,16 +13,12 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { PageHeaderSkeleton, TableSkeleton } from "@/components/skeletons.tsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
 import { cn } from "@/lib/utils.ts";
-import { contrastRatio, parseHexColor } from "@/lib/contrast.ts";
+import { contrastRatio, parseHexColor, pickReadableForeground } from "@/lib/contrast.ts";
 
 const GROUP = "design-tokens";
 const TYPES = ["color", "dimension", "fontFamily", "fontWeight", "number", "duration", "shadow", "other"];
 const LIGHT_SURFACE = parseHexColor("#f9fafb")!;
-const LIGHT_TEXT = parseHexColor("#fafafa")!;
-// El bridge aplica color.brand también en modo oscuro (estilo inline en :root gana a .dark),
-// donde el tema usa --primary-foreground oscuro (oklch(.205 0 0) ≈ #171717) y fondo ≈ #0a0a0a.
 const DARK_SURFACE = parseHexColor("#0a0a0a")!;
-const DARK_TEXT = parseHexColor("#171717")!;
 
 interface FlatToken {
   id: string;
@@ -109,9 +105,8 @@ export function TokensPage() {
 
     const checks = [
       { label: "como texto sobre fondo claro", ratio: contrastRatio(brandColor, LIGHT_SURFACE) },
-      { label: "como texto claro sobre fondo de marca", ratio: contrastRatio(LIGHT_TEXT, brandColor) },
       { label: "como texto sobre fondo oscuro (modo oscuro)", ratio: contrastRatio(brandColor, DARK_SURFACE) },
-      { label: "con texto oscuro sobre fondo de marca (modo oscuro)", ratio: contrastRatio(DARK_TEXT, brandColor) },
+      { label: "con el texto elegido sobre fondo de marca", ratio: pickReadableForeground(brandColor).ratio },
     ];
     const failures = checks.filter((check) => check.ratio < 4.5);
 
