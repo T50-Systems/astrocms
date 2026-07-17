@@ -47,12 +47,10 @@ export function createCmsCore(opts: { db: Database; storage?: StorageDriver; clo
   const dispatchBuilderPublished = async (siteId: string, data: unknown) => {
     const entryId = (data as { entryId?: string | null }).entryId;
     if (!entryId) return;
-    const entry = await entriesService.get(entryId);
-    if (entry.status !== "published") return;
-    // Snapshot PUBLICADO, no la versión actual: get() devuelve el borrador en curso,
-    // y si hay una revisión editada sin republicar el webhook filtraría metadatos
-    // (título/SEO/data) que aún no son públicos.
-    const published = await entriesService.getPublishedBySlug(siteId, entry.slug);
+    // Snapshot PUBLICADO resuelto por ID: get() expondría la revisión borrador en
+    // curso (fuga de metadatos no públicos), y resolver por slug podría devolver
+    // OTRA entry (el slug solo es único por siteId+contentTypeId).
+    const published = await entriesService.getPublishedById(entryId);
     if (!published) return;
     await webhooks.dispatch("entry.published", siteId, published);
   };
