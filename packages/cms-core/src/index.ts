@@ -41,13 +41,15 @@ export function createCmsCore(opts: { db: Database; storage?: StorageDriver; clo
   // Republicar un builder document solo notifica si su entry ya está publicada:
   // en ese caso el contenido público cambió y el webhook lleva el Entry completo
   // (mismo payload documentado que entries.publish). Doc sin entry o entry en
-  // borrador → sin evento (nada cambió públicamente).
+  // borrador → sin evento (nada cambió públicamente). SOLO webhook, sin
+  // menus.autoAddEntry: el auto-add es semántica de la primera publicación de la
+  // entry; re-correrlo aquí re-añadiría a los menús páginas que el usuario quitó.
   const dispatchBuilderPublished = async (siteId: string, data: unknown) => {
     const entryId = (data as { entryId?: string | null }).entryId;
     if (!entryId) return;
     const entry = await entriesService.get(entryId);
     if (entry.status !== "published") return;
-    await dispatchPublished(siteId, entry);
+    await webhooks.dispatch("entry.published", siteId, entry);
   };
   return {
     auth: createAuthService(opts.db, clock, (input) => audit.record(input)),

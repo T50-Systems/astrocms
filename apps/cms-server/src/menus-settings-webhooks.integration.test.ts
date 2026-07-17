@@ -402,6 +402,16 @@ describe.skipIf(!DB)("API v1 — menús, ajustes y webhooks (integración)", () 
 
     try {
       const slug = `/wh-builder-republish-${randomUUID().slice(0, 8)}`;
+      // Menú con auto-add: la primera publicación de la entry añade la página;
+      // republicar el DOCUMENTO no debe volver a añadirla si el usuario la quitó.
+      const menuLoc = `republish-${randomUUID().slice(0, 8)}`;
+      const menuPut = await app.inject({
+        method: "PUT",
+        url: `/api/v1/menus/${menuLoc}`,
+        ...auth({ payload: { name: "Republish", autoAddPages: true, items: [] } }),
+      });
+      expect(menuPut.statusCode).toBe(200);
+
       const page = await app.inject({
         method: "POST",
         url: "/api/v1/pages",
@@ -412,6 +422,16 @@ describe.skipIf(!DB)("API v1 — menús, ajustes y webhooks (integración)", () 
 
       const initialPublish = await app.inject({ method: "POST", url: `/api/v1/pages/${pageId}/publish`, ...auth() });
       expect(initialPublish.statusCode).toBe(200);
+
+      const menuAfterPublish = await app.inject({ method: "GET", url: `/api/v1/menus/${menuLoc}`, ...auth() });
+      expect((menuAfterPublish.json() as { items: Array<{ entryId?: string }> }).items.some((i) => i.entryId === pageId)).toBe(true);
+      // El usuario quita la página del menú a mano.
+      const menuCleared = await app.inject({
+        method: "PUT",
+        url: `/api/v1/menus/${menuLoc}`,
+        ...auth({ payload: { name: "Republish", autoAddPages: true, items: [] } }),
+      });
+      expect(menuCleared.statusCode).toBe(200);
 
       const createdHook = await app.inject({
         method: "POST",
@@ -437,6 +457,11 @@ describe.skipIf(!DB)("API v1 — menús, ajustes y webhooks (integración)", () 
       expect(payload.data?.id).toBe(pageId);
       expect(payload.data?.slug).toBe(slug);
       expect(payload.data?.title).toBe("Builder republicada");
+
+      // La página quitada a mano NO reaparece en el menú al republicar el documento.
+      const menuAfterRepublish = await app.inject({ method: "GET", url: `/api/v1/menus/${menuLoc}`, ...auth() });
+      expect((menuAfterRepublish.json() as { items: Array<{ entryId?: string }> }).items.some((i) => i.entryId === pageId)).toBe(false);
+      await app.inject({ method: "DELETE", url: `/api/v1/menus/${menuLoc}`, ...auth() });
     } finally {
       await new Promise<void>((resolve, reject) => receiver.close((err) => (err ? reject(err) : resolve())));
     }
