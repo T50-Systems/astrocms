@@ -391,4 +391,122 @@ describe.skipIf(!DB)("API v1 — menús, ajustes y webhooks (integración)", () 
       await new Promise<void>((resolve, reject) => receiver.close((err) => (err ? reject(err) : resolve())));
     }
   });
+  it("republicar un documento builder de una entry publicada entrega el Entry completo", async () => {
+    const receiver = createServer(async (req, res) => {
+      await readBody(req);
+      res.statusCode = 204;
+      res.end();
+    });
+    await new Promise<void>((resolve) => receiver.listen(0, "127.0.0.1", resolve));
+    const address = receiver.address() as AddressInfo;
+
+    try {
+      const slug = `/wh-builder-republish-${randomUUID().slice(0, 8)}`;
+      // Menú con auto-add: la primera publicación de la entry añade la página;
+      // republicar el DOCUMENTO no debe volver a añadirla si el usuario la quitó.
+      const menuLoc = `republish-${randomUUID().slice(0, 8)}`;
+      const menuPut = await app.inject({
+        method: "PUT",
+        url: `/api/v1/menus/${menuLoc}`,
+        ...auth({ payload: { name: "Republish", autoAddPages: true, items: [] } }),
+      });
+      expect(menuPut.statusCode).toBe(200);
+
+      const page = await app.inject({
+        method: "POST",
+        url: "/api/v1/pages",
+        ...auth({ payload: { title: "Builder republicada", slug, editorType: "builder" } }),
+      });
+      expect(page.statusCode).toBe(201);
+      const pageId = (page.json() as { id: string }).id;
+
+      const initialPublish = await app.inject({ method: "POST", url: `/api/v1/pages/${pageId}/publish`, ...auth() });
+      expect(initialPublish.statusCode).toBe(200);
+
+      const menuAfterPublish = await app.inject({ method: "GET", url: `/api/v1/menus/${menuLoc}`, ...auth() });
+      expect((menuAfterPublish.json() as { items: Array<{ entryId?: string }> }).items.some((i) => i.entryId === pageId)).toBe(true);
+      // El usuario quita la página del menú a mano.
+      const menuCleared = await app.inject({
+        method: "PUT",
+        url: `/api/v1/menus/${menuLoc}`,
+        ...auth({ payload: { name: "Republish", autoAddPages: true, items: [] } }),
+      });
+      expect(menuCleared.statusCode).toBe(200);
+
+      const createdHook = await app.inject({
+        method: "POST",
+        url: "/api/v1/webhooks",
+        ...auth({
+          payload: { event: "entry.published", targetUrl: `http://127.0.0.1:${address.port}/hook`, secret: `secret-${randomUUID()}` },
+        }),
+      });
+      expect(createdHook.statusCode).toBe(201);
+      const webhookId = (createdHook.json() as { id: string }).id;
+
+      const getPage = await app.inject({ method: "GET", url: `/api/v1/pages/${pageId}`, ...auth() });
+      expect(getPage.statusCode).toBe(200);
+      const documentId = (getPage.json() as { builderDocumentId?: string }).builderDocumentId;
+      expect(documentId).toBeTruthy();
+
+      const republished = await app.inject({ method: "POST", url: `/api/v1/builder/documents/${documentId}/publish`, ...auth() });
+      expect(republished.statusCode).toBe(204);
+
+      const deliveries = await db.select().from(webhookDeliveries).where(eq(webhookDeliveries.webhookId, webhookId));
+      expect(deliveries).toHaveLength(1);
+      const payload = deliveries[0]!.payload as { data?: { id?: string; slug?: string; title?: string } };
+      expect(payload.data?.id).toBe(pageId);
+      expect(payload.data?.slug).toBe(slug);
+      expect(payload.data?.title).toBe("Builder republicada");
+
+      // La página quitada a mano NO reaparece en el menú al republicar el documento.
+      const menuAfterRepublish = await app.inject({ method: "GET", url: `/api/v1/menus/${menuLoc}`, ...auth() });
+      expect((menuAfterRepublish.json() as { items: Array<{ entryId?: string }> }).items.some((i) => i.entryId === pageId)).toBe(false);
+      await app.inject({ method: "DELETE", url: `/api/v1/menus/${menuLoc}`, ...auth() });
+    } finally {
+      await new Promise<void>((resolve, reject) => receiver.close((err) => (err ? reject(err) : resolve())));
+    }
+  });
+
+  it("publicar un documento builder de una entry en borrador no entrega webhooks", async () => {
+    const receiver = createServer(async (req, res) => {
+      await readBody(req);
+      res.statusCode = 204;
+      res.end();
+    });
+    await new Promise<void>((resolve) => receiver.listen(0, "127.0.0.1", resolve));
+    const address = receiver.address() as AddressInfo;
+
+    try {
+      const page = await app.inject({
+        method: "POST",
+        url: "/api/v1/pages",
+        ...auth({ payload: { title: "Builder borrador", slug: `/wh-builder-draft-${randomUUID().slice(0, 8)}`, editorType: "builder" } }),
+      });
+      expect(page.statusCode).toBe(201);
+      const pageId = (page.json() as { id: string }).id;
+
+      const createdHook = await app.inject({
+        method: "POST",
+        url: "/api/v1/webhooks",
+        ...auth({
+          payload: { event: "entry.published", targetUrl: `http://127.0.0.1:${address.port}/hook`, secret: `secret-${randomUUID()}` },
+        }),
+      });
+      expect(createdHook.statusCode).toBe(201);
+      const webhookId = (createdHook.json() as { id: string }).id;
+
+      const getPage = await app.inject({ method: "GET", url: `/api/v1/pages/${pageId}`, ...auth() });
+      expect(getPage.statusCode).toBe(200);
+      const documentId = (getPage.json() as { builderDocumentId?: string }).builderDocumentId;
+      expect(documentId).toBeTruthy();
+
+      const published = await app.inject({ method: "POST", url: `/api/v1/builder/documents/${documentId}/publish`, ...auth() });
+      expect(published.statusCode).toBe(204);
+
+      const deliveries = await db.select().from(webhookDeliveries).where(eq(webhookDeliveries.webhookId, webhookId));
+      expect(deliveries).toHaveLength(0);
+    } finally {
+      await new Promise<void>((resolve, reject) => receiver.close((err) => (err ? reject(err) : resolve())));
+    }
+  });
 });
