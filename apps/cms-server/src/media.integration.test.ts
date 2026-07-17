@@ -155,6 +155,49 @@ describe.skipIf(!DB)("API v1 — media library (integración)", () => {
     await app.inject({ method: "DELETE", url: `/api/v1/media/${asset.id}`, ...auth() });
   });
 
+  it("expone metadata pública acotada por id sin autenticación", async () => {
+    const body = multipartFile("file", "public.png", "image/png", PNG_1X1);
+    const upload = await app.inject({
+      method: "POST",
+      url: "/api/v1/media",
+      ...auth({ payload: body.payload, headers: body.headers }),
+    });
+    expect(upload.statusCode).toBe(201);
+    const uploaded = upload.json();
+    const updated = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/media/${uploaded.id}`,
+      ...auth({ payload: { alt: "Imagen pública" } }),
+    });
+    expect(updated.statusCode).toBe(200);
+
+    const publicGet = await app.inject({ method: "GET", url: `/api/v1/public/media/${uploaded.id}` });
+    expect(publicGet.statusCode).toBe(200);
+    const asset = publicGet.json();
+    expect(asset).toMatchObject({
+      id: uploaded.id,
+      url: uploaded.url,
+      alt: "Imagen pública",
+      width: 1,
+      height: 1,
+    });
+    expect(Object.keys(asset).sort()).toEqual(["alt", "height", "id", "url", "variants", "width"]);
+    expect(asset).not.toHaveProperty("filename");
+    expect(asset).not.toHaveProperty("folder");
+    expect(asset).not.toHaveProperty("bytes");
+    expect(asset).not.toHaveProperty("mime");
+    expect(asset.variants).toHaveLength(3);
+    for (const variant of asset.variants) {
+      expect(Object.keys(variant).sort()).toEqual(["height", "kind", "url", "width"]);
+    }
+
+    const missing = await app.inject({ method: "GET", url: `/api/v1/public/media/${randomUUID()}` });
+    expect(missing.statusCode).toBe(404);
+    expect(missing.json().error.code).toBe("not_found");
+
+    await app.inject({ method: "DELETE", url: `/api/v1/media/${uploaded.id}`, ...auth() });
+  });
+
   it("rechaza extensión PNG con bytes que no son imagen", async () => {
     const body = multipartFile("file", "fake.png", "image/png", Buffer.from("not an image"));
     const res = await app.inject({

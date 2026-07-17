@@ -1,12 +1,14 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { ErrorCode } from "@astrocms/contracts";
+import { validation } from "@astrocms/cms-core";
 import { apiError, parse, sendError } from "../http.js";
 
 const slugQuery = z.object({ slug: z.string().min(1) });
 const locationParam = z.object({ location: z.string().min(1) });
 const groupParam = z.object({ group: z.string().min(1) });
 const keyParam = z.object({ key: z.string().min(1) });
+const idParam = z.object({ id: z.string().min(1) });
 
 /**
  * API pública: sólo contenido PUBLICADO, sin autenticación.
@@ -55,7 +57,30 @@ export async function publicRoutes(app: FastifyInstance): Promise<void> {
     }
   });
 
-  const idParam = z.object({ id: z.string().min(1) });
+  app.get("/public/media/:id", async (req, reply) => {
+    try {
+      const media = app.core.media;
+      if (!media) throw validation("media no configurado");
+      const { id } = parse(idParam, req.params);
+      const asset = await media.getForSite(id, app.siteId);
+      return reply.send({
+        id: asset.id,
+        url: asset.url,
+        ...(asset.alt !== undefined ? { alt: asset.alt } : {}),
+        ...(asset.width !== undefined ? { width: asset.width } : {}),
+        ...(asset.height !== undefined ? { height: asset.height } : {}),
+        variants: asset.variants.map(({ kind, url, width, height }) => ({
+          kind,
+          url,
+          ...(width !== undefined ? { width } : {}),
+          ...(height !== undefined ? { height } : {}),
+        })),
+      });
+    } catch (err) {
+      return sendError(reply, err);
+    }
+  });
+
   app.get("/public/builder/documents/:id", async (req, reply) => {
     try {
       const { id } = parse(idParam, req.params);

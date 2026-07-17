@@ -1,13 +1,29 @@
 ---
+import { mediaRefSchema } from "@astrocms/contracts";
+import { getCms, resolveCmsUrl } from "../../lib/cms.js";
+
 interface Props {
+  media?: unknown;
   src?: string;
   alt?: string;
 }
-const { src = "", alt = "" } = Astro.props;
-const attrs = Object.fromEntries(Object.entries(Astro.props).filter(([key]) => !["src", "alt"].includes(key)));
+const { media, src = "", alt = "" } = Astro.props;
+const attrs = Object.fromEntries(Object.entries(Astro.props).filter(([key]) => !["media", "src", "alt"].includes(key)));
+let resolvedSrc = src;
+let resolvedAlt = alt;
+const parsedMedia = mediaRefSchema.safeParse(media);
+if (parsedMedia.success) {
+  try {
+    const asset = await getCms().public.getMedia(parsedMedia.data.assetId);
+    resolvedSrc = resolveCmsUrl(asset.url);
+    if (!resolvedAlt) resolvedAlt = asset.alt ?? "";
+  } catch {
+    // El asset puede haber sido borrado o el CMS puede estar temporalmente inaccesible.
+  }
+}
 ---
 <figure class="image-block" {...attrs}>
-  {src ? <img src={src} alt={alt} loading="lazy" /> : <div class="image-block__empty" aria-label={alt} />}
+  {resolvedSrc ? <img src={resolvedSrc} alt={resolvedAlt} loading="lazy" /> : <div class="image-block__empty" aria-label={resolvedAlt} />}
 </figure>
 
 <style>
