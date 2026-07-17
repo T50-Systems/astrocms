@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { ErrorCode } from "@astrocms/contracts";
+import { migrateTree } from "../builder-migrations.js";
 import { makeGuards } from "../guards.js";
 import { apiError, parse, sendError } from "../http.js";
 
@@ -41,7 +42,7 @@ export async function previewRoutes(app: FastifyInstance): Promise<void> {
       if (payload.exp < Math.floor(Date.now() / 1000)) {
         return reply.code(401).send(apiError(ErrorCode.Unauthorized, "Token de preview expirado"));
       }
-      return reply.send(await app.core.builder.get(id));
+      return reply.send(migrateTree(await app.core.builder.get(id)));
     } catch (err) {
       return sendError(reply, err);
     }
