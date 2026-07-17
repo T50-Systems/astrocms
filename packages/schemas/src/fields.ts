@@ -86,10 +86,12 @@ export function select(cfg: SelectConfig): FieldSpec {
 }
 
 export function url(cfg: Base & { default?: string }): FieldSpec {
-  // "" = sin URL (valor vacío legítimo): el default implícito es "" y los defaults
-  // se serializan a los props de un nodo recién insertado — un z.string().url()
-  // estricto invalidaría el nodo antes de que el editor escriba nada.
-  return make("url", cfg, z.union([z.literal(""), z.string().url()]), cfg.default ?? "");
+  // "" = sin URL, legítimo SOLO en campos opcionales: el default implícito es "" y
+  // los defaults se serializan a los props de un nodo recién insertado — un
+  // z.string().url() estricto invalidaría el nodo antes de escribir nada. En un
+  // campo required, "" debe seguir rechazándose (make() solo añade .optional()).
+  const schema = cfg.required ? z.string().url() : z.union([z.literal(""), z.string().url()]);
+  return make("url", cfg, schema, cfg.default ?? "");
 }
 
 export function slug(cfg: Base & { default?: string }): FieldSpec {

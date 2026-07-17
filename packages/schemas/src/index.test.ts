@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { blockDefaults, buildManifest, defineBlock, blockZod, DEFAULT_TOKENS } from "./block.js";
 import { demoBlocks, demoBuilderManifest } from "./demo.js";
-import { media, richText, select, text } from "./fields.js";
+import { media, richText, select, text, url } from "./fields.js";
 
 const hero = defineBlock({
   type: "site/hero",
@@ -46,6 +46,14 @@ describe("schemas / defineBlock", () => {
     // Una URL malformada sigue rechazándose.
     const image = demoBlocks.find((b) => b.type === "core/image")!;
     expect(blockZod(image).safeParse({ ...blockDefaults(image), src: "no-es-url" }).success).toBe(false);
+  });
+
+  it("url(): \"\" es válido solo en campos opcionales; en required se rechaza", () => {
+    const optional = defineBlock({ type: "t/opt", label: "Opt", category: "x", version: 1, fields: { href: url({ label: "URL" }) }, component: "" });
+    const required = defineBlock({ type: "t/req", label: "Req", category: "x", version: 1, fields: { href: url({ label: "URL", required: true }) }, component: "" });
+    expect(blockZod(optional).safeParse({ href: "" }).success).toBe(true);
+    expect(blockZod(required).safeParse({ href: "" }).success).toBe(false);
+    expect(blockZod(required).safeParse({ href: "https://example.com" }).success).toBe(true);
   });
 
   it("serializa opciones del select en config", () => {

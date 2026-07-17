@@ -49,7 +49,12 @@ export function createCmsCore(opts: { db: Database; storage?: StorageDriver; clo
     if (!entryId) return;
     const entry = await entriesService.get(entryId);
     if (entry.status !== "published") return;
-    await webhooks.dispatch("entry.published", siteId, entry);
+    // Snapshot PUBLICADO, no la versión actual: get() devuelve el borrador en curso,
+    // y si hay una revisión editada sin republicar el webhook filtraría metadatos
+    // (título/SEO/data) que aún no son públicos.
+    const published = await entriesService.getPublishedBySlug(siteId, entry.slug);
+    if (!published) return;
+    await webhooks.dispatch("entry.published", siteId, published);
   };
   return {
     auth: createAuthService(opts.db, clock, (input) => audit.record(input)),

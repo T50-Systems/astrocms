@@ -448,6 +448,16 @@ describe.skipIf(!DB)("API v1 — menús, ajustes y webhooks (integración)", () 
       const documentId = (getPage.json() as { builderDocumentId?: string }).builderDocumentId;
       expect(documentId).toBeTruthy();
 
+      // Editar la entry SIN republicarla crea una revisión borrador: el webhook del
+      // republish del documento debe llevar el snapshot PUBLICADO, no el borrador
+      // (regresión: fuga de metadatos no públicos).
+      const draftEdit = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/pages/${pageId}`,
+        ...auth({ payload: { title: "Borrador sin publicar" } }),
+      });
+      expect(draftEdit.statusCode).toBe(200);
+
       const republished = await app.inject({ method: "POST", url: `/api/v1/builder/documents/${documentId}/publish`, ...auth() });
       expect(republished.statusCode).toBe(204);
 
