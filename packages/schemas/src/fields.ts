@@ -86,7 +86,10 @@ export function select(cfg: SelectConfig): FieldSpec {
 }
 
 export function url(cfg: Base & { default?: string }): FieldSpec {
-  return make("url", cfg, z.string().url(), cfg.default ?? "");
+  // "" = sin URL (valor vacío legítimo): el default implícito es "" y los defaults
+  // se serializan a los props de un nodo recién insertado — un z.string().url()
+  // estricto invalidaría el nodo antes de que el editor escriba nada.
+  return make("url", cfg, z.union([z.literal(""), z.string().url()]), cfg.default ?? "");
 }
 
 export function slug(cfg: Base & { default?: string }): FieldSpec {

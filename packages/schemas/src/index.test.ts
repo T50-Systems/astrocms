@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildManifest, defineBlock, blockZod, DEFAULT_TOKENS } from "./block.js";
-import { demoBuilderManifest } from "./demo.js";
+import { blockDefaults, buildManifest, defineBlock, blockZod, DEFAULT_TOKENS } from "./block.js";
+import { demoBlocks, demoBuilderManifest } from "./demo.js";
 import { media, richText, select, text } from "./fields.js";
 
 const hero = defineBlock({
@@ -34,6 +34,18 @@ describe("schemas / defineBlock", () => {
     expect(zod.safeParse({ title: "Hola", alignment: "center", description: {} }).success).toBe(true);
     expect(zod.safeParse({ title: "", alignment: "center" }).success).toBe(false);
     expect(zod.safeParse({ title: "Hola", alignment: "diagonal" }).success).toBe(false);
+  });
+
+  it("los defaults de cada bloque demo pasan su propio blockZod (nodo recién insertado válido)", () => {
+    // Regresión: url() con default "" invalidaba un core/image recién insertado
+    // (los defaults se serializan a props). "" es "sin URL", un valor legítimo.
+    for (const block of demoBlocks) {
+      const result = blockZod(block).safeParse(blockDefaults(block));
+      expect(result.success, `${block.type}: ${JSON.stringify(!result.success && result.error.issues)}`).toBe(true);
+    }
+    // Una URL malformada sigue rechazándose.
+    const image = demoBlocks.find((b) => b.type === "core/image")!;
+    expect(blockZod(image).safeParse({ ...blockDefaults(image), src: "no-es-url" }).success).toBe(false);
   });
 
   it("serializa opciones del select en config", () => {

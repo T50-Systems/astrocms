@@ -7,6 +7,18 @@ export function getCms() {
   return createCmsClient({ baseUrl });
 }
 
+/**
+ * Resuelve una URL de asset contra el origen del CMS. Con el storage por defecto
+ * `asset.url` es relativa a la raíz del CMS (`/api/v1/media/file/…`); el sitio Astro
+ * sirve en otro origen sin proxy `/api`, así que dejarla relativa haría que el
+ * navegador la pida al origen del sitio y falle. Las URLs ya absolutas (S3/CDN)
+ * pasan intactas.
+ */
+export function resolveCmsUrl(url: string): string {
+  const base = process.env.CMS_API_URL ?? "http://127.0.0.1:3000/api/v1";
+  return new URL(url, base).toString();
+}
+
 /** Menú público por ubicación. Tolerante a fallos: null si no existe o el CMS no responde. */
 export async function getMenu(location: string): Promise<Menu | null> {
   try {

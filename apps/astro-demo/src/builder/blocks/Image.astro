@@ -1,6 +1,6 @@
 ---
 import { mediaRefSchema } from "@astrocms/contracts";
-import { getCms } from "../../lib/cms.js";
+import { getCms, resolveCmsUrl } from "../../lib/cms.js";
 
 interface Props {
   media?: unknown;
@@ -15,7 +15,7 @@ const parsedMedia = mediaRefSchema.safeParse(media);
 if (parsedMedia.success) {
   try {
     const asset = await getCms().public.getMedia(parsedMedia.data.assetId);
-    resolvedSrc = asset.url;
+    resolvedSrc = resolveCmsUrl(asset.url);
     if (!resolvedAlt) resolvedAlt = asset.alt ?? "";
   } catch {
     // El asset puede haber sido borrado o el CMS puede estar temporalmente inaccesible.
