@@ -35,7 +35,10 @@ export function AppShell({ email, siteName, onLogout, children }: AppShellProps)
       <header className="fixed inset-x-0 top-0 z-20 flex h-12 items-center justify-between border-b border-white/10 bg-sidebar px-3 text-sidebar-foreground">
         <div className="flex items-center gap-4">
           <Link to="/" className="flex items-center gap-1.5 font-bold">
-            <Zap className="size-4 text-sidebar-primary-foreground" />
+            {/* Sobre bg-sidebar va sidebar-foreground: sidebar-primary-foreground es
+                "texto sobre superficies bg-sidebar-primary" y ahora lo adapta el bridge
+                al brand — un brand claro lo volvería oscuro e invisible aquí. */}
+            <Zap className="size-4 text-sidebar-foreground" />
             {siteName}
           </Link>
           <Link to="/pages/new" className="flex items-center gap-1 text-sm text-sidebar-foreground/70 hover:text-sidebar-foreground">
