@@ -37,11 +37,23 @@ export function createCmsCore(opts: { db: Database; storage?: StorageDriver; clo
     await menus.autoAddEntry(siteId, data as { id?: unknown; slug?: unknown; title?: unknown; contentTypeKey?: unknown });
     await webhooks.dispatch("entry.published", siteId, data);
   };
+  const entriesService = createEntryService(opts.db, clock, dispatchPublished, (input) => audit.record(input));
+  // Republicar un builder document solo notifica si su entry ya está publicada:
+  // en ese caso el contenido público cambió y el webhook lleva el Entry completo
+  // (mismo payload documentado que entries.publish). Doc sin entry o entry en
+  // borrador → sin evento (nada cambió públicamente).
+  const dispatchBuilderPublished = async (siteId: string, data: unknown) => {
+    const entryId = (data as { entryId?: string | null }).entryId;
+    if (!entryId) return;
+    const entry = await entriesService.get(entryId);
+    if (entry.status !== "published") return;
+    await dispatchPublished(siteId, entry);
+  };
   return {
     auth: createAuthService(opts.db, clock, (input) => audit.record(input)),
     audit,
-    entries: createEntryService(opts.db, clock, dispatchPublished, (input) => audit.record(input)),
-    builder: createBuilderService(opts.db, clock, dispatchPublished),
+    entries: entriesService,
+    builder: createBuilderService(opts.db, clock, dispatchBuilderPublished),
     menus,
     settings: createSettingsService(opts.db, clock),
     taxonomies: createTaxonomyService(opts.db),
