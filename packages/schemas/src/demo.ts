@@ -1,5 +1,5 @@
 import { DEFAULT_TOKENS, buildManifest, defineBlock } from "./block.js";
-import { number, select, text, textarea, url } from "./fields.js";
+import { media, number, select, text, textarea, url } from "./fields.js";
 
 const contentParents = ["core/page", "core/section", "core/columns"];
 const heroContentParents = [...contentParents, "site/hero"];
@@ -102,7 +102,8 @@ export const demoBlocks = [
     component: "src/components/builder/Image.astro",
     icon: "I",
     fields: {
-      src: url({ label: "URL", default: "https://example.com/image.jpg" }),
+      media: media({ label: "Imagen de la biblioteca" }),
+      src: url({ label: "URL externa", default: "" }),
       alt: text({ label: "Texto alternativo", maxLength: 160, default: "" }),
     },
     constraints: { allowedParents: contentParents },

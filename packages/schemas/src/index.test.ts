@@ -61,5 +61,10 @@ describe("schemas / defineBlock", () => {
     const columns = demoBuilderManifest.blocks.find((block) => block.type === "core/columns")!;
     expect(columns.capabilities.acceptsChildren).toBe(true);
     expect(columns.constraints.allowedChildren).toContain("site/cta");
+
+    const image = demoBuilderManifest.blocks.find((block) => block.type === "core/image")!;
+    expect(image.version).toBe(1);
+    expect(image.fields.map((field) => field.key)).toEqual(["media", "src", "alt"]);
+    expect(image.defaults.src).toBe("");
   });
 });

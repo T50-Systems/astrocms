@@ -39,8 +39,7 @@ export function Inspector() {
 }
 
 function FieldEditor({ field, nodeId, value }: { field: SerializedField; nodeId: string; value: unknown }) {
-  const { cms, engine } = useBuilder();
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const { engine } = useBuilder();
   const path = `props.${field.key}`;
   const id = `${nodeId}-${field.key}`;
   const set = (next: unknown) => engine.dispatch({ kind: "setProp", nodeId, path, value: next });
@@ -59,15 +58,7 @@ function FieldEditor({ field, nodeId, value }: { field: SerializedField; nodeId:
           {optionList(field).map((option) => <option key={option} value={option}>{option}</option>)}
         </select>
       ) : (
-        <>
-          <div style={{ display: "flex", gap: 6 }}>
-            <input id={id} style={styles.input} value={typeof value === "string" ? value : ""} onChange={(event) => set(event.target.value)} />
-            {/* Solo core/image usa src URL como superficie de selección de medios. */}
-            {cms && field.type === "url" && field.key === "src" && <button type="button" style={styles.button} onClick={() => setPickerOpen(true)}>Biblioteca</button>}
-          </div>
-          {field.type === "url" && field.key === "src" && typeof value === "string" && value && <img src={value} alt="Previsualización" style={{ width: 120, height: 80, objectFit: "cover", borderRadius: 6, border: `1px solid ${colors.border}` }} />}
-          {cms && field.type === "url" && field.key === "src" && <MediaPicker open={pickerOpen} onClose={() => setPickerOpen(false)} onSelect={(asset) => set(asset.url)} />}
-        </>
+        <input id={id} style={styles.input} value={typeof value === "string" ? value : ""} onChange={(event) => set(event.target.value)} />
       )}
     </label>
   );

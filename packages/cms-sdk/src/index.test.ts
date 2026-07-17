@@ -46,4 +46,15 @@ describe("cms-sdk", () => {
     const cms = createCmsClient({ baseUrl: "http://host/api/v1", fetch: f });
     expect(await cms.public.getPageBySlug("/nope")).toBeNull();
   });
+
+  it("public.getMedia consulta metadata pública por id", async () => {
+    const asset = { id: "asset 1", url: "/media/a.png", alt: "A", width: 1, height: 1, variants: [] };
+    const f = fakeFetch(200, asset);
+    const cms = createCmsClient({ baseUrl: "/api/v1", fetch: f });
+    await expect(cms.public.getMedia("asset 1")).resolves.toEqual(asset);
+    expect(f).toHaveBeenCalledWith(
+      "/api/v1/public/media/asset%201",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
 });

@@ -122,8 +122,9 @@ export function createMediaService(db: Database, storage: StorageDriver, clock: 
     return db.select().from(mediaVariants).where(eq(mediaVariants.assetId, assetId));
   }
 
-  async function loadAsset(id: string): Promise<AssetRow> {
-    const row = (await db.select().from(mediaAssets).where(eq(mediaAssets.id, id)).limit(1))[0];
+  async function loadAsset(id: string, siteId?: string): Promise<AssetRow> {
+    const where = siteId ? and(eq(mediaAssets.id, id), eq(mediaAssets.siteId, siteId)) : eq(mediaAssets.id, id);
+    const row = (await db.select().from(mediaAssets).where(where).limit(1))[0];
     if (!row) throw notFound("media asset no existe");
     return row;
   }
@@ -247,6 +248,11 @@ export function createMediaService(db: Database, storage: StorageDriver, clock: 
 
     async get(id: string): Promise<MediaAsset> {
       const row = await loadAsset(id);
+      return toAsset(row, await variantsFor(id), storage);
+    },
+
+    async getForSite(id: string, siteId: string): Promise<MediaAsset> {
+      const row = await loadAsset(id, siteId);
       return toAsset(row, await variantsFor(id), storage);
     },
 
