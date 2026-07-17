@@ -47,9 +47,12 @@ export function createCmsCore(opts: { db: Database; storage?: StorageDriver; clo
   const dispatchBuilderPublished = async (siteId: string, data: unknown) => {
     const entryId = (data as { entryId?: string | null }).entryId;
     if (!entryId) return;
-    const entry = await entriesService.get(entryId);
-    if (entry.status !== "published") return;
-    await webhooks.dispatch("entry.published", siteId, entry);
+    // Snapshot PUBLICADO resuelto por ID: get() expondría la revisión borrador en
+    // curso (fuga de metadatos no públicos), y resolver por slug podría devolver
+    // OTRA entry (el slug solo es único por siteId+contentTypeId).
+    const published = await entriesService.getPublishedById(entryId);
+    if (!published) return;
+    await webhooks.dispatch("entry.published", siteId, published);
   };
   return {
     auth: createAuthService(opts.db, clock, (input) => audit.record(input)),
