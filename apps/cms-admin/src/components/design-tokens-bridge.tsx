@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { cms } from "../lib.ts";
+import { parseHexColor, pickReadableForeground } from "../lib/contrast.ts";
 
 /**
  * Puente Tokens DTCG → tema del panel.
@@ -12,12 +13,13 @@ import { cms } from "../lib.ts";
  * Nota: no convertimos hex→oklch — los estilos inline en documentElement
  * ganan a :root/.dark por cascada, y las variables se consumen como
  * var(--primary) en contextos de color donde un hex crudo es válido.
- * TODO: --primary-foreground no se ajusta; un brand muy claro puede
- * reducir el contraste del texto sobre botones primarios.
+ * Para color.brand hex, el foreground claro u oscuro se elige por mayor
+ * contraste. Otros formatos se dejan al tema por defecto porque no se calculan.
  */
 const BRIDGE: Array<{ path: string; cssVars: string[] }> = [
   { path: "color.brand", cssVars: ["--primary", "--sidebar-primary", "--ring"] },
 ];
+const BRAND_FOREGROUND_VARS = ["--primary-foreground", "--sidebar-primary-foreground"];
 
 /** Navega un documento DTCG por ruta "a.b.c" y devuelve $value si es string no vacía. */
 function readDtcgValue(values: unknown, path: string): string | undefined {
@@ -45,9 +47,21 @@ export function DesignTokensBridge() {
         if (value) root.style.setProperty(v, value);
         else root.style.removeProperty(v); // sin token → tema por defecto
       }
+
+      if (path === "color.brand") {
+        const brandRgb = value && parseHexColor(value);
+        if (brandRgb) {
+          const fg = pickReadableForeground(brandRgb);
+          for (const v of BRAND_FOREGROUND_VARS) root.style.setProperty(v, fg.hex);
+        } else {
+          // Los colores no hex vuelven al tema por defecto para evitar un cálculo erróneo.
+          for (const v of BRAND_FOREGROUND_VARS) root.style.removeProperty(v);
+        }
+      }
     }
     return () => {
       for (const { cssVars } of BRIDGE) for (const v of cssVars) root.style.removeProperty(v);
+      for (const v of BRAND_FOREGROUND_VARS) root.style.removeProperty(v);
     };
   }, [tokens.data]);
 

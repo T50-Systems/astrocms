@@ -34,3 +34,10 @@ export function contrastRatio(a: RgbColor, b: RgbColor): number {
   const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
   return (lighter! + 0.05) / (darker! + 0.05);
 }
+
+/** Elige el texto (claro #fafafa u oscuro #171717) con mayor contraste sobre `bg`. */
+export function pickReadableForeground(bg: RgbColor): { hex: "#fafafa" | "#171717"; ratio: number } {
+  const light = contrastRatio(parseHexColor("#fafafa")!, bg);
+  const dark = contrastRatio(parseHexColor("#171717")!, bg);
+  return light >= dark ? { hex: "#fafafa", ratio: light } : { hex: "#171717", ratio: dark };
+}
