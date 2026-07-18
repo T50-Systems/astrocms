@@ -100,4 +100,10 @@ test("builder no tiene violaciones WCAG serious/critical", async ({ page }) => {
   await expect(page.getByText("Preview conectado")).toBeVisible();
 
   await analyze(page, new AxeBuilder({ page }).exclude('iframe[title="Builder preview"]'));
+
+  // La vista Wireframe introduce barras de color con texto y controles propios: axe debe
+  // escanearla también (el iframe de preview sigue excluido — su a11y se cubre en el sitio).
+  await page.getByRole("button", { name: "Wireframe" }).click();
+  await expect(page.getByTestId("wireframe-view")).toBeVisible();
+  await analyze(page, new AxeBuilder({ page }).exclude('iframe[title="Builder preview"]'));
 });

@@ -7,7 +7,7 @@ import { getBlock } from "./utils.js";
 type Phase = "idle" | "saving" | "saved" | "publishing" | "published" | "error";
 
 export function Toolbar() {
-  const { engine, manifest, state, onSave, onPublish, documentTitle, onExit, onRenameDocument, requestPreviewReload } = useBuilder();
+  const { engine, manifest, state, onSave, onPublish, documentTitle, onExit, onRenameDocument, requestPreviewReload, viewMode, setViewMode } = useBuilder();
   const savedDocumentRef = useRef(state.document);
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -122,7 +122,7 @@ export function Toolbar() {
 
       if (mod && key === "d") {
         event.preventDefault();
-        if (selectedNode && caps?.duplicable) {
+        if (selectedNode && caps?.duplicable && !selectedNode.locked) {
           engine.dispatch({ kind: "duplicateNode", nodeId: selectedNode.id });
         }
         return;
@@ -192,9 +192,29 @@ export function Toolbar() {
         <button type="button" style={{ ...styles.button, ...disabledStyle(!engine.canRedo()) }} disabled={!engine.canRedo()} onClick={() => engine.redo()}>
           Rehacer
         </button>
+        <div role="group" aria-label="Modo de vista" style={styles.segmentedControl}>
+          {(["preview", "wireframe"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              aria-pressed={viewMode === mode}
+              style={{ ...styles.segmentedButton, ...(viewMode === mode ? styles.segmentedButtonActive : {}) }}
+              onClick={() => setViewMode(mode)}
+            >
+              {mode === "preview" ? "Preview" : "Wireframe"}
+            </button>
+          ))}
+        </div>
         <label htmlFor="builder-breakpoint" style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13 }}>
           Breakpoint
-          <select id="builder-breakpoint" style={styles.input} value={state.breakpoint} onChange={(event) => engine.setBreakpoint(event.target.value)}>
+          <select
+            id="builder-breakpoint"
+            title={viewMode === "wireframe" ? "Solo disponible en Preview" : undefined}
+            disabled={viewMode === "wireframe"}
+            style={{ ...styles.input, ...disabledStyle(viewMode === "wireframe") }}
+            value={state.breakpoint}
+            onChange={(event) => engine.setBreakpoint(event.target.value)}
+          >
             {manifest.tokens.breakpoints.map((bp) => <option key={bp.name} value={bp.name}>{bp.name}</option>)}
           </select>
         </label>

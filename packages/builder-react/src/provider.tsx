@@ -52,6 +52,8 @@ export interface BuilderContextValue {
   onRenameDocument?: ((title: string) => Promise<void> | void) | undefined;
   previewReloadNonce: number;
   requestPreviewReload: () => void;
+  viewMode: "preview" | "wireframe";
+  setViewMode: (mode: "preview" | "wireframe") => void;
 }
 
 const BuilderContext = createContext<Omit<BuilderContextValue, "state"> | null>(null);
@@ -66,6 +68,7 @@ export function BuilderProvider(props: BuilderProviderProps) {
     props.document.id,
   ]);
   const [previewReloadNonce, setPreviewReloadNonce] = useState(0);
+  const [viewMode, setViewMode] = useState<"preview" | "wireframe">("preview");
   const requestPreviewReload = useCallback(() => setPreviewReloadNonce((n) => n + 1), []);
 
   const value = useMemo<Omit<BuilderContextValue, "state">>(
@@ -84,6 +87,8 @@ export function BuilderProvider(props: BuilderProviderProps) {
       ...(props.onRenameDocument ? { onRenameDocument: props.onRenameDocument } : {}),
       previewReloadNonce,
       requestPreviewReload,
+      viewMode,
+      setViewMode,
     }),
     [
       channelId,
@@ -100,6 +105,7 @@ export function BuilderProvider(props: BuilderProviderProps) {
       props.previewOrigin,
       props.previewToken,
       requestPreviewReload,
+      viewMode,
     ],
   );
 
