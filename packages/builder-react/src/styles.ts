@@ -15,6 +15,13 @@ export const colors = {
   danger: "var(--destructive, #b42318)",
   dangerBorder: "var(--destructive-soft, #f2b8b5)",
   success: "var(--success-ink, #15803d)",
+  wireframeSection: "var(--wireframe-section, #2563eb)",
+  wireframeColumns: "var(--wireframe-columns, #7c3aed)",
+  wireframeHero: "var(--wireframe-hero, #047857)",
+  wireframeContainer: "var(--wireframe-container, #475569)",
+  wireframeModule: "var(--wireframe-module, #1f2937)",
+  wireframeText: "var(--wireframe-text, #ffffff)",
+  wireframeBorder: "color-mix(in srgb, currentColor 28%, transparent)",
 };
 
 const colorTransition =
@@ -97,6 +104,25 @@ export const styles = {
     padding: "7px 8px",
     fontSize: 13,
     transition: colorTransition,
+  },
+  segmentedControl: {
+    display: "inline-flex",
+    border: `1px solid ${colors.border}`,
+    borderRadius: 7,
+    overflow: "hidden",
+  },
+  segmentedButton: {
+    border: 0,
+    borderRight: `1px solid ${colors.border}`,
+    background: colors.surface,
+    color: colors.text,
+    padding: "6px 9px",
+    cursor: "pointer",
+    fontSize: 12,
+  },
+  segmentedButtonActive: {
+    background: colors.accent,
+    color: colors.accentForeground,
   },
   canvasWrap: { minWidth: 0, minHeight: 0, padding: 14, overflow: "auto" },
   iframe: {

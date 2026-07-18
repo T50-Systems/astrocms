@@ -8,3 +8,4 @@ export { Inspector } from "./Inspector.js";
 export { MediaPicker } from "./MediaPicker.js";
 export type { MediaPickerProps } from "./MediaPicker.js";
 export { BuilderCanvas } from "./Canvas.js";
+export { Wireframe } from "./Wireframe.js";
